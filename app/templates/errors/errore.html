@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{#
+  Pagina di errore generica: stessa forma della 404 e della 500, ma il
+  titolo e il testo arrivano da fuori. Serve per tutti gli altri casi
+  (indirizzo scritto male, accesso negato, troppe richieste), che prima
+  uscivano come blocco di dati grezzi con dentro nomi di parametri e tipi
+  attesi: al visitatore non dicono niente e a chi cerca punti deboli
+  dicono troppo.
+#}
+{% block title %}{{ titolo }} — {{ site_name() }}{% endblock %}
+{% block head_extra %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<section class="section" style="text-align:center;padding:clamp(4rem,12vw,8rem) 0;">
+  <div class="container">
+    <p class="eyebrow" style="color:var(--accent-2);">{{ t('err.codice').format(n=codice) }}</p>
+    <h1 style="margin:1rem auto 1.5rem;max-width:16ch;">{{ titolo }}</h1>
+    <p style="color:var(--ink-soft);max-width:46ch;margin:0 auto 2rem;line-height:1.7;">
+      {{ testo }}</p>
+    <p class="bio-azioni" style="justify-content:center;">
+      <a class="btn btn-accent" href="/">{{ t('com.torna') }}</a>
+      <a class="btn btn-ghost" href="/search">{{ t('nav.cerca') }}</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

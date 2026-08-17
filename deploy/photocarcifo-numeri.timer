@@ -1,0 +1,13 @@
+[Unit]
+Description=Photocarcifo - Timer lettura numeri di gara
+
+[Timer]
+# Riparte da sola dopo ogni riavvio del container, e poi controlla
+# periodicamente se sono arrivate foto nuove da leggere. Se una lettura e'
+# gia' in corso, quella nuova si accorge del lucchetto ed esce subito.
+OnBootSec=5min
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

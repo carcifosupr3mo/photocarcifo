@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ t('bio.pagina') }} — {{ site_name() }}{% endblock %}
+{% block description %}{{ t('bio.descrizione') }}{% endblock %}
+
+{% block content %}
+<section class="hero"><div class="container">
+  <nav class="breadcrumb" aria-label="{{ t('com.percorso') }}">
+    <a href="/">{{ t('com.home') }}</a><span>/</span><span class="current">{{ t('bio.breadcrumb') }}</span>
+  </nav>
+  <p class="eyebrow">{{ t('bio.eyebrow') }}</p>
+  <h1>{{ t('bio.pagina') }}</h1>
+</div></section>
+
+<section class="section"><div class="container">
+  <div class="bio-testo">
+    <p class="lead">{{ t('bio.lead') }}</p>
+    <p>{{ t('bio.p1') }}</p>
+    <p>{{ t('bio.p2') }}</p>
+    <p>{{ t('bio.p3') }}</p>
+    <p>{{ t('bio.p4') }}</p>
+  </div>
+
+  {#
+    Cifre contate sul momento dal database, non scritte a mano: restano
+    vere anche fra un anno senza che nessuno le aggiorni.
+  #}
+  <h2 class="bio-h2">{{ t('bio.numeri_tit') }}</h2>
+  <div class="bio-numeri">
+    <div><strong>{{ "{:,}".format(numeri.foto).replace(",", "'") }}</strong><span>{{ t('bio.n_foto') }}</span></div>
+    <div><strong>{{ numeri.gallerie }}</strong><span>{{ t('bio.n_gallerie') }}</span></div>
+    <div><strong>{{ numeri.discipline }}</strong><span>{{ t('bio.n_discipline') }}</span></div>
+    {% if numeri.dal %}
+    <div><strong>{{ t('bio.n_dal') }} {{ numeri.dal }}</strong><span>&nbsp;</span></div>
+    {% endif %}
+  </div>
+
+  <h2 class="bio-h2">{{ t('bio.dicono_tit') }}</h2>
+  <p class="bio-testo">{{ t('bio.dicono_txt') }}</p>
+  <p class="bio-azioni">
+    <a class="btn btn-accent" href="/recensioni">{{ t('nav.recensioni') }}</a>
+    <a class="btn btn-ghost" href="/">{{ t('bio.vai_gallerie') }}</a>
+  </p>
+</div></section>
+{% endblock %}

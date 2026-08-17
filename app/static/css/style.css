@@ -1,0 +1,1572 @@
+/* =========================================================
+   Photocarcifo — design system responsive (mobile / tablet / desktop)
+   ========================================================= */
+:root{
+  --bg:#fff; --bg-dark:#0e0e10; --bg-soft:#f5f5f3;
+  --ink:#111113; --ink-soft:#6a6a70; --line:#e6e6e2;
+  --accent:#d4ff2e;
+  --font-display:ui-sans-serif,system-ui,sans-serif;
+  --font-body:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --sp1:.5rem; --sp2:1rem; --sp3:1.5rem; --sp4:2.5rem; --sp5:4rem; --sp6:6rem;
+  --maxw:1440px; --radius:6px; --ease:cubic-bezier(.22,1,.36,1);
+  --header-h:64px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);line-height:1.6;font-size:16px;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+img{display:block;max-width:100%;height:auto;}
+a{color:inherit;text-decoration:none;}
+button{font-family:inherit;}
+
+h1,h2,h3{font-family:var(--font-display);font-weight:600;line-height:1.05;letter-spacing:-.03em;}
+h1{font-size:clamp(2rem,7vw,4.5rem);}
+h2{font-size:clamp(1.5rem,4vw,2.6rem);text-transform:uppercase;}
+h3{font-size:clamp(.95rem,2vw,1.15rem);}
+.eyebrow{font-size:.7rem;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;}
+
+.container{width:100%;max-width:var(--maxw);margin:0 auto;padding:0 clamp(1rem,4vw,2rem);}
+.section{padding:clamp(2.5rem,7vw,4rem) 0;}
+
+/* ---------- Header ---------- */
+.site-header{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.93);border-bottom:1px solid var(--line);backdrop-filter:blur(8px);}
+.site-header .container{display:flex;align-items:center;justify-content:space-between;gap:1rem;height:var(--header-h);}
+.logo{font-family:var(--font-display);font-size:clamp(1.05rem,3.5vw,1.35rem);text-transform:uppercase;letter-spacing:-.02em;white-space:nowrap;}
+.nav{display:flex;gap:clamp(.6rem,2.5vw,1.5rem);align-items:center;}
+.nav a{font-size:clamp(.7rem,2vw,.8rem);letter-spacing:.05em;text-transform:uppercase;font-weight:600;color:var(--ink-soft);white-space:nowrap;transition:color .2s;}
+.nav a:hover{color:var(--ink);}
+.nav-admin{color:var(--ink)!important;border:1.5px solid var(--ink);padding:.35rem .75rem;border-radius:var(--radius);}
+.nav-admin:hover{background:var(--accent);border-color:var(--accent);}
+
+/* ---------- Home intro ---------- */
+.intro-hero{padding:clamp(2.5rem,9vw,6rem) 0 clamp(2rem,6vw,4rem);border-bottom:1px solid var(--line);}
+.intro-hero h1{margin:.5rem 0 clamp(1.5rem,4vw,2.5rem);max-width:14ch;}
+.intro-copy{max-width:64ch;}
+.intro-copy p{font-size:clamp(.98rem,2.4vw,1.08rem);line-height:1.75;color:var(--ink-soft);margin-bottom:1.3rem;}
+.intro-copy p:first-child{color:var(--ink);font-size:clamp(1.05rem,2.8vw,1.2rem);}
+.intro-copy .closing{font-family:var(--font-display);font-size:clamp(1.1rem,3vw,1.35rem);color:var(--ink);margin-top:var(--sp3);}
+
+/* ---------- Griglia categorie ---------- */
+.cat-grid{display:grid;gap:clamp(.75rem,2.5vw,1.5rem);grid-template-columns:1fr;margin-top:var(--sp3);}
+.cat-card{position:relative;display:block;aspect-ratio:16/10;overflow:hidden;border-radius:var(--radius);background:var(--bg-soft);}
+.cat-card img{width:100%;height:100%;object-fit:cover;transition:transform .8s var(--ease),filter .5s;filter:brightness(.85);}
+.cat-card:hover img,.cat-card:focus-visible img{transform:scale(1.05);filter:brightness(.68);}
+.cat-scrim{position:absolute;inset:0;z-index:1;background:linear-gradient(to top,rgba(14,14,16,.88),rgba(14,14,16,0) 62%);}
+.cat-label{position:absolute;left:0;bottom:0;z-index:2;padding:clamp(1rem,3vw,1.5rem);color:#fff;}
+.cat-label h3{font-size:clamp(1.3rem,4.5vw,2rem);text-transform:uppercase;}
+.cat-label .n{font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;opacity:.85;margin-top:2px;}
+.cat-card:hover .cat-label h3{color:var(--accent);}
+.cat-card .badge-private{position:absolute;top:10px;right:10px;z-index:3;}
+
+/* ---------- Breadcrumb + album ---------- */
+.breadcrumb{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:var(--sp2);}
+.breadcrumb a:hover{color:var(--ink);}
+.breadcrumb .current{color:var(--ink);font-weight:600;}
+.breadcrumb span{opacity:.4;}
+.hero{padding:clamp(1.5rem,5vw,3rem) 0 clamp(1rem,3vw,1.5rem);}
+.hero h1{font-size:clamp(1.7rem,6vw,3.5rem);text-transform:uppercase;}
+
+.album-grid{display:grid;gap:clamp(.75rem,2.5vw,1.5rem);grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));margin-top:var(--sp3);}
+.album-card .thumb{position:relative;overflow:hidden;background:var(--bg-soft);aspect-ratio:4/3;border-radius:var(--radius);}
+.album-card .thumb img{width:100%;height:100%;object-fit:cover;transition:transform .7s var(--ease);}
+.album-card:hover .thumb img{transform:scale(1.05);}
+.album-card .meta{padding:.7rem 0;}
+.album-card .meta h3{text-transform:uppercase;}
+.album-card .meta .sub{font-size:.75rem;color:var(--ink-soft);margin-top:2px;}
+.badge-private{font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;background:var(--accent);color:var(--bg-dark);padding:3px 7px;border-radius:3px;font-weight:700;}
+.badge-hidden{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;background:var(--ink-soft);color:#fff;padding:3px 7px;border-radius:3px;}
+
+/* ---------- Griglia foto ---------- */
+.photo-grid{columns:1;column-gap:clamp(.5rem,2vw,1rem);margin-top:var(--sp3);}
+.photo-grid .photo{position:relative;break-inside:avoid;margin-bottom:clamp(.5rem,2vw,1rem);cursor:zoom-in;background:var(--bg-soft);border-radius:var(--radius);overflow:hidden;}
+/* La comparsa in dissolvenza e' legata all'attributo data-src, non a una
+   classe aggiunta dallo script.
+   Con la classe, la prima fotografia di ogni album restava invisibile per
+   sempre: il server le da' gia' l'indirizzo (per farla arrivare prima delle
+   altre) e quindi non ha data-src, ma lo script cercava proprio quelle con
+   data-src per marcarle come caricate. L'unica immagine ottimizzata per
+   apparire subito era l'unica che non appariva mai.
+   Legandola all'attributo il caso non si puo' piu' presentare: chi non ha
+   niente da aspettare e' visibile da subito, e se lo script non partisse
+   nemmeno, quel che c'e' si vedrebbe lo stesso. */
+.photo-grid .photo img{width:100%;transition:opacity .5s var(--ease);}
+.photo-grid .photo img[data-src]{opacity:0;}
+/* Ricerca per numero: etichetta con la cartella di provenienza */
+.search-aiuto{margin-top:.8rem;font-size:.88rem;color:var(--ink-soft);max-width:56ch;}
+.foto-cartella{position:absolute;left:0;right:0;bottom:0;padding:1.8rem .7rem .6rem;font-size:.78rem;line-height:1.3;color:#fff;cursor:pointer;background:linear-gradient(to top,rgba(20,19,16,.78),transparent);opacity:0;transition:opacity .25s var(--ease);}
+.photo:hover .foto-cartella,.photo:focus-within .foto-cartella{opacity:1;}
+.foto-cartella:hover{text-decoration:underline;}
+@media (hover:none){.foto-cartella{opacity:1;}}
+
+/* Selezione */
+.sel-box{position:absolute;top:10px;right:10px;width:28px;height:28px;z-index:5;border:2px solid rgba(255,255,255,.92);border-radius:6px;background:rgba(0,0,0,.38);cursor:pointer;opacity:0;transition:opacity .2s,background .15s,border-color .15s;box-shadow:0 1px 6px rgba(0,0,0,.35);}
+.photo:hover .sel-box,body.selecting .sel-box{opacity:1;}
+.sel-box:hover{border-color:var(--accent);}
+.photo.selected .sel-box{background:var(--accent);border-color:var(--accent);}
+.photo.selected .sel-box::after{content:"";position:absolute;left:9px;top:4px;width:6px;height:12px;border:solid var(--bg-dark);border-width:0 3px 3px 0;transform:rotate(45deg);}
+.photo.selected img{outline:3px solid var(--accent);outline-offset:-3px;}
+body.selecting .photo{cursor:pointer;}
+@media (hover:none){.sel-box{opacity:1;}}
+
+.dl-toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:var(--sp2) 0;position:sticky;top:var(--header-h);z-index:30;background:rgba(255,255,255,.95);padding:.6rem 0;backdrop-filter:blur(6px);}
+.dl-toolbar .btn{flex:1 1 auto;justify-content:center;min-width:130px;}
+
+/* ---------- Lightbox ---------- */
+.lightbox{position:fixed;inset:0;z-index:100;background:rgba(10,10,12,.97);display:none;align-items:center;justify-content:center;opacity:0;transition:opacity .3s var(--ease);padding:1rem;}
+.lightbox.open{display:flex;opacity:1;}
+.lightbox img,.lightbox .lb-video{max-width:94vw;max-height:80vh;object-fit:contain;border-radius:var(--radius);}
+.lightbox .lb-video{background:#000;width:100%;}
+.lightbox .lb-close,.lightbox .lb-nav{position:absolute;color:#fff;background:rgba(0,0,0,.35);border:none;cursor:pointer;font-size:1.8rem;line-height:1;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background .2s,color .2s;}
+.lightbox .lb-close:hover,.lightbox .lb-nav:hover{background:var(--accent);color:var(--bg-dark);}
+.lightbox .lb-close{top:14px;right:14px;}
+.lightbox .lb-nav.prev{left:10px;top:50%;transform:translateY(-50%);}
+.lightbox .lb-nav.next{right:10px;top:50%;transform:translateY(-50%);}
+.lightbox .lb-actions{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);}
+
+/* ---------- Bottoni ---------- */
+.btn{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:.7rem 1.2rem;border-radius:var(--radius);border:2px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer;transition:all .2s var(--ease);min-height:44px;}
+.btn:hover{background:var(--accent);border-color:var(--accent);color:var(--bg-dark);}
+.btn-ghost{background:transparent;color:var(--ink);}
+.btn-ghost:hover{background:var(--ink);color:#fff;}
+.btn-accent{background:var(--accent);border-color:var(--accent);color:var(--bg-dark);}
+.btn-accent:hover{background:var(--ink);border-color:var(--ink);color:#fff;}
+
+/* ---------- Form / footer / vuoti ---------- */
+.form{max-width:460px;}
+.form .field{margin-bottom:var(--sp2);}
+.form label{display:block;font-size:.82rem;margin-bottom:6px;color:var(--ink-soft);}
+.form input,.form textarea,.form select{width:100%;padding:.75rem .9rem;font-size:16px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;color:var(--ink);font-family:var(--font-body);}
+.form input:focus,.form textarea:focus{outline:none;border-color:var(--ink);}
+.form .error{background:#fdecea;color:#b1402e;padding:.7rem .9rem;border-radius:var(--radius);font-size:.88rem;margin-bottom:var(--sp2);}
+.empty{text-align:center;padding:var(--sp5) 0;color:var(--ink-soft);}
+.site-footer{border-top:1px solid var(--line);margin-top:var(--sp5);padding:var(--sp3) 0;color:var(--ink-soft);font-size:.8rem;}
+.site-footer .container{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;background:var(--bg-soft);}
+.login-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:clamp(1.5rem,5vw,2.5rem);width:100%;max-width:400px;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
+
+/* ---------- Admin ---------- */
+.mgr-head{margin-bottom:var(--sp2);}
+.mgr-crumbs{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-top:.4rem;}
+.mgr-crumbs .current{color:var(--ink);font-weight:600;}
+.mgr-crumbs .sep{opacity:.4;}
+.mgr-grid{display:grid;gap:clamp(.75rem,2.5vw,1.25rem);grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));}
+.acard{background:#fff;border:1px solid var(--line);border-radius:var(--radius);transition:box-shadow .25s,transform .25s;}
+.acard:hover{box-shadow:0 8px 26px rgba(0,0,0,.09);transform:translateY(-2px);}
+.acard-cover{position:relative;aspect-ratio:4/3;background:var(--bg-soft);overflow:hidden;cursor:pointer;border-radius:var(--radius) var(--radius) 0 0;}
+.acard-cover img{width:100%;height:100%;object-fit:cover;transition:transform .6s var(--ease);}
+.acard:hover .acard-cover img{transform:scale(1.05);}
+.acard-badges{position:absolute;top:8px;left:8px;display:flex;gap:4px;z-index:2;flex-wrap:wrap;}
+.acard-body{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:.4rem;padding:.8rem .9rem;}
+.acard-txt{cursor:pointer;min-width:0;}
+.acard-txt h3{font-size:.9rem;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.acard-txt p{font-size:.75rem;color:var(--ink-soft);margin-top:2px;}
+.card-menu{background:none;border:none;font-size:1.35rem;line-height:1;color:var(--ink-soft);cursor:pointer;padding:.25rem .45rem;border-radius:var(--radius);flex-shrink:0;min-width:36px;min-height:36px;}
+.card-menu:hover{background:var(--bg-soft);color:var(--ink);}
+.menu-pop{display:none;position:absolute;right:.5rem;top:2.7rem;z-index:20;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 12px 32px rgba(0,0,0,.16);min-width:190px;padding:.3rem;}
+.menu-pop.open{display:block;}
+.menu-pop button{display:block;width:100%;text-align:left;background:none;border:none;padding:.6rem .7rem;font-size:.85rem;color:var(--ink);cursor:pointer;border-radius:var(--radius);}
+.menu-pop button:hover{background:var(--bg-soft);}
+.menu-pop button.danger{color:#b1402e;}
+.mgr-sheet{position:fixed;inset:0;background:rgba(10,10,12,.5);z-index:120;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.mgr-sheet[hidden]{display:none;}
+.sheet-inner{background:#fff;border-radius:var(--radius);padding:clamp(1.2rem,4vw,1.8rem);max-width:520px;width:100%;max-height:88vh;overflow:auto;}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;}
+.sheet-head button{background:none;border:none;font-size:1.8rem;line-height:1;cursor:pointer;color:var(--ink-soft);}
+.det-block{margin:1.1rem 0;}
+.det-block label{display:block;font-size:.75rem;color:var(--ink-soft);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.07em;}
+.det-row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;}
+.det-block input{flex:1 1 160px;padding:.6rem .8rem;border:1px solid var(--line);border-radius:var(--radius);font-size:16px;}
+#d-link{font-family:ui-monospace,monospace;font-size:.78rem;width:100%;margin-bottom:.5rem;}
+.tree-hint,.tree-path{color:var(--ink-soft);font-size:.85rem;}
+.stat-grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));margin:1rem 0 2rem;}
+.stat-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem;}
+.stat-card .num{font-family:var(--font-display);font-size:1.8rem;line-height:1;}
+.stat-card .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);margin-top:4px;}
+.table{width:100%;border-collapse:collapse;font-size:.85rem;}
+.table th,.table td{text-align:left;padding:.7rem .6rem;border-bottom:1px solid var(--line);}
+.toolbar{display:flex;gap:.6rem;flex-wrap:wrap;}
+.nas-banner{padding:.8rem 1rem;border-radius:var(--radius);margin-bottom:1.5rem;font-size:.88rem;}
+.nas-ok{background:#eaf7ee;color:#256b3a;}
+.nas-err{background:#fdecea;color:#b1402e;}
+
+/* Shell admin responsive */
+.admin-shell{display:grid;grid-template-columns:230px 1fr;min-height:100vh;}
+.admin-sidebar{background:var(--bg-dark);color:#fff;padding:1.5rem 1rem;display:flex;flex-direction:column;gap:.4rem;}
+.admin-sidebar .brand{font-family:var(--font-display);font-size:1.15rem;text-transform:uppercase;margin-bottom:1.2rem;}
+.admin-sidebar nav{display:flex;flex-direction:column;gap:.15rem;}
+.admin-sidebar nav a{color:rgba(255,255,255,.72);padding:.6rem .7rem;border-radius:var(--radius);font-size:.85rem;}
+.admin-sidebar nav a:hover{background:rgba(255,255,255,.08);color:#fff;}
+.admin-sidebar nav a.active{background:var(--accent);color:var(--bg-dark);font-weight:700;}
+.admin-sidebar .spacer{flex:1;}
+.admin-sidebar .logout button{background:none;border:1px solid rgba(255,255,255,.3);color:rgba(255,255,255,.8);padding:.5rem .8rem;border-radius:var(--radius);cursor:pointer;font-size:.8rem;width:100%;}
+.admin-main{padding:clamp(1.2rem,4vw,2.5rem);background:var(--bg-soft);min-width:0;}
+.admin-main h1{font-size:clamp(1.5rem,4vw,2.2rem);margin-bottom:.5rem;}
+
+/* ---------- Breakpoints ---------- */
+@media (min-width:600px){
+  .photo-grid{columns:2;}
+  .cat-grid{grid-template-columns:repeat(2,1fr);}
+}
+@media (min-width:900px){
+  .photo-grid{columns:3;}
+  .cat-grid{grid-template-columns:repeat(auto-fill,minmax(340px,1fr));}
+  :root{--header-h:70px;}
+}
+@media (min-width:1280px){
+  .photo-grid{columns:4;}
+}
+@media (max-width:860px){
+  .admin-shell{grid-template-columns:1fr;}
+  .admin-sidebar{flex-direction:row;align-items:center;gap:.5rem;padding:.7rem 1rem;overflow-x:auto;position:sticky;top:0;z-index:70;}
+  .admin-sidebar .brand{margin:0 .8rem 0 0;font-size:1rem;white-space:nowrap;}
+  .admin-sidebar nav{flex-direction:row;gap:.3rem;}
+  .admin-sidebar nav a{white-space:nowrap;font-size:.78rem;padding:.45rem .6rem;}
+  .admin-sidebar .spacer{display:none;}
+  .admin-sidebar .logout button{width:auto;white-space:nowrap;}
+}
+@media (max-width:520px){
+  .site-footer .container{flex-direction:column;text-align:center;}
+  .dl-toolbar .btn{width:100%;}
+  .lightbox .lb-nav{width:42px;height:42px;font-size:1.5rem;}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important;}}
+
+/* =========================================================
+   THEME 2.0 — palette accesa e moderna (override finale)
+   ========================================================= */
+:root{
+  --bg:#ffffff;
+  --bg-soft:#f4f6fb;
+  --bg-dark:#0a0c14;
+  --ink:#0a0c14;
+  --ink-soft:#5b6172;
+  --line:#e3e7f0;
+  --accent:#2b4bff;        /* blu elettrico */
+  --accent-2:#ff3d6e;      /* magenta acceso */
+  --accent-3:#00d4a0;      /* verde acqua */
+  --accent-ink:#ffffff;
+  --radius:10px;
+}
+
+body{background:var(--bg);color:var(--ink);}
+
+/* Header più leggero */
+.site-header{background:rgba(255,255,255,.86);border-bottom:1px solid var(--line);}
+.nav a:hover{color:var(--accent);}
+.nav-admin{border:1.5px solid var(--accent);color:var(--accent)!important;background:transparent;}
+.nav-admin:hover{background:var(--accent);border-color:var(--accent);color:#fff!important;}
+
+/* Bottoni */
+.btn{border-radius:999px;border:2px solid var(--ink);background:var(--ink);color:#fff;letter-spacing:.06em;}
+.btn:hover{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn-ghost{background:transparent;color:var(--ink);border-color:var(--line);}
+.btn-ghost:hover{background:var(--ink);border-color:var(--ink);color:#fff;}
+.btn-accent{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn-accent:hover{background:var(--ink);border-color:var(--ink);color:#fff;}
+
+/* Badge */
+.badge-private{background:var(--accent-2);color:#fff;border-radius:999px;padding:4px 10px;}
+.badge-hidden{background:var(--ink-soft);color:#fff;border-radius:999px;padding:4px 10px;}
+
+/* ---------- Presentazione home (editoriale) ---------- */
+.intro-hero{padding:clamp(3rem,10vw,7rem) 0 clamp(2rem,6vw,4rem);border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,var(--bg-soft) 0%,var(--bg) 100%);}
+.intro-hero .eyebrow{color:var(--accent);}
+.intro-hero h1{
+  font-size:clamp(2.6rem,9vw,6rem);
+  letter-spacing:-.045em;line-height:.94;max-width:12ch;
+  margin:.6rem 0 clamp(2rem,5vw,3rem);
+}
+.intro-hero h1 .dot{color:var(--accent);}
+.intro-copy{max-width:none;display:grid;gap:clamp(1rem,3vw,2.5rem);grid-template-columns:1fr;}
+.intro-copy .lead{
+  font-size:clamp(1.25rem,3.4vw,1.9rem);
+  line-height:1.35;color:var(--ink);font-weight:500;letter-spacing:-.02em;
+  max-width:24ch;grid-column:1/-1;
+}
+.intro-copy .body-col p{font-size:clamp(.98rem,2.2vw,1.05rem);line-height:1.75;color:var(--ink-soft);margin-bottom:1.2rem;}
+.intro-copy .closing{
+  grid-column:1/-1;margin-top:clamp(1rem,3vw,2rem);padding-top:clamp(1rem,3vw,1.8rem);
+  border-top:2px solid var(--accent);
+  font-family:var(--font-display);font-size:clamp(1.2rem,3.4vw,1.9rem);
+  letter-spacing:-.025em;color:var(--ink);max-width:26ch;
+}
+@media (min-width:900px){
+  .intro-copy{grid-template-columns:1fr 1fr;}
+  .intro-copy .lead{grid-column:1/-1;max-width:30ch;}
+}
+
+/* Sezione portfolio */
+#portfolio .eyebrow{color:var(--accent);}
+.cat-card{border-radius:var(--radius);}
+.cat-card:hover .cat-label h3{color:#fff;}
+.cat-card .cat-label h3{transition:color .3s;}
+.cat-card::after{content:"";position:absolute;inset:auto 0 0 0;height:4px;background:var(--accent);
+  transform:scaleX(0);transform-origin:left;transition:transform .45s var(--ease);z-index:3;}
+.cat-card:hover::after{transform:scaleX(1);}
+
+/* Selezione foto */
+.sel-box{border-radius:8px;}
+.photo.selected .sel-box{background:var(--accent);border-color:var(--accent);}
+.photo.selected .sel-box::after{border-color:#fff;}
+.photo.selected img{outline-color:var(--accent);}
+.lightbox .lb-close:hover,.lightbox .lb-nav:hover{background:var(--accent);color:#fff;}
+
+/* =========================================================
+   ADMIN 2.0
+   ========================================================= */
+body.is-admin{background:var(--bg-soft);}
+.admin-shell{display:grid;grid-template-columns:250px 1fr;min-height:100vh;}
+.admin-sidebar{background:#fff;border-right:1px solid var(--line);padding:1.6rem 1rem;display:flex;flex-direction:column;gap:.3rem;}
+.admin-sidebar .brand{display:flex;align-items:center;gap:.5rem;font-family:var(--font-display);
+  font-size:1.1rem;text-transform:uppercase;letter-spacing:-.02em;color:var(--ink);margin:0 0 1.6rem .5rem;}
+.admin-sidebar .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:0 0 auto;}
+.admin-sidebar nav{display:flex;flex-direction:column;gap:.2rem;}
+.admin-sidebar nav a{color:var(--ink-soft);padding:.65rem .8rem;border-radius:8px;font-size:.9rem;font-weight:500;transition:all .16s;}
+.admin-sidebar nav a:hover{background:var(--bg-soft);color:var(--ink);}
+.admin-sidebar nav a.active{background:var(--accent);color:#fff;font-weight:600;}
+.admin-sidebar nav a.ext{color:var(--accent);}
+.admin-sidebar .spacer{flex:1;}
+.admin-sidebar .logout button{background:none;border:1px solid var(--line);color:var(--ink-soft);
+  padding:.6rem .8rem;border-radius:8px;cursor:pointer;font-size:.8rem;width:100%;transition:all .16s;}
+.admin-sidebar .logout button:hover{border-color:var(--accent-2);color:var(--accent-2);}
+.admin-main{background:var(--bg-soft);min-width:0;}
+.admin-inner{padding:clamp(1.4rem,4vw,2.8rem);max-width:1400px;}
+.admin-main h1{font-size:clamp(1.6rem,4vw,2.4rem);letter-spacing:-.03em;margin-bottom:.3rem;}
+.admin-main h2{font-size:1.05rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin:2rem 0 1rem;}
+
+/* Card statistiche */
+.stat-grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));margin:1.5rem 0;}
+.stat-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:1.3rem;transition:border-color .2s;}
+.stat-card:hover{border-color:var(--accent);}
+.stat-card .num{font-family:var(--font-display);font-size:2rem;line-height:1;letter-spacing:-.03em;}
+.stat-card .lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-soft);margin-top:6px;}
+
+/* Card album */
+.acard{background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:visible;}
+.acard:hover{box-shadow:0 10px 30px rgba(10,12,20,.08);border-color:transparent;}
+.acard-cover{border-radius:var(--radius) var(--radius) 0 0;}
+.card-menu{border-radius:8px;}
+.menu-pop{border-radius:var(--radius);box-shadow:0 16px 40px rgba(10,12,20,.16);}
+.menu-pop button{border-radius:8px;}
+.menu-pop button:hover{background:var(--bg-soft);color:var(--accent);}
+.menu-pop button.danger:hover{background:#fff1f4;color:var(--accent-2);}
+
+/* Form admin */
+.admin-main .form{max-width:640px;background:#fff;border:1px solid var(--line);
+  border-radius:var(--radius);padding:clamp(1.2rem,3vw,2rem);}
+.admin-main .form input,.admin-main .form textarea{border-radius:8px;}
+.admin-main .form input:focus,.admin-main .form textarea:focus{border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(43,75,255,.12);}
+.sheet-inner{border-radius:var(--radius);}
+.nas-banner{border-radius:var(--radius);}
+.nas-ok{background:#e8fbf4;color:#00795c;}
+.nas-err{background:#fff1f4;color:#c22d55;}
+.table{background:#fff;border-radius:var(--radius);overflow:hidden;}
+.table th{background:var(--bg-soft);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);}
+
+@media (max-width:860px){
+  .admin-shell{grid-template-columns:1fr;}
+  .admin-sidebar{flex-direction:row;align-items:center;gap:.4rem;padding:.6rem 1rem;
+    overflow-x:auto;position:sticky;top:0;z-index:70;border-right:none;border-bottom:1px solid var(--line);}
+  .admin-sidebar .brand{margin:0 .8rem 0 0;font-size:.95rem;white-space:nowrap;}
+  .admin-sidebar nav{flex-direction:row;gap:.25rem;}
+  .admin-sidebar nav a{white-space:nowrap;font-size:.78rem;padding:.45rem .7rem;}
+  .admin-sidebar .spacer,.admin-sidebar .logout{display:none;}
+}
+
+/* =========================================================
+   FIX — punto nero, hover blu su album, card uniformi
+   ========================================================= */
+
+/* Punto dopo il nome: nero come il resto del titolo */
+.intro-hero h1 .dot{color:var(--ink);}
+
+/* Titolo album/categoria diventa blu al passaggio del mouse */
+.cat-card:hover .cat-label h3{color:var(--accent);}
+.album-card .meta h3{transition:color .25s var(--ease);}
+.album-card:hover .meta h3{color:var(--accent);}
+.album-card:hover .meta .sub{color:var(--accent);}
+
+/* Card dei sotto-album identiche a quelle delle categorie */
+.album-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));}
+.album-card{position:relative;display:block;border-radius:var(--radius);overflow:hidden;background:var(--bg-soft);}
+.album-card .thumb{position:relative;aspect-ratio:16/10;border-radius:0;overflow:hidden;}
+.album-card .thumb img{width:100%;height:100%;object-fit:cover;filter:brightness(.85);
+  transition:transform .8s var(--ease),filter .5s;}
+.album-card:hover .thumb img{transform:scale(1.05);filter:brightness(.68);}
+.album-card .thumb::before{content:"";position:absolute;inset:0;z-index:1;
+  background:linear-gradient(to top,rgba(10,12,20,.88),rgba(10,12,20,0) 62%);}
+.album-card .thumb .badge-private{position:absolute;top:10px;right:10px;z-index:3;}
+.album-card .meta{position:absolute;left:0;bottom:0;z-index:2;padding:clamp(1rem,3vw,1.5rem);color:#fff;}
+.album-card .meta h3{font-size:clamp(1.3rem,4.5vw,2rem);text-transform:uppercase;color:#fff;}
+.album-card .meta .sub{font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;
+  color:rgba(255,255,255,.85);margin-top:2px;transition:color .25s var(--ease);}
+.album-card::after{content:"";position:absolute;inset:auto 0 0 0;height:4px;background:var(--accent);
+  transform:scaleX(0);transform-origin:left;transition:transform .45s var(--ease);z-index:4;}
+.album-card:hover::after{transform:scaleX(1);}
+
+/* Social: WhatsApp in evidenza */
+.foot-social a.foot-wa{border-color:var(--accent-3);color:#00795c;}
+.foot-social a.foot-wa:hover{background:var(--accent-3);border-color:var(--accent-3);color:#fff;}
+@media (max-width:759px){.foot-social{gap:.5rem;}.foot-social a{font-size:.78rem;padding:.45rem .8rem;}}
+
+/* Barra di ricerca */
+.search-bar{display:flex;gap:.6rem;max-width:600px;margin-top:1.5rem;flex-wrap:wrap;}
+.search-bar input{flex:1 1 240px;padding:.85rem 1.1rem;font-size:16px;border:1.5px solid var(--line);
+  border-radius:999px;background:#fff;color:var(--ink);font-family:var(--font-body);}
+.search-bar input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(43,75,255,.12);}
+.res-path{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;
+  color:rgba(255,255,255,.75);margin-bottom:.2rem;}
+
+/* --- Footer social: solo icone, piu' grandi --- */
+.foot-social{display:flex;gap:.75rem;flex-wrap:wrap;}
+.foot-social a{display:inline-flex;align-items:center;justify-content:center;gap:0;
+  width:52px;height:52px;padding:0;border-radius:50%;
+  background:#fff;border:1.5px solid var(--line);color:var(--ink);
+  transition:all .2s var(--ease);}
+.foot-social a:hover{border-color:var(--accent);color:var(--accent);
+  transform:translateY(-2px);box-shadow:0 6px 18px rgba(43,75,255,.16);}
+.foot-social a.foot-wa{border-color:var(--line);color:var(--ink);}
+.foot-social a.foot-wa:hover{background:var(--accent-3);border-color:var(--accent-3);
+  color:#fff;box-shadow:0 6px 18px rgba(0,212,160,.28);}
+.foot-social svg{width:24px;height:24px;flex:0 0 auto;}
+@media (max-width:759px){
+  .foot-social{gap:.6rem;justify-content:flex-start;}
+  .foot-social a{width:48px;height:48px;}
+}
+@media (min-width:760px){
+  .footer-grid{grid-template-columns:1fr auto;align-items:center;}
+  .foot-brand{grid-column:1;grid-row:1;}
+  .foot-social{grid-column:2;grid-row:1;justify-self:end;}
+  .foot-copy{grid-column:1/-1;grid-row:2;justify-self:start;padding-top:1rem;
+    border-top:1px solid var(--line);width:100%;}
+}
+
+/* --- Footer finale: nome / icone / copyright --- */
+.site-footer{border-top:1px solid var(--line);margin-top:clamp(3rem,8vw,6rem);
+  padding:clamp(1.5rem,4vw,2.2rem) 0;background:var(--bg-soft);}
+.footer-grid{display:grid;grid-template-columns:1fr;gap:1.1rem;
+  justify-items:center;text-align:center;align-items:center;}
+.foot-name{font-family:var(--font-display);font-size:1rem;text-transform:uppercase;
+  letter-spacing:.02em;color:var(--ink);}
+.foot-social{display:flex;gap:1.1rem;align-items:center;}
+.foot-social a{display:inline-flex;align-items:center;justify-content:center;
+  width:24px;height:24px;padding:0;border:none;background:none;border-radius:0;
+  color:var(--ink-soft);transition:color .18s var(--ease),transform .18s var(--ease);}
+.foot-social a:hover{color:var(--accent);transform:translateY(-2px);box-shadow:none;background:none;}
+.foot-social a.foot-wa:hover{color:var(--accent-3);background:none;}
+.foot-social svg{width:20px;height:20px;}
+.foot-copy{font-size:.78rem;color:var(--ink-soft);}
+@media (min-width:760px){
+  .footer-grid{grid-template-columns:1fr auto 1fr;text-align:left;}
+  .foot-name{justify-self:start;}
+  .foot-social{justify-self:center;}
+  .foot-copy{justify-self:end;text-align:right;}
+}
+
+
+/* --- Footer: nome sinistra / social centro / copyright destra --- */
+@media (min-width:760px){
+  .footer-grid{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+    gap:1rem;text-align:left;justify-items:stretch;}
+  .foot-name{grid-column:1;justify-self:start;}
+  .foot-social{grid-column:2;justify-self:center;}
+  .foot-copy{grid-column:3;justify-self:end;text-align:right;}
+}
+
+/* --- Footer: centratura reale dei social --- */
+@media (min-width:760px){
+  .footer-grid{
+    display:flex;
+    align-items:center;
+    gap:1rem;
+    text-align:left;
+  }
+  .foot-name{flex:1 1 0;min-width:0;text-align:left;}
+  .foot-social{flex:0 0 auto;}
+  .foot-copy{flex:1 1 0;min-width:0;text-align:right;}
+}
+
+/* --- Footer finale: icone uniformi e allineamento su una riga --- */
+.footer-grid{align-items:center;}
+.foot-social{display:flex;align-items:center;gap:1.35rem;line-height:0;}
+.foot-social a{display:inline-flex;align-items:center;justify-content:center;
+  width:26px;height:26px;padding:0;border:none;background:none;border-radius:0;
+  color:var(--ink-soft);transition:color .18s var(--ease),transform .18s var(--ease);}
+.foot-social a:hover{color:var(--accent);transform:translateY(-2px);background:none;box-shadow:none;}
+.foot-social a.foot-wa:hover{color:var(--accent-3);background:none;}
+.foot-social svg{width:26px;height:26px;display:block;}
+.foot-name{line-height:1.2;display:flex;align-items:center;}
+.foot-copy{line-height:1.2;display:flex;align-items:center;font-size:.8rem;}
+@media (min-width:760px){
+  .footer-grid{display:flex;align-items:center;gap:1rem;}
+  .foot-name{flex:1 1 0;justify-content:flex-start;}
+  .foot-social{flex:0 0 auto;}
+  .foot-copy{flex:1 1 0;justify-content:flex-end;text-align:right;}
+}
+@media (max-width:759px){
+  .foot-social{gap:1.5rem;justify-content:center;}
+}
+
+/* --- Footer: niente linea sopra il copyright, allineamento pulito --- */
+.foot-copy{border-top:none !important;padding-top:0 !important;width:auto !important;
+  font-size:.8rem;color:var(--ink-soft);line-height:1;display:flex;align-items:center;margin:0;}
+.foot-name{line-height:1;display:flex;align-items:center;margin:0;}
+.foot-social{line-height:1;display:flex;align-items:center;gap:1.4rem;margin:0;}
+.foot-social svg{width:24px;height:24px;display:block;}
+.foot-social a{width:24px;height:24px;color:var(--ink-soft);}
+.footer-grid{align-items:center;}
+@media (min-width:760px){
+  .footer-grid{display:flex;align-items:center;gap:1rem;}
+  .foot-name{flex:1 1 0;justify-content:flex-start;}
+  .foot-social{flex:0 0 auto;}
+  .foot-copy{flex:1 1 0;justify-content:flex-end;text-align:right;
+    grid-column:auto !important;justify-self:auto !important;}
+}
+
+/* --- Footer blu --- */
+.site-footer{background:var(--accent);border-top:none;color:#fff;}
+.site-footer .foot-name{color:#fff;}
+.site-footer .foot-copy{color:rgba(255,255,255,.8);}
+.site-footer .foot-social a{color:rgba(255,255,255,.85);}
+.site-footer .foot-social a:hover{color:#fff;transform:translateY(-2px);}
+.site-footer .foot-social a.foot-wa:hover{color:#fff;}
+
+/* --- Paginazione album --- */
+.page-info{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-soft);margin:1rem 0 .5rem;}
+.pager{display:flex;align-items:center;justify-content:center;gap:1rem;
+  flex-wrap:wrap;margin:clamp(2rem,5vw,3rem) 0 0;}
+.pager-now{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);}
+@media (max-width:520px){.pager .btn{flex:1 1 auto;justify-content:center;}}
+
+/* --- Caricamento foto --- */
+.up-wrap{display:grid;gap:var(--sp3);grid-template-columns:1fr;align-items:start;}
+.up-panel,.up-status{background:#fff;border:1px solid var(--line);
+  border-radius:var(--radius);padding:clamp(1.2rem,3vw,1.8rem);}
+.up-panel input[type=text],.up-panel input[list]{width:100%;padding:.7rem .9rem;
+  border:1px solid var(--line);border-radius:8px;font-size:16px;font-family:var(--font-body);}
+.up-panel input:focus{outline:none;border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(43,75,255,.12);}
+.up-hint{font-size:.78rem;color:var(--ink-soft);margin-top:.4rem;}
+.up-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:.3rem;text-align:center;padding:clamp(1.8rem,6vw,3rem) 1rem;margin:1.2rem 0;
+  border:2px dashed var(--line);border-radius:var(--radius);cursor:pointer;
+  transition:border-color .2s,background .2s;}
+.up-drop:hover,.up-drop:focus-visible{border-color:var(--accent);background:var(--bg-soft);}
+.up-drop.over{border-color:var(--accent);background:rgba(43,75,255,.06);}
+.up-drop strong{font-family:var(--font-display);font-size:1.1rem;}
+.up-drop span{font-size:.82rem;color:var(--ink-soft);}
+.up-actions{display:flex;gap:.6rem;flex-wrap:wrap;}
+.up-actions .btn:disabled{opacity:.45;cursor:not-allowed;}
+.up-summary{font-size:.85rem;color:var(--ink-soft);margin-bottom:.7rem;}
+.up-bar{height:6px;background:var(--bg-soft);border-radius:999px;overflow:hidden;}
+.up-bar-fill{height:100%;width:0;background:var(--accent);transition:width .25s var(--ease);}
+.up-list{list-style:none;margin:1rem 0 0;padding:0;max-height:46vh;overflow:auto;}
+.up-item{display:grid;grid-template-columns:1fr auto;gap:.2rem .8rem;
+  align-items:center;padding:.55rem .2rem;border-bottom:1px solid var(--line);font-size:.84rem;}
+.up-item .nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.up-item .stato{font-size:.74rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em;}
+.up-item .mini{grid-column:1/-1;height:3px;background:var(--bg-soft);border-radius:999px;overflow:hidden;}
+.up-item .mini i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s;}
+.up-item.ok .stato{color:var(--accent-3);}
+.up-item.ok .mini i{background:var(--accent-3);}
+.up-item.ko .stato{color:var(--accent-2);}
+.up-item.ko .mini i{background:var(--accent-2);}
+.up-done{margin-top:1.2rem;padding-top:1.2rem;border-top:1px solid var(--line);}
+.up-done p{font-size:.88rem;margin-bottom:.8rem;}
+@media (min-width:1000px){.up-wrap{grid-template-columns:1fr 1fr;}}
+
+/* --- Cestino e rimozione --- */
+.btn-danger{background:var(--accent-2);border-color:var(--accent-2);color:#fff;display:none;}
+.btn-danger:hover{background:var(--ink);border-color:var(--ink);color:#fff;}
+body.selecting .btn-danger{display:inline-flex;}
+.btn-danger:disabled{opacity:.5;cursor:not-allowed;}
+.trash-card .acard-body{align-items:center;}
+.trash-card h3{font-size:.95rem;text-transform:none;letter-spacing:0;}
+
+/* --- Menu azioni album: pannello dal basso su telefono --- */
+@media (max-width:760px){
+  .card-menu{min-width:44px;min-height:44px;font-size:1.5rem;}
+
+  .menu-pop.open{
+    position:fixed;
+    left:0; right:0; bottom:0; top:auto;
+    width:100%; min-width:0; max-height:76vh; overflow:auto;
+    border:none; border-radius:16px 16px 0 0;
+    padding:.6rem .6rem calc(.6rem + env(safe-area-inset-bottom,0px));
+    box-shadow:0 -10px 40px rgba(10,12,20,.28);
+    z-index:200;
+    animation:sheetUp .22s var(--ease);
+  }
+  /* velo scuro dietro il pannello: tocco fuori = chiude */
+  .menu-pop.open::before{
+    content:"";
+    position:fixed; inset:0;
+    background:rgba(10,12,20,.45);
+    z-index:-1;
+  }
+  /* maniglia in cima, come nei fogli di sistema */
+  .menu-pop.open::after{
+    content:"";
+    display:block; width:42px; height:4px;
+    margin:.1rem auto .7rem;
+    border-radius:999px; background:var(--line);
+    order:-1;
+  }
+  .menu-pop.open{display:flex; flex-direction:column;}
+  .menu-pop.open button{
+    width:100%; text-align:left;
+    min-height:52px; font-size:1rem;
+    padding:.9rem 1rem; border-radius:12px;
+  }
+  .menu-pop.open button:active{background:var(--bg-soft);}
+  .menu-pop.open button.danger{color:var(--accent-2);}
+}
+
+@keyframes sheetUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+@media (prefers-reduced-motion:reduce){.menu-pop.open{animation:none;}}
+
+/* La card non deve mai tagliare il menu */
+.acard,.acard-body{overflow:visible;}
+
+/* Pulsante rimozione: visibile all'admin durante la selezione */
+.btn-danger{background:var(--accent-2);border-color:var(--accent-2);color:#fff;}
+.btn-danger:hover{background:var(--ink);border-color:var(--ink);color:#fff;}
+.btn-danger:disabled{opacity:.5;cursor:not-allowed;}
+
+/* --- Correzione menu azioni su telefono --- */
+/* Gli effetti di sollevamento solo dove c'e' un vero mouse: su touch il
+   transform resta attivo dopo il tocco e impedisce al menu di ancorarsi
+   al fondo dello schermo. */
+@media (hover:none){
+  .acard:hover{transform:none;}
+  .cat-card:hover img,.album-card:hover .thumb img{transform:none;}
+}
+
+@media (max-width:760px){
+  .acard{transform:none !important;}
+  .acard-body{position:static;}
+
+  .menu-pop.open{
+    position:fixed;
+    left:0; right:0; bottom:0; top:auto;
+    width:100%; min-width:0; max-height:80vh; overflow-y:auto;
+    display:flex; flex-direction:column; gap:.15rem;
+    background:#fff; border:none;
+    border-radius:18px 18px 0 0;
+    padding:.5rem .7rem calc(1rem + env(safe-area-inset-bottom,0px));
+    z-index:300;
+    box-shadow:0 -8px 30px rgba(10,12,20,.2), 0 0 0 100vmax rgba(10,12,20,.5);
+    animation:sheetUp .2s var(--ease);
+  }
+  .menu-pop.open::before{content:none;}
+  .menu-pop.open::after{content:none;}
+  .menu-pop.open button{
+    width:100%; text-align:left;
+    min-height:54px; font-size:1rem; font-weight:500;
+    padding:.9rem 1rem; border-radius:12px; background:#fff;
+  }
+  .menu-pop.open button:active{background:var(--bg-soft);}
+  .menu-pop.open button.danger{color:var(--accent-2);}
+  .card-menu{min-width:44px;min-height:44px;font-size:1.5rem;}
+}
+
+/* --- Barra azioni album piu' compatta su telefono --- */
+@media (max-width:620px){
+  .dl-toolbar{gap:.5rem;}
+  .dl-toolbar .btn{
+    flex:1 1 calc(50% - .25rem);
+    width:auto; min-width:0;
+    padding:.7rem .6rem; font-size:.72rem;
+    justify-content:center; text-align:center;
+  }
+}
+
+/* --- Visualizzatore: contatore e selezione fra pagine --- */
+.lb-count{position:absolute;top:1rem;left:1rem;color:rgba(255,255,255,.75);
+  font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;z-index:5;}
+#selEcho{display:none;font-size:.78rem;color:var(--accent);font-weight:600;
+  letter-spacing:.04em;width:100%;margin-top:.3rem;}
+@media (max-width:620px){
+  .lb-nav{width:52px;height:52px;}
+  .lb-count{font-size:.7rem;top:.7rem;left:.7rem;}
+}
+
+/* --- Visualizzatore: contatore e selezione fra pagine --- */
+.lb-count{position:absolute;top:1rem;left:1rem;color:rgba(255,255,255,.75);
+  font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;z-index:5;}
+#selEcho{display:none;font-size:.78rem;color:var(--accent);font-weight:600;
+  letter-spacing:.04em;width:100%;margin-top:.3rem;}
+@media (max-width:620px){
+  .lb-nav{width:52px;height:52px;}
+  .lb-count{font-size:.7rem;top:.7rem;left:.7rem;}
+}
+
+/* --- Spazio riservato alle copertine: evita il salto della pagina --- */
+.album-card .thumb{aspect-ratio:4/3;background:var(--bg-soft);overflow:hidden;}
+.album-card .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.cat-card .thumb,.cat-card figure{aspect-ratio:3/2;background:var(--bg-soft);overflow:hidden;}
+.photo{aspect-ratio:3/2;background:var(--bg-soft);overflow:hidden;}
+.photo img{width:100%;height:100%;object-fit:cover;display:block;}
+
+/* --- Scelta della scadenza nella scheda di condivisione --- */
+.sheet-inner select{width:100%;padding:.7rem .9rem;border:1px solid var(--line);
+  border-radius:8px;font-size:16px;font-family:var(--font-body);background:#fff;
+  color:var(--ink);margin-bottom:.6rem;}
+.sheet-inner select:focus{outline:none;border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(43,75,255,.12);}
+
+/* --- Cuore dei preferiti --- */
+.photo{position:relative;}
+.cuore{position:absolute;left:.5rem;bottom:.5rem;z-index:3;
+  width:36px;height:36px;padding:0;border:none;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  background:rgba(10,12,20,.42);backdrop-filter:none;
+  opacity:0;transform:scale(.9);
+  transition:opacity .18s var(--ease),transform .18s var(--ease),background .18s;}
+.photo:hover .cuore,.cuore:focus-visible,.cuore.attivo{opacity:1;transform:scale(1);}
+@media (hover:none){.cuore{opacity:1;transform:scale(1);}}
+.cuore svg{width:19px;height:19px;fill:none;stroke:#fff;stroke-width:1.9;
+  stroke-linejoin:round;}
+.cuore.attivo{background:var(--accent-2);}
+.cuore.attivo svg{fill:#fff;stroke:#fff;}
+.cuore:hover{background:rgba(10,12,20,.65);}
+.cuore.attivo:hover{background:var(--accent-2);}
+.cuore:disabled{opacity:.6;cursor:wait;}
+body.selecting .cuore{display:none;}
+
+/* elenco preferiti nel pannello */
+.pref-persona{border:1px solid var(--line);border-radius:var(--radius);
+  padding:1rem;margin-bottom:.8rem;}
+.pref-persona h4{font-size:.9rem;margin:0 0 .3rem;}
+.pref-persona .meta{font-size:.76rem;color:var(--ink-soft);margin-bottom:.7rem;}
+.pref-nomi{font-size:.74rem;color:var(--ink-soft);line-height:1.6;
+  max-height:8rem;overflow:auto;word-break:break-all;}
+
+/* --- Menu azioni sempre sopra le altre card --- */
+.mgr-grid{position:relative;}
+.acard{position:relative;z-index:1;}
+.acard:has(.menu-pop.open){z-index:500;}
+.acard.menu-aperto{z-index:500;}
+.menu-pop{z-index:600;}
+.menu-pop.open{z-index:600;}
+.acard,.acard-body,.mgr-grid{overflow:visible;}
+
+/* --- Croce di chiusura nella scheda --- */
+.sheet-close{position:absolute;top:.7rem;right:.7rem;z-index:10;
+  width:40px;height:40px;padding:0;border:none;background:none;
+  font-size:1.8rem;line-height:1;color:var(--ink-soft);cursor:pointer;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  transition:background .18s,color .18s;}
+.sheet-close:hover{background:var(--bg-soft);color:var(--ink);}
+.sheet-inner{position:relative;padding-top:.5rem;}
+.sheet-inner h3{padding-right:2.6rem;}
+
+/* --- Pagina Preferite dai clienti --- */
+.pref-card .acard-body{display:block;padding:1rem;}
+.pref-card .acard-txt h3{font-size:1rem;white-space:normal;overflow:visible;}
+.pref-card .acard-txt p{white-space:normal;}
+.pref-card .det-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.9rem;}
+.pref-card .det-row .btn{flex:0 0 auto;white-space:nowrap;padding:.6rem 1rem;
+  font-size:.72rem;border-radius:999px;}
+
+.pref-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;
+  position:relative;background:var(--bg-soft);}
+.pref-strip img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;}
+.pref-piu{position:absolute;right:.5rem;bottom:.5rem;
+  background:rgba(10,12,20,.72);color:#fff;font-size:.72rem;font-weight:600;
+  padding:.25rem .55rem;border-radius:999px;}
+
+.pref-griglia-foto{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));
+  gap:5px;margin:.8rem 0;}
+.pref-griglia-foto img{width:100%;aspect-ratio:1/1;object-fit:cover;
+  border-radius:6px;display:block;transition:transform .15s var(--ease);}
+.pref-griglia-foto a:hover img{transform:scale(1.05);}
+
+@media (min-width:700px){
+  .mgr-grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));}
+}
+
+/* --- Rimozione delle preferite --- */
+.pref-foto{position:relative;}
+.pref-x{position:absolute;top:2px;right:2px;width:22px;height:22px;padding:0;
+  border:none;border-radius:50%;background:rgba(10,12,20,.7);color:#fff;
+  font-size:1rem;line-height:1;cursor:pointer;opacity:0;
+  display:flex;align-items:center;justify-content:center;transition:opacity .15s;}
+.pref-foto:hover .pref-x{opacity:1;}
+.pref-x:hover{background:var(--accent-2);}
+@media (hover:none){.pref-x{opacity:1;}}
+.pref-persona .det-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.6rem;}
+.pref-persona .det-row .btn{font-size:.72rem;padding:.55rem .9rem;}
+
+/* --- Richiesta del profilo Instagram --- */
+.nome-overlay{position:fixed;inset:0;z-index:400;display:flex;
+  align-items:center;justify-content:center;padding:1.2rem;
+  background:rgba(10,12,20,.6);}
+.nome-card{background:#fff;border-radius:var(--radius);padding:clamp(1.4rem,4vw,2rem);
+  max-width:26rem;width:100%;box-shadow:0 20px 60px rgba(10,12,20,.28);}
+.nome-card h3{font-family:var(--font-display);font-size:1.3rem;margin:0 0 .6rem;}
+.nome-card p{font-size:.9rem;color:var(--ink-soft);line-height:1.6;margin-bottom:1.1rem;}
+.nome-campo{display:flex;align-items:center;border:1px solid var(--line);
+  border-radius:10px;overflow:hidden;transition:border-color .18s,box-shadow .18s;}
+.nome-campo:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(43,75,255,.12);}
+.nome-campo span{padding:0 .1rem 0 .9rem;color:var(--ink-soft);font-size:1rem;}
+.nome-campo input{flex:1;border:none;outline:none;padding:.85rem .9rem .85rem .2rem;
+  font-size:16px;font-family:var(--font-body);background:none;color:var(--ink);}
+.nome-errore{color:var(--accent-2);font-size:.82rem;margin:.6rem 0 0;}
+.nome-azioni{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1.2rem;}
+.nome-azioni .btn{flex:1 1 auto;justify-content:center;}
+.pref-ig{display:inline-flex;align-items:center;gap:.3rem;font-size:.8rem;
+  color:var(--accent);font-weight:600;text-decoration:none;}
+.pref-ig:hover{text-decoration:underline;}
+
+/* --- Scelta fra Instagram e nome --- */
+.nome-tab{display:flex;gap:.3rem;margin-bottom:.9rem;padding:.25rem;
+  background:var(--bg-soft);border-radius:10px;}
+.nome-tab button{flex:1;border:none;background:none;cursor:pointer;
+  padding:.55rem .4rem;border-radius:8px;font-size:.82rem;font-weight:500;
+  font-family:var(--font-body);color:var(--ink-soft);transition:all .16s var(--ease);}
+.nome-tab button.attivo{background:#fff;color:var(--ink);
+  box-shadow:0 1px 3px rgba(10,12,20,.1);}
+.nav-ospite{max-width:11rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* --- Copia del link di condivisione --- */
+.copia-eco{display:inline-block;font-size:.78rem;font-weight:600;
+  color:var(--accent-3);margin-left:.6rem;opacity:0;transition:opacity .18s;}
+.copia-eco.ok{opacity:1;}
+
+/* --- Copertina sostitutiva con il logo --- */
+.cat-logo{position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;background:var(--bg-soft);}
+.cat-logo img{width:38%;max-width:88px;height:auto;opacity:.42;
+  filter:grayscale(1);}
+
+/* --- Selettore di ordinamento degli album --- */
+.ordina-bar{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;
+  margin:0 0 clamp(1.2rem,3vw,2rem);}
+.ordina-eti{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-soft);}
+.ordina-scelte{display:flex;gap:.25rem;flex-wrap:wrap;
+  background:var(--bg-soft);padding:.25rem;border-radius:999px;}
+.ordina-scelte a{padding:.45rem .95rem;border-radius:999px;
+  font-size:.78rem;font-weight:500;color:var(--ink-soft);text-decoration:none;
+  white-space:nowrap;transition:all .16s var(--ease);}
+.ordina-scelte a:hover{color:var(--ink);}
+.ordina-scelte a.attivo{background:#fff;color:var(--accent);
+  box-shadow:0 1px 3px rgba(10,12,20,.1);}
+@media (max-width:520px){
+  .ordina-bar{gap:.5rem;}
+  .ordina-scelte{width:100%;justify-content:space-between;}
+  .ordina-scelte a{flex:1;text-align:center;padding:.5rem .3rem;font-size:.73rem;}
+}
+
+/* --- Avviso iniziale su copyright e cookie --- */
+.cookie-avviso{position:fixed;left:0;right:0;bottom:0;z-index:350;
+  display:flex;align-items:center;justify-content:space-between;gap:1.5rem;
+  flex-wrap:wrap;padding:1.1rem clamp(1rem,4vw,2.5rem);
+  padding-bottom:calc(1.1rem + env(safe-area-inset-bottom,0px));
+  background:#fff;border-top:2px solid var(--accent);
+  box-shadow:0 -6px 30px rgba(10,12,20,.14);
+  transform:translateY(110%);transition:transform .32s var(--ease);}
+.cookie-avviso.visibile{transform:translateY(0);}
+.cookie-testo{font-size:.85rem;color:var(--ink-soft);line-height:1.6;
+  max-width:62ch;flex:1 1 22rem;}
+.cookie-testo strong{color:var(--ink);}
+.cookie-azioni{display:flex;gap:.6rem;flex:0 0 auto;flex-wrap:wrap;}
+.cookie-azioni .btn{white-space:nowrap;}
+@media (max-width:700px){
+  .cookie-avviso{flex-direction:column;align-items:stretch;gap:.9rem;}
+  .cookie-testo{font-size:.82rem;}
+  .cookie-azioni{width:100%;}
+  .cookie-azioni .btn{flex:1;justify-content:center;}
+}
+@media (prefers-reduced-motion:reduce){.cookie-avviso{transition:none;}}
+
+/* --- Pagina delle condizioni --- */
+.testo-legale{max-width:70ch;margin:0 auto;}
+.testo-legale h2{font-family:var(--font-display);font-size:clamp(1.05rem,2.3vw,1.35rem);
+  margin:2.4rem 0 .8rem;}
+.testo-legale h2:first-child{margin-top:0;}
+.testo-legale p{font-size:.95rem;line-height:1.75;color:var(--ink-soft);
+  margin-bottom:.9rem;}
+.testo-legale strong{color:var(--ink);}
+.testo-legale ul{margin:0 0 1.1rem 1.2rem;padding:0;}
+.testo-legale li{font-size:.93rem;line-height:1.7;color:var(--ink-soft);
+  margin-bottom:.45rem;}
+.testo-legale .agg{font-size:.8rem;margin-top:2.8rem;padding-top:1.2rem;
+  border-top:1px solid var(--line);}
+.tab-cookie{width:100%;border-collapse:collapse;margin:1rem 0 1.4rem;font-size:.86rem;}
+.tab-cookie th,.tab-cookie td{text-align:left;padding:.7rem .6rem;
+  border-bottom:1px solid var(--line);vertical-align:top;}
+.tab-cookie th{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-soft);font-weight:600;}
+.tab-cookie td:first-child{font-family:ui-monospace,monospace;font-size:.79rem;white-space:nowrap;}
+.foot-priv{color:inherit;text-decoration:none;}
+.foot-priv:hover{text-decoration:underline;}
+@media (max-width:620px){.tab-cookie{font-size:.79rem;}}
+
+/* --- Modi di visualizzazione delle fotografie --- */
+
+/* annulla la proporzione fissa imposta in precedenza */
+.photo{aspect-ratio:auto;}
+
+.vista-bar{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;
+  margin:1.2rem 0 1rem;}
+.vista-scelte{display:flex;gap:.2rem;background:var(--bg-soft);
+  padding:.25rem;border-radius:999px;}
+.vista-scelte button{display:inline-flex;align-items:center;gap:.4rem;
+  padding:.45rem .9rem;border:none;background:none;cursor:pointer;
+  border-radius:999px;font-size:.78rem;font-weight:500;
+  font-family:var(--font-body);color:var(--ink-soft);
+  transition:all .16s var(--ease);}
+.vista-scelte button svg{width:15px;height:15px;fill:currentColor;flex:0 0 auto;}
+.vista-scelte button:hover{color:var(--ink);}
+.vista-scelte button.attivo{background:#fff;color:var(--accent);
+  box-shadow:0 1px 3px rgba(10,12,20,.1);}
+
+/* griglia regolare: riquadri uguali, ritaglio al centro */
+.photo-grid.vista-griglia .photo{aspect-ratio:1/1;}
+.photo-grid.vista-griglia .photo img{width:100%;height:100%;object-fit:cover;}
+
+/* proporzioni originali: colonne che si adattano, verticali e orizzontali
+   mantengono la loro forma senza essere tagliati */
+.photo-grid.vista-naturale{display:block;column-gap:var(--sp-grid,10px);
+  columns:2;}
+.photo-grid.vista-naturale .photo{break-inside:avoid;
+  margin:0 0 var(--sp-grid,10px);display:block;width:100%;
+  aspect-ratio:var(--prop, 3 / 2);}
+.photo-grid.vista-naturale .photo img{width:100%;height:100%;
+  object-fit:cover;display:block;}
+@media (min-width:700px){.photo-grid.vista-naturale{columns:3;}}
+@media (min-width:1100px){.photo-grid.vista-naturale{columns:4;}}
+@media (min-width:1600px){.photo-grid.vista-naturale{columns:5;}}
+
+/* elenco: una fotografia per riga, intera */
+.photo-grid.vista-lista{display:flex;flex-direction:column;
+  gap:clamp(1rem,3vw,2rem);}
+.photo-grid.vista-lista .photo{width:100%;aspect-ratio:var(--prop, 3 / 2);
+  max-height:82vh;}
+.photo-grid.vista-lista .photo img{width:100%;height:100%;
+  object-fit:contain;background:var(--bg-soft);display:block;}
+@media (min-width:900px){
+  .photo-grid.vista-lista{max-width:1100px;margin:0 auto;}
+}
+
+@media (max-width:520px){
+  .vista-bar{gap:.5rem;}
+  .vista-scelte{width:100%;justify-content:space-between;}
+  .vista-scelte button{flex:1;justify-content:center;padding:.5rem .3rem;}
+  .vista-scelte button span{display:none;}
+  .vista-scelte button svg{width:17px;height:17px;}
+}
+
+/* --- Due modi di visualizzazione: griglia e grande --- */
+.photo-grid.vista-griglia{display:block;column-gap:var(--sp-grid,10px);columns:2;}
+.photo-grid.vista-griglia .photo{break-inside:avoid;display:block;width:100%;
+  margin:0 0 var(--sp-grid,10px);aspect-ratio:var(--prop, 3 / 2);}
+.photo-grid.vista-griglia .photo img{width:100%;height:100%;object-fit:cover;display:block;}
+@media (min-width:700px){.photo-grid.vista-griglia{columns:3;}}
+@media (min-width:1100px){.photo-grid.vista-griglia{columns:4;}}
+@media (min-width:1600px){.photo-grid.vista-griglia{columns:5;}}
+
+.photo-grid.vista-grande{display:flex;flex-direction:column;
+  gap:clamp(1rem,3vw,2rem);columns:auto;}
+.photo-grid.vista-grande .photo{width:100%;aspect-ratio:var(--prop, 3 / 2);
+  max-height:84vh;margin:0;}
+.photo-grid.vista-grande .photo img{width:100%;height:100%;object-fit:contain;
+  background:var(--bg-soft);display:block;}
+@media (min-width:900px){.photo-grid.vista-grande{max-width:1100px;margin:0 auto;}}
+
+/* --- Contrasto sufficiente su fondo blu --- */
+.site-footer .foot-copy{color:rgba(255,255,255,.94);}
+.site-footer .foot-priv{color:#fff;text-decoration:underline;
+  text-underline-offset:2px;}
+.site-footer .foot-priv:hover{color:#fff;}
+.site-footer .foot-social a{color:rgba(255,255,255,.94);}
+
+/* l'avviso iniziale deve restare leggibile */
+.cookie-testo{color:#3a3f4d;}
+.cookie-avviso a{color:#1e35c4;text-decoration:underline;}
+
+/* il titolo delle schede mantiene l'aspetto di prima */
+h2.card-titolo{font-family:var(--font-display);font-size:1rem;
+  font-weight:600;letter-spacing:.01em;margin:0;text-transform:none;
+  line-height:1.3;color:inherit;}
+.cat-card h2.card-titolo,.album-card h2.card-titolo{font-size:inherit;}
+
+/* --- Calendario riservato --- */
+.acc-box{max-width:26rem;margin:clamp(2rem,10vw,5rem) auto;text-align:center;}
+.acc-box h1{font-size:clamp(1.5rem,4vw,2rem);margin-bottom:.5rem;}
+.acc-int{color:var(--ink-soft);font-size:.9rem;margin-bottom:1.8rem;}
+.acc-form label{display:block;font-size:.95rem;font-weight:500;
+  margin-bottom:.7rem;text-align:left;}
+.acc-form input{width:100%;padding:.85rem .9rem;border:1px solid var(--line);
+  border-radius:10px;font-size:16px;font-family:var(--font-body);
+  margin-bottom:1rem;}
+.acc-form input:focus{outline:none;border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(43,75,255,.12);}
+.acc-form input:disabled{background:var(--bg-soft);color:var(--ink-soft);}
+.acc-form .btn{width:100%;justify-content:center;}
+.acc-err{color:var(--accent-2);font-size:.85rem;margin:-.4rem 0 1rem;
+  text-align:left;}
+.acc-note{margin-top:1.6rem;font-size:.85rem;}
+.acc-note a{color:var(--ink-soft);}
+
+.rad-avviso{background:var(--bg-soft);border-left:3px solid var(--accent-2);
+  border-radius:8px;padding:1rem 1.2rem;margin-bottom:clamp(1.5rem,4vw,2.5rem);}
+.rad-avviso strong{display:block;font-size:.78rem;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--accent-2);margin-bottom:.4rem;}
+.rad-avviso p{font-size:.88rem;line-height:1.65;color:var(--ink-soft);margin:0;}
+
+.rad-tit{font-size:clamp(1.1rem,2.5vw,1.4rem);margin:0 0 1rem;}
+.rad-tit-sec{margin-top:clamp(2rem,5vw,3rem);color:var(--ink-soft);}
+.rad-lista{display:flex;flex-direction:column;gap:.7rem;}
+.rad-voce{display:flex;align-items:center;gap:1rem;
+  border:1px solid var(--line);border-radius:var(--radius);
+  padding:.9rem 1.1rem;background:#fff;}
+.rad-data{flex:0 0 auto;text-align:center;min-width:3.2rem;
+  padding-right:1rem;border-right:1px solid var(--line);}
+.rad-giorno{display:block;font-family:var(--font-display);font-size:1.5rem;
+  font-weight:700;line-height:1;color:var(--accent);}
+.rad-mese{display:block;font-size:.7rem;color:var(--ink-soft);
+  letter-spacing:.04em;margin-top:.2rem;}
+.rad-info{flex:1;min-width:0;}
+.rad-info h3{font-size:.98rem;margin:0 0 .2rem;text-transform:none;
+  letter-spacing:0;}
+.rad-ora{font-size:.82rem;color:var(--accent);margin:0;font-weight:500;}
+.rad-note{font-size:.82rem;color:var(--ink-soft);margin:.2rem 0 0;}
+.rad-passati{opacity:.6;}
+.rad-passati .rad-giorno{color:var(--ink-soft);}
+.rad-x{flex:0 0 auto;font-size:.72rem;padding:.5rem .8rem;}
+.rad-form{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;}
+.det-block textarea{width:100%;padding:.7rem .9rem;border:1px solid var(--line);
+  border-radius:8px;font-size:15px;font-family:var(--font-body);
+  line-height:1.5;resize:vertical;}
+@media (max-width:520px){
+  .rad-voce{flex-wrap:wrap;}
+  .rad-x{width:100%;justify-content:center;margin-top:.5rem;}
+}
+
+/* --- Collegamento alle mappe --- */
+.rad-mappa{display:inline-flex;align-items:center;gap:.35rem;
+  margin-top:.5rem;padding:.4rem .8rem;border-radius:999px;
+  background:var(--bg-soft);color:var(--accent);
+  font-size:.78rem;font-weight:600;text-decoration:none;
+  transition:background .16s var(--ease);}
+.rad-mappa:hover{background:rgba(43,75,255,.1);}
+.rad-mappa svg{width:14px;height:14px;fill:currentColor;flex:0 0 auto;}
+
+/* --- Modifica del collegamento alle mappe --- */
+.rad-mod{display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap;}
+.rad-mod input{flex:1 1 12rem;min-width:0;padding:.45rem .7rem;
+  border:1px solid var(--line);border-radius:8px;font-size:14px;
+  font-family:var(--font-body);}
+.rad-mod input:focus{outline:none;border-color:var(--accent);}
+.rad-mod .btn{flex:0 0 auto;font-size:.72rem;padding:.45rem .8rem;}
+
+/* --- Accessi al calendario riservato --- */
+.stat-accessi{display:grid;grid-template-columns:repeat(auto-fit,minmax(7rem,1fr));
+  gap:.7rem;margin-bottom:1.2rem;}
+.stat-accessi .stat-card{background:#fff;border:1px solid var(--line);
+  border-radius:var(--radius);padding:1rem .8rem;text-align:center;}
+.stat-accessi .num{font-family:var(--font-display);font-size:1.8rem;
+  font-weight:700;color:var(--accent);line-height:1;}
+.stat-accessi .lbl{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-soft);margin-top:.4rem;}
+.acc-falliti{font-size:.85rem;color:var(--accent-2);margin-bottom:1rem;}
+.tab-accessi{width:100%;border-collapse:collapse;font-size:.85rem;}
+.tab-accessi th,.tab-accessi td{text-align:left;padding:.6rem .5rem;
+  border-bottom:1px solid var(--line);}
+.tab-accessi th{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-soft);font-weight:600;}
+.tab-accessi td:first-child{font-family:ui-monospace,monospace;font-size:.8rem;}
+
+/* ---------- Correzione a mano dei numeri di gara ---------- */
+.numeri-griglia{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1rem;}
+.numeri-scheda{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:.5rem;}
+.numeri-scheda img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--radius);background:var(--bg-soft);display:block;}
+.numeri-scheda input{width:100%;margin-top:.5rem;padding:.45rem .6rem;font-size:.95rem;text-align:center;letter-spacing:.05em;border:1px solid var(--line);border-radius:var(--radius);background:#fff;color:var(--ink);font-family:inherit;}
+.numeri-scheda input:focus{outline:none;border-color:var(--accent);}
+.numeri-nome{display:block;margin-top:.35rem;font-size:.7rem;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* --- Selettore della lingua ------------------------------------------
+   Ultima voce della barra, a destra di "Accedi". E' un <details>: si apre
+   al clic senza JavaScript. Mostra bandiera e nome della lingua attuale,
+   con una freccia che si gira quando il menu e' aperto. L'elenco si stacca
+   dal flusso, cosi' aprirlo non allarga l'intestazione. */
+.lingua-menu{position:relative;}
+.lingua-menu>summary{list-style:none;cursor:pointer;display:flex;align-items:center;
+  gap:.45rem;font-size:clamp(.7rem,2vw,.78rem);letter-spacing:.03em;font-weight:700;
+  color:var(--ink);padding:.34rem .62rem;border-radius:var(--radius);
+  border:1.5px solid var(--line);background:var(--bg);
+  transition:border-color .2s,background .2s;}
+.lingua-menu>summary::-webkit-details-marker{display:none;}
+.lingua-menu>summary::marker{content:"";}
+.lingua-menu>summary:hover{border-color:var(--ink);background:var(--bg-soft);}
+.lingua-menu[open]>summary{border-color:var(--ink);background:var(--bg-soft);}
+.lingua-nome{white-space:nowrap;}
+.lingua-sigla{display:none;text-transform:uppercase;}
+.lingua-menu .freccia{width:.6rem;height:.45rem;flex:0 0 auto;fill:none;
+  stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+  transition:transform .2s;}
+.lingua-menu[open] .freccia{transform:rotate(180deg);}
+
+/* La bandiera e' un disegno, non un carattere: si vede uguale ovunque. */
+.bandiera{width:1.4rem;height:.933rem;flex:0 0 auto;display:block;border-radius:2px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.16);overflow:hidden;}
+
+.lingua-scelte{position:absolute;top:calc(100% + .5rem);right:0;z-index:80;
+  min-width:12.5rem;display:flex;flex-direction:column;padding:.4rem;
+  background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:0 14px 36px rgba(0,0,0,.18);}
+.lingua-tit{font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--ink-soft);font-weight:700;padding:.3rem .6rem .45rem;}
+.lingua-scelte a{display:flex;align-items:center;gap:.6rem;padding:.55rem .6rem;
+  border-radius:calc(var(--radius) - 1px);text-transform:none;letter-spacing:0;
+  font-weight:500;font-size:.88rem;color:var(--ink-soft);white-space:nowrap;}
+.lingua-scelte a:hover{background:var(--bg-soft);color:var(--ink);}
+.lingua-scelte a.attivo{color:var(--ink);font-weight:700;background:var(--bg-soft);}
+/* La spunta va all'estremita' destra: margin-left:auto la spinge in fondo. */
+.lingua-scelte .spunta{width:.8rem;height:.8rem;flex:0 0 auto;margin-left:auto;
+  fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;
+  stroke-linejoin:round;}
+
+/* Su schermi stretti il nome per esteso lascia il posto alla sigla:
+   stringerebbe troppo il resto della barra. */
+@media (max-width:720px){
+  .lingua-nome{display:none;}
+  .lingua-sigla{display:inline;}
+}
+@media (max-width:560px){
+  .lingua-menu>summary{padding:.32rem .45rem;gap:.35rem;}
+}
+
+/* --- Recensioni -------------------------------------------------------
+   Le stelle del modulo sono veri pulsanti di scelta: i cerchietti sono
+   nascosti e al loro posto si vede la stella. L'ordine nel documento e'
+   invertito (5..1) perche' cosi' il selettore ~ puo' accendere anche le
+   stelle scritte dopo quella scelta, che a schermo stanno prima. */
+.rec-sotto{color:var(--ink-soft);max-width:56ch;margin-top:.8rem;line-height:1.6;}
+.rec-media{display:flex;align-items:center;gap:.7rem;margin-top:1.2rem;flex-wrap:wrap;}
+.rec-media-testo{font-size:.85rem;color:var(--ink-soft);font-weight:600;}
+.rec-stelle{display:inline-flex;gap:.08em;font-size:1.05rem;line-height:1;color:var(--line);}
+.rec-stelle .piena{color:#f5a623;}
+.rec-esito{padding:.9rem 1.1rem;border-radius:var(--radius);margin-bottom:1.8rem;
+  font-size:.9rem;line-height:1.55;}
+.rec-esito.ok{background:rgba(60,160,90,.12);border:1px solid rgba(60,160,90,.4);}
+.rec-esito.ko{background:rgba(200,60,60,.10);border:1px solid rgba(200,60,60,.4);}
+
+.rec-lista{display:grid;gap:1rem;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,20rem),1fr));}
+.rec-voce{border:1px solid var(--line);border-radius:var(--radius);
+  padding:1.1rem 1.2rem;background:var(--bg);display:flex;flex-direction:column;gap:.6rem;}
+.rec-testa{display:flex;align-items:center;justify-content:space-between;gap:.8rem;}
+.rec-data{font-size:.72rem;color:var(--ink-soft);}
+.rec-voce .rec-testo{line-height:1.65;white-space:pre-wrap;}
+.rec-firma{font-size:.82rem;font-weight:700;margin-top:auto;}
+.rec-evento{font-weight:400;color:var(--ink-soft);}
+
+.rec-modulo{margin-top:clamp(2.5rem,7vw,4rem);max-width:38rem;}
+.rec-modulo h2{margin-bottom:1.2rem;}
+.rec-nota{font-size:.78rem;color:var(--ink-soft);margin-top:.8rem;line-height:1.5;}
+
+.rec-voti{border:0;padding:0;margin:0 0 1.1rem;display:flex;flex-direction:row-reverse;
+  justify-content:flex-end;align-items:center;gap:.15rem;}
+.rec-voti legend{float:left;width:100%;font-size:.78rem;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin-bottom:.45rem;}
+.rec-voti input{position:absolute;opacity:0;width:0;height:0;}
+.rec-voti label{font-size:1.9rem;line-height:1;color:var(--line);cursor:pointer;
+  transition:color .15s;padding:0 .04em;}
+.rec-voti input:checked ~ label,
+.rec-voti label:hover,
+.rec-voti label:hover ~ label{color:#f5a623;}
+.rec-voti input:focus-visible + label{outline:2px solid var(--ink);outline-offset:2px;}
+
+/* Campo trappola per gli invii automatici: fuori dallo schermo, mai letto
+   dai lettori vocali, invisibile a chi usa il sito. */
+.rec-trappola{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
+
+.rec-admin .rec-stelle{font-size:.9rem;margin-left:.4rem;vertical-align:middle;}
+
+/* --- Salto al contenuto -----------------------------------------------
+   Sta fuori dallo schermo finche' non lo si raggiunge con il tabulatore:
+   allora scivola dentro e diventa il primo elemento visibile. Non usa
+   display:none, che lo toglierebbe anche dal percorso della tastiera. */
+.salta-al-contenuto{position:absolute;left:1rem;top:-4rem;z-index:200;
+  background:var(--ink);color:var(--bg);padding:.7rem 1.1rem;border-radius:var(--radius);
+  font-size:.82rem;font-weight:700;letter-spacing:.04em;
+  transition:top .18s var(--ease);}
+.salta-al-contenuto:focus{top:1rem;outline:2px solid var(--accent);outline-offset:2px;}
+#content:focus{outline:none;}
+
+/* --- Barra su telefono ------------------------------------------------
+   Sopra i 720px si vede tutto per esteso. Sotto, le scritte non entrano
+   accanto al nome del sito: restano la lente per la ricerca, il selettore
+   della lingua e il pulsante del menu, che apre il pannello bianco. */
+.solo-stretto{display:none;}
+.nav .lente{display:none;padding:.3rem;border-radius:var(--radius);
+  border:1.5px solid transparent;}
+.nav .lente svg{width:1.25rem;height:1.25rem;display:block;fill:none;
+  stroke:currentColor;stroke-width:2;stroke-linecap:round;}
+.nav .lente:hover{border-color:var(--line);}
+
+.menu-tasto{display:none;background:var(--bg);cursor:pointer;
+  border:1.5px solid var(--line);border-radius:var(--radius);
+  padding:.42rem .5rem;color:var(--ink);transition:border-color .2s,background .2s;}
+.menu-tasto:hover,.menu-tasto.aperto{border-color:var(--ink);background:var(--bg-soft);}
+.menu-righe{display:flex;flex-direction:column;gap:.22rem;width:1.15rem;}
+.menu-righe span{display:block;height:2px;background:currentColor;border-radius:2px;
+  transition:transform .2s var(--ease),opacity .2s;}
+/* Aperto, le tre righe diventano una croce. */
+.menu-tasto.aperto .menu-righe span:nth-child(1){transform:translateY(.44rem) rotate(45deg);}
+.menu-tasto.aperto .menu-righe span:nth-child(2){opacity:0;}
+.menu-tasto.aperto .menu-righe span:nth-child(3){transform:translateY(-.44rem) rotate(-45deg);}
+
+/* --- Il pannello bianco ----------------------------------------------
+   Scende da sotto l'intestazione occupando tutta la larghezza. Sta dentro
+   l'intestazione, che essendo appiccicata in alto fa da riferimento: il
+   pannello resta agganciato al suo bordo inferiore anche scorrendo. */
+.menu-pannello{position:absolute;left:0;right:0;top:100%;z-index:70;
+  background:var(--bg);border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  box-shadow:0 20px 44px rgba(0,0,0,.18);}
+/* height, align-items e justify-content vanno riscritti, non solo il verso.
+   Questo contenitore sta dentro l'intestazione, quindi lo prende in pieno
+   anche la regola ".site-header .container", che gli impone l'altezza della
+   barra: 64 pixel. Il riquadro bianco era alto quanto una voce sola e le
+   altre tre traboccavano fuori, finendo sopra il velo scuro invece che sul
+   bianco. Da qui l'impressione che il menu fosse mezzo trasparente. */
+.menu-pannello .container{display:flex;flex-direction:column;
+  height:auto;align-items:stretch;justify-content:flex-start;gap:0;
+  padding-top:.35rem;padding-bottom:.35rem;
+  /* Se un giorno le voci fossero tante da non starci nello schermo, il
+     pannello scorre invece di finire sotto il bordo inferiore. */
+  max-height:calc(100dvh - var(--header-h) - 1rem);overflow-y:auto;
+  overscroll-behavior:contain;}
+
+/* Righe alte e larghe: su telefono si toccano col pollice, non si mirano. */
+.menu-pannello a{display:flex;align-items:center;gap:.95rem;
+  padding:1.05rem .25rem;font-size:1.02rem;font-weight:600;color:var(--ink);
+  border-bottom:1px solid var(--line);}
+.menu-pannello a:last-child{border-bottom:0;}
+.menu-pannello a:active{background:var(--bg-soft);}
+.menu-pannello .ico{width:1.35rem;height:1.35rem;flex:0 0 auto;fill:none;
+  stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;
+  color:var(--ink-soft);}
+.menu-pannello .poi{width:.5rem;height:.75rem;flex:0 0 auto;margin-left:auto;
+  fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;
+  stroke-linejoin:round;opacity:.35;}
+
+/* Velo scuro sul resto della pagina, sotto l'intestazione. */
+/* Copre tutto lo schermo sotto la barra. z-index 55: sopra la pagina,
+   sotto l'intestazione (60) e il pannello (70), che restano toccabili. */
+.menu-velo{position:fixed;left:0;right:0;top:var(--header-h);bottom:0;z-index:55;
+  background:rgba(0,0,0,.38);}
+
+/* Con lo script attivo hidden lascia il posto a queste classi, che
+   permettono di animare l'apertura invece di far comparire il riquadro
+   di colpo. Senza script resta hidden e il pannello semplicemente non
+   si apre, ma niente si rompe. */
+.menu-pannello.pronto,.menu-velo.pronto{display:block;opacity:0;
+  pointer-events:none;transition:opacity .18s var(--ease),transform .18s var(--ease);}
+.menu-pannello.pronto{transform:translateY(-.7rem);}
+.menu-pannello.pronto.aperto,.menu-velo.pronto.aperto{opacity:1;pointer-events:auto;}
+.menu-pannello.pronto.aperto{transform:none;}
+/* Mentre il menu e' aperto la pagina dietro non scorre. */
+body.menu-fermo{overflow:hidden;}
+
+@media (max-width:720px){
+  .voce-testo{display:none;}
+  .solo-stretto{display:block;}
+  .nav .lente{display:flex;}
+  .menu-tasto{display:block;}
+  .nav{gap:.5rem;}
+  .site-header .container{gap:.5rem;}
+}
+/* Su schermo largo il pannello non serve: le voci sono nella barra. */
+@media (min-width:721px){
+  .menu-pannello,.menu-velo{display:none!important;}
+}
+
+/* --- Chi sono ---------------------------------------------------------
+   Testo su una colonna stretta: oltre le sessanta lettere per riga
+   l'occhio, tornando a capo, sbaglia riga. Le cifre dell'archivio stanno
+   in una griglia che si adatta da sola, cosi' su telefono vanno in colonna
+   invece di stringersi fino a diventare illeggibili. */
+.bio-testo{max-width:62ch;}
+.bio-testo p{margin-bottom:1.1rem;line-height:1.75;}
+.bio-testo .lead{font-size:clamp(1.15rem,2.6vw,1.5rem);line-height:1.5;
+  font-weight:600;margin-bottom:1.6rem;}
+.bio-h2{margin:clamp(2.2rem,6vw,3.4rem) 0 1.2rem;
+  font-size:clamp(1.2rem,3vw,1.6rem);}
+.bio-numeri{display:grid;gap:1rem;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr));}
+.bio-numeri div{border:1px solid var(--line);border-radius:var(--radius);
+  padding:1.1rem 1.2rem;background:var(--bg-soft);}
+.bio-numeri strong{display:block;font-size:clamp(1.5rem,4vw,2.1rem);
+  line-height:1.1;font-family:var(--font-display);}
+.bio-numeri span{display:block;margin-top:.35rem;font-size:.8rem;
+  color:var(--ink-soft);letter-spacing:.02em;}
+.bio-azioni{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:1.4rem;}
+
+/* --- Novita' ----------------------------------------------------------
+   Elenco e non griglia: qui conta l'ordine nel tempo, e una griglia lo
+   nasconde. Su telefono la miniatura si stringe ma non sparisce: e' quella
+   che fa riconoscere la gara prima ancora di leggerne il nome. */
+.nov-lista{list-style:none;display:grid;gap:.6rem;max-width:52rem;}
+.nov-lista a{display:flex;gap:1rem;align-items:center;
+  border:1px solid var(--line);border-radius:var(--radius);padding:.6rem;
+  transition:border-color .2s var(--ease),background .2s var(--ease);}
+.nov-lista a:hover,.nov-lista a:focus-visible{border-color:var(--ink);
+  background:var(--bg-soft);}
+.nov-foto{flex:0 0 clamp(84px,22vw,140px);aspect-ratio:4/3;overflow:hidden;
+  border-radius:4px;background:var(--bg-soft);}
+.nov-foto img{width:100%;height:100%;object-fit:cover;}
+.nov-testo{display:flex;flex-direction:column;gap:.15rem;min-width:0;}
+.nov-data{font-size:.72rem;letter-spacing:.06em;color:var(--ink-soft);}
+.nov-testo strong{font-size:clamp(.95rem,2.4vw,1.1rem);line-height:1.3;}
+.nov-dove{font-size:.78rem;color:var(--ink-soft);}
+.nov-quante{font-size:.76rem;color:var(--ink-soft);}
+.nov-feed{text-decoration:underline;text-underline-offset:3px;white-space:nowrap;}
+
+/* --- Tasti delle recensioni nel pannello ------------------------------
+   Non avevano nessuna regola: ereditavano la fila orizzontale di
+   .acard-body e uscivano dal bordo destro della scheda. Siccome la pagina
+   nasconde quello che sborda di lato (overflow-x:hidden sul corpo), su
+   telefono il tasto "Elimina" non era solo brutto: era irraggiungibile,
+   tagliato fuori dallo schermo. Con tre tasti invece di due il problema
+   si vedeva anche su schermi medi.
+
+   Qui la scheda diventa una colonna: prima il testo della recensione, poi
+   i tasti su una riga che va a capo da sola quando non ci stanno. */
+.rec-admin .acard-body{flex-direction:column;align-items:stretch;}
+.rec-admin .acard-txt{cursor:auto;}
+.rec-admin .acard-txt h3{white-space:normal;overflow:visible;text-overflow:clip;}
+.acard-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.9rem;}
+.acard-actions form{display:inline-flex;}
+/* Sul telefono si toccano col pollice: tasti a tutta larghezza, uno per
+   riga quando non ce ne stanno due. */
+@media (max-width:520px){
+  .acard-actions{gap:.45rem;}
+  .acard-actions form{flex:1 1 8.5rem;}
+  .acard-actions .btn{width:100%;justify-content:center;}
+}
+
+/* --- Correzioni del pannello su telefono -------------------------------
+
+   1) Il tasto "Elimina" delle recensioni non si vedeva. Non era un
+   problema di spazio: .btn-danger nasce con display:none e compare solo
+   quando il corpo della pagina ha la classe "selecting", cioe' quando si
+   stanno selezionando fotografie nella galleria. La recensione usa la
+   stessa classe per il suo tasto, e quindi restava invisibile sempre, su
+   qualsiasi schermo. Qui lo si riaccende, ma solo dentro le schede del
+   pannello: la selezione delle foto continua a funzionare come prima. */
+.acard-actions .btn-danger{display:inline-flex;}
+
+/* --- Menu del pannello su telefono ------------------------------------
+
+   Prima la colonna delle voci diventava una barra orizzontale da
+   trascinare di lato: undici voci in fila, quelle in fondo (Log,
+   Impostazioni, Sicurezza) fuori dallo schermo e da cercare a tentoni.
+   Ed era position:sticky dentro una griglia, cioe' poteva restare in alto
+   solo dentro la propria casella, alta quanto lei: non avendo spazio in cui
+   scorrere se ne andava su con la pagina e finiva in mezzo allo schermo.
+
+   Adesso: una barra fissa in cima con il nome e il pulsante, e le voci in
+   un pannello a tutta larghezza che scende da sotto, una per riga come sul
+   sito pubblico. Su schermo largo non cambia niente: barra e velo
+   spariscono e la colonna torna dov'era. */
+.admin-barra{display:none;}
+.admin-velo{display:none;}
+
+@media (max-width:860px){
+  .admin-shell{padding-top:56px;}
+
+  .admin-barra{display:flex;align-items:center;justify-content:space-between;
+    gap:1rem;position:fixed;top:0;left:0;right:0;height:56px;z-index:80;
+    padding:0 1rem;background:var(--bg);border-bottom:1px solid var(--line);}
+  .admin-barra .brand{margin:0;font-size:1rem;white-space:nowrap;}
+  .admin-barra .menu-tasto{display:block;}
+
+  /* La colonna diventa il pannello che scende. */
+  .admin-sidebar{position:fixed;top:56px;left:0;right:0;z-index:79;
+    flex-direction:column;align-items:stretch;gap:0;
+    height:auto;max-height:calc(100dvh - 56px);overflow-y:auto;
+    overscroll-behavior:contain;
+    padding:.35rem 1rem 1rem;background:var(--bg);
+    border-right:0;border-bottom:1px solid var(--line);
+    box-shadow:0 20px 44px rgba(0,0,0,.18);}
+  /* Il nome del sito e' gia' nella barra qui sopra: nel pannello sarebbe
+     scritto due volte. */
+  .admin-sidebar > .brand{display:none;}
+  .admin-sidebar nav{flex-direction:column;gap:0;}
+  /* Righe alte: su telefono si toccano col pollice, non si mirano. */
+  .admin-sidebar nav a{white-space:nowrap;font-size:1rem;padding:.95rem .25rem;
+    border-bottom:1px solid var(--line);border-radius:0;}
+  .admin-sidebar nav a:last-child{border-bottom:0;}
+  .admin-sidebar .spacer{display:none;}
+  .admin-sidebar .logout{display:block;margin-top:.9rem;}
+  .admin-sidebar .logout button{width:100%;}
+
+  /* Finche' lo script non e' partito il pannello resta dov'era, visibile:
+     meglio un menu scomodo che un menu assente. Da quando c'e', si apre e
+     si chiude scorrendo da sotto la barra. */
+  .admin-sidebar.pronto{transform:translateY(-101%);opacity:0;
+    pointer-events:none;visibility:hidden;
+    transition:transform .18s var(--ease),opacity .18s var(--ease),visibility .18s;}
+  .admin-sidebar.pronto.aperto{transform:none;opacity:1;
+    pointer-events:auto;visibility:visible;}
+
+  .admin-velo.pronto{display:block;position:fixed;top:56px;left:0;right:0;
+    bottom:0;z-index:70;background:rgba(0,0,0,.38);opacity:0;
+    pointer-events:none;transition:opacity .18s var(--ease);}
+  .admin-velo.pronto.aperto{opacity:1;pointer-events:auto;}
+}
+
+/* --- Tabelle del pannello su telefono ---------------------------------
+   Una tabella a cinque colonne su uno schermo da 390 punti non ci sta, e
+   la pagina nasconde quello che sborda di lato: le ultime colonne, tasti
+   compresi, finivano fuori e non si raggiungevano piu'.
+
+   Sotto i 700 punti la tabella si scompone: ogni riga diventa una scheda e
+   ogni cella una riga con il nome della colonna a sinistra e il valore a
+   destra. Il nome arriva dall'attributo data-eti scritto nel modello, cosi'
+   non serve ripeterlo cinquanta volte nella pagina. */
+@media (max-width:700px){
+  .tabella-schede{background:none;border-radius:0;overflow:visible;}
+  .tabella-schede thead{position:absolute;width:1px;height:1px;overflow:hidden;
+    clip-path:inset(50%);white-space:nowrap;}
+  .tabella-schede tbody tr{display:block;background:#fff;
+    border:1px solid var(--line);border-radius:var(--radius);
+    padding:.35rem .9rem;margin-bottom:.7rem;}
+  .tabella-schede tbody td{display:flex;align-items:center;
+    justify-content:space-between;gap:1rem;width:auto;
+    padding:.55rem 0;border-bottom:1px solid var(--line);text-align:right;}
+  .tabella-schede tbody td:last-child{border-bottom:0;}
+  .tabella-schede tbody td::before{content:attr(data-eti);text-align:left;
+    font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--ink-soft);flex:0 0 auto;}
+  /* La prima cella e' il testo cercato: e' il contenuto della scheda, non
+     un dato fra gli altri, e va letto per intero anche se e' lungo. */
+  .tabella-schede tbody td:first-child{display:block;text-align:left;
+    font-size:1rem;font-weight:600;padding-top:.7rem;}
+  .tabella-schede tbody td:first-child::before{display:block;
+    margin-bottom:.15rem;font-weight:400;}
+  .tabella-schede tbody td:last-child .btn{width:100%;justify-content:center;}
+  .tabella-schede tbody td:last-child form{width:100%;}
+}
+
+/* --- Gruppi apribili nel menu del pannello ----------------------------
+
+   Il titolo del gruppo e' una riga come le altre: stessa altezza, stessi
+   angoli, stesso effetto al passaggio del dito o del puntatore. Cambia
+   solo il colore, nero invece di grigio, e la freccia a destra. Cosi' si
+   capisce che si tocca, cosa che a un titoletto piccolo e grigio non si
+   perdona.
+
+   Le voci dentro rientrano e sono unite da un filo verticale sottile:
+   basta quello per vedere a colpo d'occhio dove finisce un gruppo e
+   comincia l'altro, senza aggiungere riquadri che appesantiscono. */
+.menu-gruppo{display:block;}
+.menu-gruppo > summary{
+  display:flex;align-items:center;justify-content:space-between;gap:.6rem;
+  cursor:pointer;list-style:none;
+  /* stessa forma delle voci, vedi ".admin-sidebar nav a" */
+  color:var(--ink);padding:.65rem .8rem;border-radius:8px;
+  font-size:.9rem;font-weight:600;transition:all .16s;
+  -webkit-tap-highlight-color:transparent;}
+.menu-gruppo > summary::-webkit-details-marker{display:none;}
+.menu-gruppo > summary::marker{content:"";}
+.menu-gruppo > summary:hover{background:var(--bg-soft);}
+.menu-gruppo > summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.menu-gruppo > summary .freccia{width:.62rem;flex:0 0 auto;fill:none;
+  stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;
+  color:var(--ink-soft);transform:rotate(-90deg);
+  transition:transform .18s var(--ease);}
+.menu-gruppo[open] > summary .freccia{transform:none;color:var(--ink);}
+
+/* Il filo che tiene insieme le voci del gruppo. Parte da sotto il titolo e
+   scende fino all'ultima voce. */
+.menu-gruppo > .menu-voci{position:relative;margin:.15rem 0 .2rem;
+  padding-left:1.45rem;display:flex;flex-direction:column;gap:.2rem;}
+.menu-gruppo > .menu-voci::before{content:"";position:absolute;
+  left:.95rem;top:.15rem;bottom:.15rem;width:1px;background:var(--line);}
+.menu-gruppo > .menu-voci > a{padding-left:.7rem;}
+
+/* Chiuso a mano ma con dentro la pagina aperta: si vede lo stesso. */
+.menu-gruppo:not([open]):has(a.active) > summary{color:var(--accent);}
+.menu-gruppo:not([open]):has(a.active) > summary .freccia{color:var(--accent);}
+
+/* Un filo di respiro fra un gruppo e il successivo. */
+.menu-gruppo + .menu-gruppo{margin-top:.15rem;}
+.admin-sidebar nav > a.ext{margin-top:.6rem;}
+
+@media (max-width:860px){
+  /* Nel pannello del telefono le righe sono alte e separate da una linea:
+     il titolo del gruppo si comporta come le voci. */
+  .menu-gruppo > summary{font-size:1rem;padding:.95rem .25rem;
+    border-radius:0;border-bottom:1px solid var(--line);}
+  .menu-gruppo[open] > summary{border-bottom:0;}
+  .menu-gruppo > .menu-voci{margin:0;padding-left:1.1rem;gap:0;}
+  .menu-gruppo > .menu-voci::before{left:.35rem;top:.2rem;bottom:.2rem;}
+  .menu-gruppo > .menu-voci > a{padding-left:.75rem;}
+  .menu-gruppo + .menu-gruppo{margin-top:0;}
+}
+
+/* --- Avvisi brevi -----------------------------------------------------
+   In fondo a destra su schermo largo, in fondo a tutta larghezza su
+   telefono, dove il pollice li raggiunge senza allungarsi. Sopra ogni
+   altra cosa (z-index alto) perche' dicono che qualcosa non ha funzionato:
+   se restassero sotto il menu o sotto il visualizzatore non li vedrebbe
+   nessuno proprio nel momento in cui servono. */
+.avvisi{position:fixed;z-index:1000;right:clamp(.75rem,3vw,1.5rem);
+  bottom:clamp(.75rem,3vw,1.5rem);left:auto;display:flex;
+  flex-direction:column;gap:.5rem;pointer-events:none;
+  max-width:min(26rem,calc(100vw - 1.5rem));}
+.avviso{display:flex;align-items:flex-start;gap:.75rem;pointer-events:auto;
+  background:var(--ink);color:#fff;border-radius:var(--radius);
+  padding:.85rem 1rem;box-shadow:0 12px 32px rgba(0,0,0,.22);
+  opacity:0;transform:translateY(.5rem);
+  transition:opacity .22s var(--ease),transform .22s var(--ease);}
+.avviso.visibile{opacity:1;transform:none;}
+.avviso p{font-size:.88rem;line-height:1.5;margin:0;}
+/* Una striscia di colore a sinistra invece di colorare tutto il riquadro:
+   si capisce il tipo senza che il messaggio diventi illeggibile. */
+.avviso-errore{border-left:4px solid var(--accent-2);}
+.avviso-ok{border-left:4px solid var(--accent-3);}
+.avviso-chiudi{flex:0 0 auto;background:none;border:0;cursor:pointer;
+  padding:.15rem;margin:-.15rem;color:rgba(255,255,255,.6);line-height:0;}
+.avviso-chiudi:hover{color:#fff;}
+.avviso-chiudi svg{width:.85rem;height:.85rem;fill:none;stroke:currentColor;
+  stroke-width:2;stroke-linecap:round;}
+@media (max-width:520px){
+  .avvisi{left:.75rem;right:.75rem;max-width:none;}
+}
+@media (prefers-reduced-motion:reduce){
+  .avviso{transition:none;transform:none;}
+}
+
+/* --- Contrasto del testo bianco sui colori d'accento ------------------
+   I due colori accesi sono nati per accenti, bordi e punti di colore, dove
+   fanno il loro mestiere. Sotto una scritta bianca pero' non reggevano:
+   misurato con la formula WCAG, il bianco su magenta dava 3,42:1 e su
+   verde acqua 1,92:1, contro i 4,5:1 che servono perche' una scritta si
+   legga anche con poca luce, su uno schermo al sole o da chi distingue
+   male i colori. Un pulsante "Elimina" illeggibile e' peggio che brutto.
+
+   Si aggiungono due varianti piu' scure usate SOLO dove sopra ci va una
+   scritta bianca. Il colore acceso resta dov'era: bordi, cuori, pallini,
+   strisce laterali. Cosi' l'aspetto del sito non cambia, cambia solo la
+   leggibilita' dove serviva. */
+:root{
+  --accent-2-testo:#cc1f4e;   /* bianco sopra: 5,42:1 */
+  --accent-3-testo:#008562;   /* bianco sopra: 4,63:1 */
+}
+.badge-private{background:var(--accent-2-testo);}
+.btn-danger{background:var(--accent-2-testo);border-color:var(--accent-2-testo);}
+.btn-danger:hover{background:var(--ink);border-color:var(--ink);}
+.foot-social a.foot-wa:hover{background:var(--accent-3-testo);
+  border-color:var(--accent-3-testo);}

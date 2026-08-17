@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Troppe richieste — Photocarcifo</title>
+<!--
+  Questa pagina la serve nginx da sola, senza passare dall'applicazione.
+
+  E' la risposta a chi supera i limiti di richieste. Proprio in quel
+  momento l'applicazione e' la cosa che si sta cercando di proteggere:
+  farle disegnare la pagina di errore vorrebbe dire darle comunque il
+  lavoro da cui la stiamo riparando. Percio' e' un file solo, con lo stile
+  dentro, che nginx spedisce senza chiedere niente a nessuno.
+
+  Per la stessa ragione non e' tradotta nelle cinque lingue: quelle vivono
+  nell'applicazione. C'e' l'italiano e c'e' l'inglese, che bastano a far
+  capire che non e' un guasto e che basta aspettare.
+-->
+<style>
+  :root{--bg:#fff;--ink:#0a0c14;--ink-soft:#5b6172;--line:#e3e7f0;--accent:#2b4bff;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);min-height:100vh;
+    display:flex;align-items:center;justify-content:center;padding:2rem;
+    font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  main{max-width:34rem;text-align:center;}
+  .codice{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);font-weight:700;}
+  h1{font-size:clamp(1.5rem,5vw,2.2rem);line-height:1.2;margin:1rem 0 1.2rem;}
+  p{color:var(--ink-soft);margin-bottom:.8rem;}
+  .en{font-size:.92rem;padding-top:.8rem;border-top:1px solid var(--line);
+    margin-top:1.6rem;}
+  a{display:inline-block;margin-top:1.6rem;padding:.7rem 1.4rem;
+    border-radius:999px;background:var(--ink);color:#fff;text-decoration:none;
+    font-weight:600;}
+  a:hover{background:var(--accent);}
+</style>
+</head>
+<body>
+<main>
+  <p class="codice">Errore 429</p>
+  <h1>Troppe richieste in poco tempo</h1>
+  <p>Il sito sta ricevendo molte richieste da questo collegamento e ha messo
+     in pausa le nuove per qualche istante. Non è un guasto: aspetta un
+     minuto e riprova.</p>
+  <p class="en">Too many requests from this connection. This is not a fault:
+     wait a minute and try again.</p>
+  <a href="/">Torna alla pagina iniziale</a>
+</main>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{% extends "admin/base.html" %}
+{% set active = 'tree' %}
+{% block title %}Album — {{ site_name() }}{% endblock %}
+{% block content %}
+<div class="mgr-head">
+  <div>
+    <h1>Album</h1>
+    <nav class="mgr-crumbs" id="crumbs"><span class="current">Tutte le categorie</span></nav>
+  </div>
+</div>
+<div class="mgr-grid" id="grid"><p class="tree-hint">Caricamento…</p></div>
+<div class="mgr-sheet" id="sheet" hidden><div class="sheet-inner" id="sheetInner"></div></div>
+<input type="hidden" id="csrf" value="{{ user.csrf }}">
+<script src="{{ asset('/static/js/admin-tree.js') }}" defer></script>
+{% endblock %}

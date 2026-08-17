@@ -1,0 +1,26 @@
+[Unit]
+Description=Photocarcifo - Lettura dei numeri di gara sulle fotografie
+After=photocarcifo.service network-online.target
+Wants=network-online.target
+# Non parte finche' l'archivio non e' montato: senza NAS non c'e' nulla da
+# leggere e le foto verrebbero segnate come illeggibili.
+RequiresMountsFor=/mnt/magazzino
+
+[Service]
+Type=oneshot
+User=photocarcifo
+Group=photocarcifo
+WorkingDirectory=/opt/photocarcifo
+Environment=PYTHONUNBUFFERED=1
+# --all svuota tutta la coda in una volta. Il lavoro riprende sempre da dove
+# era arrivato: l'avanzamento sta nel database (colonna media.ocr_stato), non
+# in memoria, quindi un riavvio del container non fa perdere nulla.
+ExecStart=/opt/photocarcifo/venv/bin/python -m app.cli numeri --all
+# E' l'operazione piu' pesante del sistema: priorita' bassa su CPU e disco,
+# cosi' non rallenta mai le pagine servite ai visitatori.
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target

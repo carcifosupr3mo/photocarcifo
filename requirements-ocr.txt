@@ -1,0 +1,9 @@
+# Lettura automatica dei numeri di gara dalle fotografie.
+#
+# Sta a parte perche' pesa alcune centinaia di megabyte fra libreria e
+# modello: il sito funziona benissimo senza, semplicemente non riconosce i
+# numeri da solo e restano quelli inseriti a mano.
+rapidocr-onnxruntime==1.4.4
+# Usata da ocr.py per ritagliare e misurare le aree della fotografia prima
+# di darle in pasto al riconoscimento.
+numpy==2.5.2

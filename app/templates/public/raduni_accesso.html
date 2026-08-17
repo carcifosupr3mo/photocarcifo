@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ t('rad.acc_pagina') }} — {{ site_name() }}{% endblock %}
+{% block head_extra %}<meta name="robots" content="noindex, nofollow, noarchive">{% endblock %}
+{% block content %}
+<section class="section"><div class="container">
+  <div class="acc-box">
+    <h1>{{ t('rad.acc_titolo') }}</h1>
+    <p class="acc-int">{{ t('rad.acc_int') }}</p>
+    <form method="post" action="/radunimoto" class="acc-form">
+      <label for="risposta">{{ domanda }}</label>
+      <input type="text" id="risposta" name="risposta" autocomplete="off"
+             autocapitalize="off" spellcheck="false" required
+             {% if attesa %}disabled{% endif %}>
+      {% if errore %}<p class="acc-err">{{ errore }}</p>{% endif %}
+      <button class="btn btn-accent" type="submit" {% if attesa %}disabled{% endif %}>{{ t('rad.acc_entra') }}</button>
+    </form>
+    <p class="acc-note"><a href="/">{{ t('com.torna') }}</a></p>
+  </div>
+</div></section>
+{% endblock %}

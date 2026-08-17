@@ -1,0 +1,63 @@
+{% extends "admin/base.html" %}
+{% set active = 'tree' %}
+{% block title %}Numeri — {{ node.title }} — {{ site_name() }}{% endblock %}
+{% block content %}
+<h1>Numeri di gara</h1>
+<p style="color:var(--ink-soft);margin-bottom:.5rem;">
+  Cartella: <code>{{ node.rel_path }}</code> — {{ totale }} fotografie
+</p>
+<p style="color:var(--ink-soft);margin-bottom:2rem;max-width:70ch;">
+  {% if ocr_motore %}
+  I numeri vengono letti automaticamente dalle tabelle. Qui li correggi o
+  aggiungi quelli mancanti: le correzioni non vengono mai sovrascritte dalle
+  letture successive.
+  {% else %}
+  Scrivi il numero di tabella di ogni atleta: e' quello che i visitatori
+  useranno per ritrovare le proprie foto dalla barra di ricerca.
+  {% endif %}
+  Se in una foto ci sono piu' piloti, separa i numeri con una virgola.
+</p>
+
+<div class="toolbar">
+  <a class="btn btn-ghost" href="/n/{{ node.slug }}" target="_blank" rel="noopener">Apri la cartella</a>
+  <a class="btn btn-ghost" href="/admin/tree">Torna alle cartelle</a>
+</div>
+
+{% if foto %}
+<form method="post" action="/admin/numeri/{{ node.id }}">
+  <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+  <input type="hidden" name="pagina" value="{{ pagina }}">
+
+  <div class="numeri-griglia">
+    {% for f in foto %}
+    <div class="numeri-scheda">
+      <img src="/thumb/{{ f.id }}" alt="{{ f.filename }}" loading="lazy" decoding="async">
+      <label class="sr-only" for="numero_{{ f.id }}">Numeri di {{ f.filename }}</label>
+      <input type="text" id="numero_{{ f.id }}" name="numero_{{ f.id }}"
+             value="{{ f.numeri }}" placeholder="es. 198"
+             inputmode="numeric" autocomplete="off">
+      <span class="numeri-nome" title="{{ f.filename }}">{{ f.filename }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="toolbar" style="margin-top:1.5rem;">
+    <button class="btn btn-accent" type="submit">Salva i numeri di questa pagina</button>
+  </div>
+</form>
+
+{% if pagine > 1 %}
+<nav class="pager" aria-label="Pagine">
+  {% if pagina > 1 %}<a class="btn btn-ghost" href="/admin/numeri/{{ node.id }}?pagina={{ pagina - 1 }}">Indietro</a>{% endif %}
+  <span class="pager-now">Pagina {{ pagina }} di {{ pagine }}</span>
+  {% if pagina < pagine %}<a class="btn" href="/admin/numeri/{{ node.id }}?pagina={{ pagina + 1 }}">Avanti</a>{% endif %}
+</nav>
+<p style="color:var(--ink-soft);font-size:.85rem;margin-top:.5rem;">
+  Salva prima di cambiare pagina: le modifiche non salvate andrebbero perse.
+</p>
+{% endif %}
+
+{% else %}
+<div class="empty"><p>Questa cartella non contiene fotografie.</p></div>
+{% endif %}
+{% endblock %}

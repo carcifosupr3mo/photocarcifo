@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ t('rad.titolo') }} — {{ site_name() }}{% endblock %}
+{% block head_extra %}<meta name="robots" content="noindex, nofollow, noarchive">{% endblock %}
+{% block content %}
+<section class="hero"><div class="container">
+  <h1>{{ t('rad.titolo') }}</h1>
+</div></section>
+
+<section class="section"><div class="container">
+  <div class="rad-avviso">
+    <strong>{{ t('rad.avvertenza') }}</strong>
+    <p>{{ avviso }}</p>
+  </div>
+
+  {% if prossimi %}
+  <h2 class="rad-tit">{{ t('rad.prossimi') }}</h2>
+  <div class="rad-lista">
+    {% for r in prossimi %}
+    <div class="rad-voce">
+      <div class="rad-data">
+        <span class="rad-giorno">{{ r.data[8:10] }}</span>
+        <span class="rad-mese">{{ r.data[5:7] }}/{{ r.data[0:4] }}</span>
+      </div>
+      <div class="rad-info">
+        <h3>{{ r.luogo }}</h3>
+        {% if r.ora %}<p class="rad-ora">{{ t('rad.ritrovo').format(ora=r.ora) }}</p>{% endif %}
+        {% if r.note %}<p class="rad-note">{{ r.note }}</p>{% endif %}
+        {% if r.mappa %}
+        <a class="rad-mappa" href="{{ r.mappa }}" target="_blank" rel="noopener nofollow">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.6" fill="#fff"/></svg>
+          {{ t('rad.mappa') }}
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty"><p>{{ t('rad.vuoto') }}</p></div>
+  {% endif %}
+
+  {% if passati %}
+  <h2 class="rad-tit rad-tit-sec">{{ t('rad.passati') }}</h2>
+  <div class="rad-lista rad-passati">
+    {% for r in passati %}
+    <div class="rad-voce">
+      <div class="rad-data">
+        <span class="rad-giorno">{{ r.data[8:10] }}</span>
+        <span class="rad-mese">{{ r.data[5:7] }}/{{ r.data[0:4] }}</span>
+      </div>
+      <div class="rad-info"><h3>{{ r.luogo }}</h3></div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div></section>
+{% endblock %}

@@ -1,0 +1,24 @@
+[Unit]
+Description=Photocarcifo - Portfolio fotografico self-hosted
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=photocarcifo
+Group=photocarcifo
+WorkingDirectory=/opt/photocarcifo
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/photocarcifo/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=on-failure
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/photocarcifo/data
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,87 @@
+{% extends "admin/base.html" %}
+{% set active = 'dashboard' %}
+{% block title %}Panoramica — {{ site_name() }}{% endblock %}
+{% block content %}
+<h1>Panoramica</h1>
+{% if nas_ok %}<div class="nas-banner nas-ok">NAS collegato correttamente.</div>
+{% else %}<div class="nas-banner nas-err">NAS non raggiungibile.</div>{% endif %}
+<div class="stat-grid">
+  <div class="stat-card"><div class="num">{{ stats.nodes }}</div><div class="lbl">Cartelle</div></div>
+  <div class="stat-card"><div class="num">{{ stats.private }}</div><div class="lbl">Private</div></div>
+  <div class="stat-card"><div class="num">{{ stats.images }}</div><div class="lbl">Foto</div></div>
+  <div class="stat-card"><div class="num">{{ stats.videos }}</div><div class="lbl">Video</div></div>
+  <div class="stat-card"><div class="num">{{ stats.visite }}</div><div class="lbl">Visite 30gg</div></div>
+  <div class="stat-card"><div class="num">{{ stats.download }}</div><div class="lbl">Download 30gg</div></div>
+</div>
+<h2>Spazio disco (NAS)</h2>
+<div class="stat-grid">
+  <div class="stat-card"><div class="num">{{ disk.total|human_size }}</div><div class="lbl">Totale</div></div>
+  <div class="stat-card"><div class="num">{{ disk.used|human_size }}</div><div class="lbl">Usato</div></div>
+  <div class="stat-card"><div class="num">{{ disk.free|human_size }}</div><div class="lbl">Libero</div></div>
+</div>
+<h2>Album più visti (30 giorni)</h2>
+{% if piu_visti %}
+<table class="table">
+  <thead><tr><th>Album</th><th>Visite</th></tr></thead>
+  <tbody>
+  {% for v in piu_visti %}
+    <tr><td>{{ v.title or v.slug }}</td><td>{{ v.visite }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p style="color:var(--ink-soft);">Ancora nessuna visita registrata.</p>{% endif %}
+
+<h2>Numeri di gara</h2>
+{% if ocr_motore %}
+<p style="color:var(--ink-soft);margin-bottom:1rem;">
+  Lettura automatica attiva. I visitatori scrivono il proprio numero di tabella
+  nella barra di ricerca e trovano tutte le foto in cui compare.
+</p>
+{% else %}
+<div class="nas-banner nas-err">
+  Motore di lettura non installato: i numeri si possono solo scrivere a mano.
+  Si attiva con <code>venv/bin/pip install -r requirements-ocr.txt</code>
+</div>
+{% endif %}
+<div class="stat-grid">
+  <div class="stat-card"><div class="num">{{ numeri.con_numero }}</div><div class="lbl">Foto con numero</div></div>
+  <div class="stat-card"><div class="num">{{ numeri.numeri_diversi }}</div><div class="lbl">Numeri diversi</div></div>
+  <div class="stat-card"><div class="num">{{ numeri.da_fare }}</div><div class="lbl">Da leggere</div></div>
+  <div class="stat-card"><div class="num">{{ numeri.fatte }}</div><div class="lbl">Lette</div></div>
+  <div class="stat-card"><div class="num">{{ numeri.illeggibili }}</div><div class="lbl">Illeggibili</div></div>
+</div>
+{% if ocr_lavoro.attivo %}
+<div class="nas-banner nas-ok">
+  Lettura in corso su {{ ocr_lavoro.processi }} processi:
+  {{ ocr_lavoro.analizzate }} di {{ ocr_lavoro.totale }} foto,
+  {{ ocr_lavoro.con_numero }} con numero trovato. Ricarica per aggiornare.
+</div>
+{% endif %}
+<div class="toolbar">
+  <form method="post" action="/admin/maintenance/numeri">
+    <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+    <button class="btn" type="submit"{% if not ocr_motore or ocr_lavoro.attivo %} disabled{% endif %}>
+      Leggi i numeri ({{ numeri.da_fare }} in coda)</button></form>
+  <form method="post" action="/admin/maintenance/numeri-reset"
+        data-conferma="Rileggere da zero tutte le fotografie? I numeri scritti a mano restano.">
+    <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+    <button class="btn btn-ghost" type="submit"{% if ocr_lavoro.attivo %} disabled{% endif %}>
+      Rileggi tutto</button></form>
+</div>
+<p style="color:var(--ink-soft);font-size:.85rem;">
+  Girerebbe su {{ ocr_processi }} processi in parallelo. Per correggere i numeri
+  di una cartella apri <em>Cartelle</em> e premi <em>Numeri</em>.
+</p>
+
+<h2>Manutenzione</h2>
+<div class="toolbar">
+  <form method="post" action="/admin/maintenance/scan">
+    <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+    <input type="hidden" name="full" value="0">
+    <button class="btn" type="submit">Scansiona NAS</button></form>
+  <form method="post" action="/admin/maintenance/clear-cache"
+        data-conferma="Svuotare la cache miniature? Verranno rigenerate man mano.">
+    <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+    <button class="btn btn-ghost" type="submit">Svuota cache</button></form>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "admin/base.html" %}
+{% set active = 'trash' %}
+{% block title %}Cestino — {{ site_name() }}{% endblock %}
+{% block content %}
+<h1>Cestino</h1>
+<p style="color:var(--ink-soft);max-width:62ch;margin:.5rem 0 1.5rem;">
+  Le foto rimosse vengono spostate qui, non cancellate. Puoi rimetterle a posto
+  in qualsiasi momento. Per eliminarle davvero apri File Station sul Synology e
+  svuota la cartella <code>{{ cestino }}</code>.</p>
+
+{% if not rw_ready %}
+<div class="nas-banner nas-err">Archivio non scrivibile: il cestino non è disponibile.</div>
+{% endif %}
+
+{% if lotti %}
+<div class="mgr-grid">
+  {% for l in lotti %}
+  <div class="acard trash-card">
+    <div class="acard-body">
+      <div class="acard-txt">
+        <h3>{{ l.nome.replace('_', ' ') }}</h3>
+        <p>{{ l.file }} file</p>
+      </div>
+      <button class="btn btn-ghost" data-lotto="{{ l.nome }}" type="button">Ripristina</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty"><p>Il cestino è vuoto.</p></div>
+{% endif %}
+
+<input type="hidden" id="csrf" value="{{ user.csrf }}">
+<script src="{{ asset('/static/js/admin-cestino.js') }}" defer></script>
+{% endblock %}

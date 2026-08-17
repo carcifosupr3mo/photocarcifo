@@ -1,0 +1,27 @@
+{% extends "admin/base.html" %}
+{% set active = 'twofa' %}
+{% block title %}Verifica in due passaggi — {{ site_name() }}{% endblock %}
+{% block content %}
+<h1>Verifica in due passaggi</h1>
+{% if enabled %}
+  <p style="color:var(--ink-soft);max-width:60ch;margin:1rem 0 2rem;">
+    La verifica in due passaggi è attiva. Al prossimo accesso ti verrà chiesto il codice dall'app di autenticazione.</p>
+  <form class="form" method="post" action="/admin/2fa/disable">
+    <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+    <div class="field"><label>Conferma la password per disattivarla</label>
+      <input type="password" name="password" required></div>
+    <button class="btn btn-ghost" type="submit">Disattiva verifica in due passaggi</button>
+  </form>
+{% else %}
+  <p style="color:var(--ink-soft);max-width:60ch;margin:1rem 0 2rem;">
+    Inquadra il codice QR con Google Authenticator, Microsoft Authenticator o Authy, poi inserisci il codice a 6 cifre per attivare.</p>
+  {% if qr %}<img src="{{ qr }}" alt="Codice QR" style="width:200px;border:1px solid var(--line);border-radius:var(--radius);padding:8px;background:#fff;">{% endif %}
+  {% if secret %}<p style="font-family:ui-monospace,monospace;font-size:.85rem;color:var(--ink-soft);margin:1rem 0;">Chiave manuale: {{ secret }}</p>{% endif %}
+  <form class="form" method="post" action="/admin/2fa/enable" style="margin-top:1.5rem;">
+    <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+    <div class="field"><label>Codice a 6 cifre</label>
+      <input type="text" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" required autofocus></div>
+    <button class="btn btn-accent" type="submit">Attiva</button>
+  </form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ site_name() }} — {{ t('nav.portfolio') }}{% endblock %}
+{% block description %}{{ t('home.descrizione') }}{% endblock %}
+{% block content %}
+
+<section class="intro-hero">
+  <div class="container">
+    <p class="eyebrow">{{ t('home.eyebrow') }}</p>
+    <h1>{{ t('home.saluto') }}<span class="dot">.</span></h1>
+    <div class="intro-copy">
+      <p class="lead">{{ t('home.lead') }}</p>
+      <div class="body-col">
+        <p>{{ t('home.p1') }}</p>
+        <p>{{ t('home.p2') }}</p>
+      </div>
+      <div class="body-col">
+        <p>{{ t('home.p3') }}</p>
+        <p>{{ t('home.p4') }}</p>
+      </div>
+      <p class="closing">{{ t('home.chiusura') }}</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="portfolio">
+  <div class="container">
+    <p class="eyebrow">{{ t('nav.portfolio') }}</p>
+    {% if categories %}
+    {% if categories and categories|length > 1 %}
+  <div class="ordina-bar">
+    <span class="ordina-eti">{{ t('ord.eti') }}</span>
+    {# rel="nofollow": stessi album, solo in ordine diverso. Vedi node.html. #}
+    <div class="ordina-scelte">
+      <a rel="nofollow" href="?ordine=recenti" class="{% if ordine == 'recenti' %}attivo{% endif %}">{{ t('ord.recenti') }}</a>
+      <a rel="nofollow" href="?ordine=vecchi" class="{% if ordine == 'vecchi' %}attivo{% endif %}">{{ t('ord.vecchi') }}</a>
+      <a rel="nofollow" href="?ordine=nome" class="{% if ordine == 'nome' %}attivo{% endif %}">{{ t('ord.nome') }}</a>
+      <a rel="nofollow" href="?ordine=foto" class="{% if ordine == 'foto' %}attivo{% endif %}">{{ t('ord.foto') }}</a>
+    </div>
+  </div>
+  {% endif %}
+  <div class="cat-grid">
+      {% for c in categories %}
+      <a class="cat-card" href="{% if c.is_private %}/p/{{ c.access_token }}{% else %}/n/{{ c.slug }}{% endif %}">
+        {% if c.cover %}{% if loop.first %}{#
+          Prima scheda: e' l'immagine piu' grande della pagina, quella su cui
+          si misura il tempo di caricamento percepito. Si carica subito con
+          src invece che in modo pigro (aspettare il JavaScript la
+          ritarderebbe) e si prende da /cover/, la versione alleggerita.
+        #}<img decoding="async" fetchpriority="high" src="/cover/{{ c.cover }}" alt="{{ c.title }}" class="loaded">{% else %}<img decoding="async" loading="lazy" data-src="/thumb/{{ c.cover }}" data-srcset="/thumb/{{ c.cover }} 1x, /thumb2x/{{ c.cover }} 2x" alt="{{ c.title }}">{% endif %}{% else %}<div class="cat-logo"><img src="/static/icons/icon-192.png" alt="Photocarcifo"></div>{% endif %}
+        <div class="cat-scrim"></div>
+        {% if c.is_private %}<span class="badge-private">{{ t('com.privato') }}</span>{% endif %}
+        <div class="cat-label"><h2 class='card-titolo'>{{ c.title }}</h2><div class="n">{{ c.total_media }} {{ t('com.foto') }}</div></div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}<div class="empty"><p>{{ t('home.vuoto') }}</p></div>{% endif %}
+  </div>
+</section>
+{% endblock %}

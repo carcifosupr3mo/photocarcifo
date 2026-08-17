@@ -1,0 +1,28 @@
+# Segreti e ambiente
+.env
+venv/
+
+# Prodotti dal codice, non scritti a mano
+__pycache__/
+*.pyc
+.pytest_cache/
+# Versione ridotta del foglio di stile: la rigenera l'applicazione da sola
+# quando il foglio cambia (vedi templating.py).
+app/static/css/style.min.css
+# Raccolta del codice sorgente in un file solo: la rigenera
+# photocarcifo-docs-codice.sh. Tenerla qui dentro vorrebbe dire ricopiare
+# l'intero progetto a ogni modifica, e la storia peserebbe il doppio del
+# necessario per un file che si rifa' in un secondo.
+docs/CODICE.md
+
+# Dati: stanno nel container e nei backup, non nel repository
+data/photocarcifo.db
+data/photocarcifo.db-*
+data/cache/
+data/logs/
+backup/
+
+# Avanzi di lavorazione
+*.tmp
+*.parziale
+.cache/

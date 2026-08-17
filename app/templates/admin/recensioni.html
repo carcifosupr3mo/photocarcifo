@@ -1,0 +1,88 @@
+{% extends "admin/base.html" %}
+{% set active = 'recensioni' %}
+{% block title %}Recensioni — {{ site_name() }}{% endblock %}
+{% block content %}
+<h1>Recensioni</h1>
+<p style="color:var(--ink-soft);margin:.4rem 0 1.6rem;max-width:62ch;">
+  Le recensioni arrivano qui e restano invisibili al pubblico finché non le
+  approvi. Quelle già online si possono ritirare in qualsiasi momento.
+  <strong>Rifiuta</strong> la toglie di mezzo senza pubblicarla e senza
+  cancellarla: resta qui sotto, e se cambi idea la pubblichi lo stesso.
+  <strong>Elimina</strong> invece è per sempre.</p>
+
+{#
+  stato: 'attesa' | 'online' | 'rifiutata'. I tasti cambiano di conseguenza,
+  ma la scheda e' una sola: tre copie quasi uguali si sarebbero disallineate
+  alla prima modifica.
+#}
+{% macro scheda(r, stato) %}
+<div class="acard rec-admin">
+  <div class="acard-body">
+    <div class="acard-txt">
+      <h3>{{ r.nome }}
+        <span class="rec-stelle" aria-label="{{ r.voto }} stelle su 5">{% for i in range(1, 6) %}<span
+          class="{% if i <= r.voto %}piena{% endif %}" aria-hidden="true">★</span>{% endfor %}</span>
+      </h3>
+      <p style="font-size:.76rem;color:var(--ink-soft);">
+        {{ r.creato_at[:10] }}{% if r.evento %} · {{ r.evento }}{% endif %}
+        · lingua {{ r.lingua|upper }}</p>
+      <p style="margin-top:.6rem;white-space:pre-wrap;">{{ r.testo }}</p>
+    </div>
+    <div class="acard-actions">
+      {% if stato != 'online' %}
+      <form method="post" action="/admin/recensioni/{{ r.id }}/approva" style="display:inline;">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+        <button class="btn btn-accent" type="submit">Pubblica</button>
+      </form>
+      {% else %}
+      <form method="post" action="/admin/recensioni/{{ r.id }}/nascondi" style="display:inline;">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+        <button class="btn btn-ghost" type="submit">Ritira</button>
+      </form>
+      {% endif %}
+      {% if stato != 'rifiutata' %}
+      <form method="post" action="/admin/recensioni/{{ r.id }}/rifiuta" style="display:inline;">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+        <button class="btn btn-ghost" type="submit">Rifiuta</button>
+      </form>
+      {% endif %}
+      <form method="post" action="/admin/recensioni/{{ r.id }}/elimina" style="display:inline;"
+            data-conferma="Eliminare per sempre la recensione di {{ r.nome }}?">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+        <button class="btn btn-danger" type="submit">Elimina</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+<h2 style="margin-top:2rem;">In attesa ({{ attesa|length }})</h2>
+{% if attesa %}
+<div class="mgr-grid">{% for r in attesa %}{{ scheda(r, 'attesa') }}{% endfor %}</div>
+{% else %}
+<p style="color:var(--ink-soft);">Nessuna recensione in attesa.</p>
+{% endif %}
+
+<h2 style="margin-top:2.5rem;">Online ({{ online|length }})</h2>
+{% if online %}
+<div class="mgr-grid">{% for r in online %}{{ scheda(r, 'online') }}{% endfor %}</div>
+{% else %}
+<p style="color:var(--ink-soft);">Nessuna recensione pubblicata.</p>
+{% endif %}
+
+<h2 style="margin-top:2.5rem;">Rifiutate ({{ rifiutate|length }})</h2>
+{% if rifiutate %}
+<p style="color:var(--ink-soft);margin-bottom:1rem;">
+  Non sono visibili a nessuno. Restano qui finché non le elimini.</p>
+<div class="mgr-grid">{% for r in rifiutate %}{{ scheda(r, 'rifiutata') }}{% endfor %}</div>
+{% else %}
+<p style="color:var(--ink-soft);">Nessuna recensione rifiutata.</p>
+{% endif %}
+{% endblock %}
+
+{#
+  Niente script qui: admin-conferme.js lo carica gia' la pagina madre.
+  Caricandolo due volte la conferma si agganciava due volte allo stesso
+  modulo, e prima di eliminare una recensione la domanda compariva due
+  volte di fila.
+#}

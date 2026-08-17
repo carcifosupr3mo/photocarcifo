@@ -1,0 +1,85 @@
+{% extends "admin/base.html" %}
+{% set active = 'ricerche' %}
+{% block title %}Ricerche — {{ site_name() }}{% endblock %}
+
+{% block content %}
+<h1>Che cosa cerca la gente</h1>
+<p style="color:var(--ink-soft);margin:.4rem 0 1.6rem;max-width:60ch;">
+  Ogni ricerca fatta sul sito finisce qui, contata una volta sola per testo.
+  Quelle senza risultati sono le più utili: sono gare che qualcuno si aspetta
+  di trovare e non ci sono, oppure numeri di tabella che la lettura
+  automatica ha sbagliato. Non viene registrato nulla di chi ha cercato.</p>
+
+<div class="stat-grid" style="margin-bottom:1.6rem;">
+  <div class="stat-card"><div class="num">{{ conteggi.tutte or 0 }}</div><div class="lbl">Ricerche diverse</div></div>
+  <div class="stat-card"><div class="num">{{ conteggi.vuote or 0 }}</div><div class="lbl">Senza risultati</div></div>
+  <div class="stat-card"><div class="num">{{ conteggi.totale or 0 }}</div><div class="lbl">Volte in tutto</div></div>
+</div>
+
+<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.2rem;">
+  {% for chiave, etichetta in [('vuote', 'Senza risultati'), ('trovate', 'Con risultati'), ('tutte', 'Tutte')] %}
+  <a class="btn {% if mostra == chiave %}btn-accent{% else %}btn-ghost{% endif %}"
+     href="/admin/ricerche?mostra={{ chiave }}">{{ etichetta }}</a>
+  {% endfor %}
+</div>
+
+{% if righe %}
+{#
+  Gli attributi data-eti sono il nome della colonna. Su telefono le
+  intestazioni della tabella spariscono e ogni riga diventa una scheda: il
+  nome della colonna ricompare accanto al valore, preso da qui. Senza,
+  cinque colonne su uno schermo da 390 punti uscivano dal bordo, e siccome
+  la pagina nasconde quello che sborda di lato l'ultima colonna — quella
+  con il tasto — non era nemmeno raggiungibile.
+#}
+<table class="table tabella-schede">
+  <thead>
+    <tr>
+      <th>Cercato</th>
+      <th style="width:6rem;">Volte</th>
+      <th style="width:8rem;">Risultati</th>
+      <th style="width:9rem;">Ultima volta</th>
+      <th style="width:6rem;"></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in righe %}
+    <tr>
+      <td data-eti="Cercato">
+        <a href="/search?q={{ r.testo|urlencode }}" target="_blank" rel="noopener">{{ r.testo }}</a>
+        {% if r.numero %}
+        <span class="badge-hidden" title="Letto come numero di tabella">n. {{ r.numero }}</span>
+        {% endif %}
+      </td>
+      <td data-eti="Volte">{{ r.volte }}</td>
+      <td data-eti="Risultati">
+        {% if r.risultati == 0 %}
+        <strong style="color:var(--accent-2);">nessuno</strong>
+        {% else %}{{ r.risultati }}{% endif %}
+      </td>
+      <td data-eti="Ultima volta" style="color:var(--ink-soft);">{{ r.ultimo_at|fmt_date }}</td>
+      <td data-eti="">
+        <form method="post" action="/admin/ricerche/dimentica">
+          <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+          <input type="hidden" name="testo" value="{{ r.testo }}">
+          <input type="hidden" name="mostra" value="{{ mostra }}">
+          <button class="btn btn-ghost" type="submit">Togli</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<form method="post" action="/admin/ricerche/svuota" style="margin-top:2rem;"
+      data-conferma="Cancellare tutto il registro delle ricerche?">
+  <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+  <button class="btn btn-danger" type="submit">Svuota il registro</button>
+</form>
+{% else %}
+<div class="empty"><p>
+  {% if mostra == 'vuote' %}Nessuna ricerca a vuoto: tutti hanno trovato quello che cercavano.
+  {% else %}Nessuna ricerca registrata.{% endif %}
+</p></div>
+{% endif %}
+{% endblock %}

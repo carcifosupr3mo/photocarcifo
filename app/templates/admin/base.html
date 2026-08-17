@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}Dashboard — {{ site_name() }}{% endblock %}</title>
+    <link rel="icon" href="/static/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/icon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-180.png">
+  <link rel="manifest" href="/static/site.webmanifest">
+  <meta name="theme-color" content="#0a0c14">
+  <link rel="stylesheet" href="{{ foglio_di_stile() }}">
+</head>
+<body class="is-admin">
+<div class="admin-shell">
+  {#
+    Barra fissa in cima, visibile solo su telefono: il nome del sito e il
+    pulsante che apre le voci. Su schermo largo sparisce, perche' li' la
+    colonna delle voci sta gia' sempre in vista a sinistra.
+  #}
+  <div class="admin-barra">
+    <div class="brand"><span class="dot"></span>{{ site_name() }}</div>
+    <button class="menu-tasto" type="button" id="adminTasto"
+            aria-expanded="false" aria-controls="adminMenu" aria-label="Menu">
+      <span class="menu-righe" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+  </div>
+  <div class="admin-velo" id="adminVelo" hidden></div>
+  <aside class="admin-sidebar" id="adminMenu">
+    <div class="brand"><span class="dot"></span>{{ site_name() }}</div>
+    {#
+      Gruppi che si aprono e si chiudono. Sono <details>: li apre e li
+      chiude il browser da solo, senza JavaScript, quindi funzionano anche
+      mentre la pagina si sta ancora caricando e non possono restare
+      bloccati chiusi per colpa di uno script che non parte.
+
+      Il gruppo che contiene la pagina aperta parte gia' aperto: cosi' non
+      devi mai aprire un gruppo per capire dove ti trovi, che e' il difetto
+      principale dei menu a scomparsa. Le tue aperture e chiusure vengono
+      ricordate dal browser (admin-menu.js), quindi il menu ti ritrova come
+      lo avevi lasciato di pagina in pagina.
+    #}
+    <nav aria-label="Menu amministrazione">
+      <a href="/admin" class="{% if active=='dashboard' %}active{% endif %}">Panoramica</a>
+
+      {% set gruppi = [
+        ('archivio', 'Archivio', [
+          ('tree', '/admin/tree', 'Album'),
+          ('upload', '/admin/upload', 'Carica foto'),
+          ('trash', '/admin/trash', 'Cestino')]),
+        ('pubblico', 'Chi guarda il sito', [
+          ('recensioni', '/admin/recensioni', 'Recensioni'),
+          ('ricerche', '/admin/ricerche', 'Ricerche'),
+          ('preferite', '/admin/preferite', 'Preferite'),
+          ('raduni', '/admin/raduni', 'Raduni')]),
+        ('server', 'Server', [
+          ('twofa', '/admin/2fa', 'Sicurezza'),
+          ('logs', '/admin/logs', 'Log')])
+      ] %}
+      {% for chiave, titolo, voci in gruppi %}
+      {% set qui = voci|map(attribute=0)|select('equalto', active)|list|length > 0 %}
+      <details class="menu-gruppo" data-gruppo="{{ chiave }}"{% if qui %} open{% endif %}>
+        <summary>
+          <span>{{ titolo }}</span>
+          <svg class="freccia" viewBox="0 0 12 8" aria-hidden="true"><path d="M1.5 2 6 6.2 10.5 2"/></svg>
+        </summary>
+        {# Le voci in un contenitore proprio: e' su questo che corre il filo
+           verticale che le tiene insieme. #}
+        <div class="menu-voci">
+          {% for voce, indirizzo, nome in voci %}
+          <a href="{{ indirizzo }}" class="{% if active==voce %}active{% endif %}">{{ nome }}</a>
+          {% endfor %}
+        </div>
+      </details>
+      {% endfor %}
+
+      <a href="/" target="_blank" rel="noopener" class="ext">Vedi sito</a>
+    </nav>
+    <div class="spacer"></div>
+    <div class="logout">
+      <form method="post" action="/admin/logout">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+        <button type="submit">Esci — {{ user.username }}</button>
+      </form>
+    </div>
+  </aside>
+  <main class="admin-main"><div class="admin-inner">{% block content %}{% endblock %}</div></main>
+</div>
+<script src="{{ asset('/static/js/avvisi.js') }}"></script>
+<script src="{{ asset('/static/js/admin-conferme.js') }}" defer></script>
+<script src="{{ asset('/static/js/admin-menu.js') }}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
