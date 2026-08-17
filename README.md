@@ -92,6 +92,22 @@ dal disco a ogni richiesta, il codice solo al riavvio. Modificare un
 modello prima del codice che gli serve manda in errore *tutte* le pagine
 per il tempo che passa fra le due cose.
 
+## Come gira
+
+Il sito e' servito da **quattro processi** in parallelo (`--workers 4` nel
+servizio di sistema). Con un processo solo, una richiesta che si mette a
+lavorare — generare un'anteprima a schermo intero costa circa 680
+millisecondi — occupava l'unica corsia e chi arrivava aspettava il suo
+turno. Misurato: otto anteprime nuove richieste insieme passano da 5,09 a
+2,12 secondi.
+
+La conseguenza, che vale la pena ricordare prima di aggiungere codice:
+**niente stato nella memoria del processo**. Le richieste di una stessa
+persona finiscono su processi diversi. Cio' che deve essere visto da tutti
+va nel database (i tentativi di accesso falliti, tabella `tentativi`) o su
+file (l'avanzamento della lettura numeri, `data/numeri.stato`). C'e' un
+test che se ne accorge se qualcuno riapre quella porta.
+
 ## Controlli automatici
 
 ```bash

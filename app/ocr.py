@@ -458,9 +458,63 @@ _lucchetto = threading.Lock()
 _stato: dict = {"attivo": False, "analizzate": 0, "totale": 0,
                 "con_numero": 0, "errori": 0, "processi": 0, "finito_alle": None}
 
+# L'avanzamento si scrive anche su file, accanto al lucchetto.
+#
+# Il sito gira su piu' processi: la richiesta che fa partire la lettura e
+# quella che poi chiede "a che punto siamo" possono finire su due processi
+# diversi. Tenendo l'avanzamento solo in memoria, il pannello mostrerebbe
+# "nessun lavoro in corso" mentre il lavoro sta girando accanto, e chi
+# guarda lo farebbe ripartire credendo che non fosse mai partito.
+_FILE_STATO = "numeri.stato"
+
+
+def _percorso_stato():
+    return get_settings().data_path / _FILE_STATO
+
+
+def _scrivi_stato() -> None:
+    import json
+    try:
+        percorso = _percorso_stato()
+        provvisorio = percorso.with_suffix(".tmp")
+        provvisorio.write_text(json.dumps(_stato), encoding="utf-8")
+        provvisorio.replace(percorso)
+    except OSError:
+        pass
+
 
 def stato_lavoro() -> dict:
-    return dict(_stato)
+    """Avanzamento della lettura, da qualunque processo lo si chieda."""
+    import json
+    if _stato["attivo"]:
+        return dict(_stato)          # lo stiamo facendo noi: e' il piu' fresco
+    try:
+        salvato = json.loads(_percorso_stato().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return dict(_stato)
+    if not isinstance(salvato, dict):
+        return dict(_stato)
+    # Se il file dice "in corso" ma nessuno tiene il lucchetto, il lavoro e'
+    # finito male (processo interrotto): non si lascia il pannello a
+    # mostrare un avanzamento fermo per sempre.
+    if salvato.get("attivo") and not lettura_in_corso():
+        salvato["attivo"] = False
+    return salvato
+
+
+def lettura_in_corso() -> bool:
+    """Vero se qualcuno, in qualsiasi processo, sta leggendo i numeri."""
+    percorso = get_settings().data_path / "numeri.lock"
+    try:
+        with open(percorso, "w") as f:
+            try:
+                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                return True          # lo tiene qualcun altro
+            fcntl.flock(f, fcntl.LOCK_UN)
+            return False
+    except OSError:
+        return False
 
 
 def avvia_in_sottofondo() -> bool:
@@ -470,6 +524,7 @@ def avvia_in_sottofondo() -> bool:
     _stato.update(attivo=True, analizzate=0, con_numero=0, errori=0,
                   totale=in_coda(), processi=processi_consigliati(),
                   finito_alle=None)
+    _scrivi_stato()
     threading.Thread(target=_gira_in_sottofondo, name="ocr", daemon=True).start()
     return True
 
@@ -478,6 +533,7 @@ def _gira_in_sottofondo() -> None:
     def avanzamento(dati: dict) -> None:
         _stato.update(analizzate=dati["analizzate"], con_numero=dati["con_numero"],
                       errori=dati["errori"])
+        _scrivi_stato()
 
     try:
         elabora(limite=None, avanzamento=avanzamento)
@@ -486,4 +542,5 @@ def _gira_in_sottofondo() -> None:
     finally:
         _stato["attivo"] = False
         _stato["finito_alle"] = datetime.now(timezone.utc).isoformat()
+        _scrivi_stato()
         _lucchetto.release()

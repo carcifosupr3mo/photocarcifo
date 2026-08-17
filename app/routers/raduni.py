@@ -17,7 +17,7 @@ from ..config import get_settings
 from ..database import get_db, get_setting, set_setting, log_event
 from ..deps import (client_ip, get_current_user, require_admin_user,
                     require_admin_api)
-from ..security import hash_password, verify_password, verify_csrf
+from ..security import hash_password, verify_password, verify_csrf, RateLimiter
 from ..templating import templates
 
 router = APIRouter()
@@ -53,7 +53,12 @@ def mappa_valida(url: str) -> bool:
         host = host[4:]
     return any(host == d or host.endswith("." + d) for d in DOMINI_MAPPE)
 
-_tentativi: dict = {}
+# Il conteggio dei tentativi sta nel database, non nella memoria del
+# processo: con piu' processi in parallelo ognuno terrebbe il proprio, e
+# chi prova a indovinare la risposta avrebbe cinque tentativi per processo
+# invece di cinque in tutto. Vedi security.RateLimiter.
+_conteggio = RateLimiter("raduni", max_attempts=MAX_TENTATIVI,
+                         window_seconds=6 * 3600)
 
 
 def _indirizzo(request: Request) -> str:
@@ -69,28 +74,78 @@ def _indirizzo(request: Request) -> str:
     return client_ip(request)
 
 
-def _bloccato(ip: str) -> int:
-    dato = _tentativi.get(ip)
-    if not dato:
+def _attesa_per(quanti: int) -> int:
+    """Quanto deve aspettare chi ha sbagliato tante volte.
+
+    I primi errori non costano niente: capita di ricordare male. Dal quinto
+    in poi l'attesa raddoppia ogni volta — un minuto, due, quattro — fino a
+    un'ora. Chi prova a indovinare si ferma da solo dopo pochi giri, chi ha
+    solo sbagliato aspetta un minuto e riprova.
+    """
+    if quanti < MAX_TENTATIVI:
         return 0
-    _, scadenza = dato
-    return max(0, int(scadenza - time.time()))
+    return int(min(BASE_ATTESA * (2 ** (quanti - MAX_TENTATIVI)), 3600))
+
+
+def _bloccato(ip: str) -> int:
+    """Secondi che mancano prima di poter riprovare, 0 se si puo' subito."""
+    from ..database import get_db
+    try:
+        with get_db() as conn:
+            riga = conn.execute(
+                "SELECT COUNT(*) AS quanti, MAX(quando) AS ultimo "
+                "FROM tentativi WHERE ambito='raduni' AND chiave=? "
+                "AND quando > ?",
+                (ip, time.time() - 6 * 3600)).fetchone()
+    except Exception:
+        return 0
+    quanti = riga["quanti"] or 0
+    if quanti < MAX_TENTATIVI:
+        return 0
+    passati = time.time() - (riga["ultimo"] or 0)
+    return max(0, int(_attesa_per(quanti) - passati))
 
 
 def _segna_errore(ip: str) -> int:
-    quanti, _ = _tentativi.get(ip, (0, 0.0))
-    quanti += 1
-    if quanti >= MAX_TENTATIVI:
-        gruppi = quanti - MAX_TENTATIVI
-        attesa = min(BASE_ATTESA * (2 ** gruppi), 3600)
-        _tentativi[ip] = (quanti, time.time() + attesa)
-        return int(attesa)
-    _tentativi[ip] = (quanti, 0.0)
-    return 0
+    """Registra l'errore e restituisce quanto si deve aspettare adesso."""
+    _conteggio.hit(ip)
+    return _bloccato(ip)
 
 
 def _azzera(ip: str) -> None:
-    _tentativi.pop(ip, None)
+    _conteggio.reset(ip)
+
+
+def _quanti_bloccati() -> int:
+    """Quanti indirizzi stanno aspettando adesso. Si mostra nel pannello."""
+    from ..database import get_db
+    try:
+        with get_db() as conn:
+            righe = conn.execute(
+                "SELECT chiave FROM tentativi WHERE ambito='raduni' "
+                "AND quando > ? GROUP BY chiave HAVING COUNT(*) >= ?",
+                (time.time() - 6 * 3600, MAX_TENTATIVI)).fetchall()
+    except Exception:
+        return 0
+    return sum(1 for r in righe if _bloccato(r["chiave"]))
+
+
+def _svuota_tentativi() -> int:
+    """Toglie il blocco a tutti. Restituisce quanti erano.
+
+    Serve al pannello: quando si cambia la risposta, chi era rimasto fuori
+    con quella vecchia non deve continuare ad aspettare per una domanda
+    che non esiste piu'."""
+    from ..database import get_db
+    try:
+        with get_db() as conn:
+            quanti = conn.execute(
+                "SELECT COUNT(DISTINCT chiave) c FROM tentativi "
+                "WHERE ambito='raduni'").fetchone()["c"]
+            conn.execute("DELETE FROM tentativi WHERE ambito='raduni'")
+            return quanti
+    except Exception:
+        return 0
 
 
 def _serializer():
@@ -235,7 +290,7 @@ def admin_pagina(request: Request, user: dict = Depends(require_admin_user)):
     return templates.TemplateResponse(request, "admin/raduni.html", {"user": user, "raduni": [dict(r) for r in righe],
         "domanda": _domanda(), "avviso": _avviso(),
         "risposta_impostata": bool(get_setting("raduni_risposta_hash", "")),
-        "bloccati": len([1 for ip in _tentativi if _bloccato(ip)]),
+        "bloccati": _quanti_bloccati(),
         "stat": _statistiche()})
 
 
@@ -290,7 +345,7 @@ def impostazioni(csrf_token: str = Form(...), domanda: str = Form(""),
     if risposta.strip():
         set_setting("raduni_risposta_hash",
                     hash_password(risposta.strip().lower()))
-        _tentativi.clear()
+        _svuota_tentativi()
         cambiata = True
         log_event("INFO", "raduni", "Risposta di accesso aggiornata")
     return JSONResponse({"ok": True, "risposta_cambiata": cambiata})
@@ -301,8 +356,7 @@ def sblocca(csrf_token: str = Form(...),
             user: dict = Depends(require_admin_api)):
     if not verify_csrf(user.get("csrf", ""), csrf_token):
         raise HTTPException(status_code=403, detail="Sessione non valida")
-    quanti = len(_tentativi)
-    _tentativi.clear()
+    quanti = _svuota_tentativi()
     return JSONResponse({"ok": True, "sbloccati": quanti})
 
 

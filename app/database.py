@@ -152,6 +152,24 @@ CREATE TABLE IF NOT EXISTS stats (
 --
 -- Non si registra ne' l'indirizzo di chi cerca ne' altro che lo identifichi:
 -- resta solo la parola cercata.
+-- Tentativi falliti di indovinare una password: quella del pannello e
+-- quella dei raduni.
+--
+-- Stavano nella memoria del processo web. Finche' il processo era uno solo
+-- funzionava; con piu' processi in parallelo ognuno avrebbe tenuto il
+-- proprio conto, e chi prova a indovinare avrebbe avuto il limite
+-- moltiplicato per il numero di processi solo perche' le sue richieste si
+-- distribuiscono fra loro. Qui il conto e' uno e lo vedono tutti.
+--
+-- In piu' non si azzerano piu' a ogni riavvio del sito: prima bastava che
+-- il servizio ripartisse, cosa che succede ogni notte.
+CREATE TABLE IF NOT EXISTS tentativi (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    ambito  TEXT NOT NULL,          -- 'login' | 'raduni'
+    chiave  TEXT NOT NULL,          -- indirizzo di chi ha provato
+    quando  REAL NOT NULL           -- momento del tentativo
+);
+
 CREATE TABLE IF NOT EXISTS ricerche (
     testo      TEXT    PRIMARY KEY,          -- normalizzato: minuscolo, spazi singoli
     numero     TEXT,                         -- numero di gara riconosciuto, se c'era
@@ -200,6 +218,7 @@ CREATE INDEX IF NOT EXISTS idx_raduni_data   ON raduni(data);
 CREATE INDEX IF NOT EXISTS idx_nodes_data    ON nodes(data_foto);
 CREATE INDEX IF NOT EXISTS idx_rec_pub      ON recensioni(approvata, creato_at);
 CREATE INDEX IF NOT EXISTS idx_ricerche_vuote ON ricerche(risultati, volte);
+CREATE INDEX IF NOT EXISTS idx_tentativi     ON tentativi(ambito, chiave, quando);
 """
 
 

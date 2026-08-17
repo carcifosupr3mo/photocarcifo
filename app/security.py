@@ -79,38 +79,88 @@ def generate_access_token() -> str:
     return secrets.token_urlsafe(16)
 
 
-# ---------------- Rate limiting (in-memory) ----------------
+# ---------------- Conteggio dei tentativi ----------------
 class RateLimiter:
-    """Rate limiter a finestra scorrevole, per chiave (es. IP).
+    """Conta i tentativi falliti per chiave (di norma l'indirizzo di rete).
 
-    Semplice e senza dipendenze. Adatto a un'istanza singola. I dati
-    stanno in RAM e si azzerano al riavvio: accettabile per la protezione
-    brute-force del login.
+    I tentativi si scrivono nel database e non nella memoria del processo.
+    E' l'unica forma che regge quando il sito gira su piu' processi in
+    parallelo: con il conteggio in memoria, ognuno terrebbe il proprio, e
+    chi prova a indovinare la password avrebbe a disposizione il limite
+    moltiplicato per il numero di processi — con quattro processi, quaranta
+    tentativi invece di dieci, semplicemente perche' le richieste si
+    distribuiscono. Il database e' l'unico posto che tutti vedono.
+
+    Ha anche un effetto collaterale utile: i tentativi non si azzerano piu'
+    al riavvio del sito. Prima bastava che il servizio ripartisse — cosa
+    che succede ogni notte — per ripulire la lavagna a chi stava provando.
+
+    La finestra e' scorrevole: contano solo i tentativi degli ultimi
+    `window_seconds` secondi, non quelli di ore prima.
     """
-    def __init__(self, max_attempts: int, window_seconds: int = 300):
+
+    def __init__(self, ambito: str, max_attempts: int, window_seconds: int = 300):
+        self.ambito = ambito
         self.max_attempts = max_attempts
         self.window = window_seconds
-        self._hits: dict[str, list[float]] = {}
+
+    def _conta(self, conn, key: str) -> int:
+        return conn.execute(
+            "SELECT COUNT(*) c FROM tentativi WHERE ambito=? AND chiave=? "
+            "AND quando > ?",
+            (self.ambito, key, time.time() - self.window)).fetchone()["c"]
 
     def check(self, key: str) -> bool:
-        """True se la richiesta e consentita, False se supera il limite."""
-        now = time.time()
-        hits = [t for t in self._hits.get(key, []) if now - t < self.window]
-        self._hits[key] = hits
-        if len(hits) >= self.max_attempts:
-            return False
-        return True
+        """Vero se il tentativo e' consentito, falso se ha gia' esagerato."""
+        from .database import get_db
+        try:
+            with get_db() as conn:
+                return self._conta(conn, key) < self.max_attempts
+        except Exception:
+            # Se il database non risponde non si chiude fuori nessuno: il
+            # sito e' gia' in avaria per conto suo, e trasformare un guasto
+            # di lettura in "non puoi entrare" non aiuta.
+            return True
 
     def hit(self, key: str) -> None:
-        """Registra un tentativo per la chiave."""
-        self._hits.setdefault(key, []).append(time.time())
+        """Registra un tentativo fallito."""
+        from .database import get_db
+        try:
+            with get_db() as conn:
+                conn.execute(
+                    "INSERT INTO tentativi (ambito, chiave, quando) VALUES (?,?,?)",
+                    (self.ambito, key, time.time()))
+                # Pulizia opportunistica: le righe vecchie non servono a
+                # nessuno e sarebbe uno spreco avere un lavoro apposta.
+                conn.execute(
+                    "DELETE FROM tentativi WHERE quando < ?",
+                    (time.time() - max(self.window, 3600) * 24,))
+        except Exception:
+            pass
+
+    def resta(self, key: str) -> int:
+        """Quanti tentativi mancano al blocco. Serve solo a spiegarlo a chi
+        sta sbagliando, e a scriverlo nei registri."""
+        from .database import get_db
+        try:
+            with get_db() as conn:
+                return max(0, self.max_attempts - self._conta(conn, key))
+        except Exception:
+            return self.max_attempts
 
     def reset(self, key: str) -> None:
-        """Azzera i tentativi (es. dopo login riuscito)."""
-        self._hits.pop(key, None)
+        """Azzera i tentativi, per esempio dopo un accesso riuscito."""
+        from .database import get_db
+        try:
+            with get_db() as conn:
+                conn.execute("DELETE FROM tentativi WHERE ambito=? AND chiave=?",
+                             (self.ambito, key))
+        except Exception:
+            pass
 
 
-login_limiter = RateLimiter(max_attempts=get_settings().rate_limit_login, window_seconds=300)
+login_limiter = RateLimiter("login", max_attempts=get_settings().rate_limit_login,
+                            window_seconds=300)
 
 
 # ---------------- Security headers ----------------
