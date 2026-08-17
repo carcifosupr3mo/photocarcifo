@@ -299,3 +299,23 @@ di caricamento percepito (LCP). Due accorgimenti la riguardano:
 
 Le altre schede restano differite: si caricano mentre il visitatore guarda
 la prima.
+
+## Storia delle modifiche
+
+Il progetto e' sotto controllo di versione dal 17/08/2026, sul ramo
+`principale`. I comandi si danno come utente del sito, che e' quello che
+possiede i file:
+
+```bash
+sudo -u photocarcifo git status
+sudo -u photocarcifo git log --oneline
+sudo -u photocarcifo git diff
+```
+
+Restano fuori dal repository, di proposito: `.env` (segreti), `data/`
+(database e miniature: stanno nelle copie notturne, non qui), `venv/`, e
+tutto cio' che si rigenera da solo — `style.min.css` e `docs/CODICE.md`.
+
+Le copie notturne e il controllo di versione fanno due mestieri diversi e
+servono tutti e due: le copie riportano indietro **i dati**, la storia
+spiega cosa e' cambiato **nel codice** e perche'.
