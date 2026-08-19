@@ -40,7 +40,17 @@
   <meta property="og:image:width" content="512">
   <meta property="og:image:height" content="512">{% endblock %}
   <meta name="twitter:card" content="summary_large_image">
-    <link rel="icon" href="/static/favicon.ico" sizes="any">
+    {#
+    Google, per mostrare l'icona accanto al risultato di ricerca, vuole
+    un'immagine quadrata di almeno 48 punti — meglio un multiplo di 48. Qui
+    erano dichiarate solo la 16 e la 32, cioe' due formati che Google
+    scarta, e nei risultati compariva il mappamondo grigio di chi un'icona
+    non ce l'ha. La 192 c'era gia' sul disco: mancava solo dirlo.
+    Il file .ico resta per i browser vecchi; dentro ha 16, 32 e 48.
+  #}
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="/static/icons/icon-48.png">
+  <link rel="icon" href="/static/favicon.ico" sizes="any">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/icon-16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-180.png">
