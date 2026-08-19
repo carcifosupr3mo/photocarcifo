@@ -1570,3 +1570,30 @@ body.menu-fermo{overflow:hidden;}
 .btn-danger:hover{background:var(--ink);border-color:var(--ink);}
 .foot-social a.foot-wa:hover{background:var(--accent-3-testo);
   border-color:var(--accent-3-testo);}
+
+/* La casella "resta collegato" del modulo di accesso. Il quadratino di suo
+   e' minuscolo e su un telefono si sbaglia mira: qui tutta la riga e'
+   cliccabile, e la spiegazione sta sotto in piccolo invece che di fianco,
+   dove su schermo stretto andrebbe a capo male. */
+.ricordami {
+  display: flex;
+  align-items: flex-start;
+  gap: .7rem;
+  margin: .25rem 0 1.25rem;
+  cursor: pointer;
+  user-select: none;
+  line-height: 1.35;
+}
+.ricordami input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: .1rem;
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+.ricordami small {
+  display: block;
+  color: var(--ink-soft);
+  font-size: .8rem;
+  margin-top: .15rem;
+}

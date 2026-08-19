@@ -29,6 +29,18 @@
         <label for="password">Password</label>
         <input type="password" id="password" name="password" required autocomplete="current-password">
       </div>
+      {#
+        Dal telefono rifare l'accesso ogni giorno — password piu' codice a
+        sei cifre da ripescare nell'app — e' il motivo per cui si finiva per
+        non aprirlo piu'. Spuntando questa casella la sessione dura novanta
+        giorni e il codice non viene piu' chiesto su QUESTO dispositivo.
+        Resta spenta di suo: su un computer prestato non si spunta.
+      #}
+      <label class="ricordami">
+        <input type="checkbox" name="ricorda" value="1">
+        <span>Resta collegato su questo dispositivo
+          <small>Novanta giorni. Da usare solo sui tuoi.</small></span>
+      </label>
       <button class="btn btn-accent" type="submit">Accedi</button>
     </form>
   </div>

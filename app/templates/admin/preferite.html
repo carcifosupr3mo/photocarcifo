@@ -36,7 +36,7 @@
         <button class="btn" type="button" data-pref="{{ a.id }}"
                 data-titolo="{{ a.title }}">Vedi le scelte</button>
         {% if a.is_private and a.access_token %}
-        <a class="btn btn-ghost" href="/p/{{ a.access_token }}" target="_blank">Apri galleria</a>
+        {% if a.access_token %}<a class="btn btn-ghost" href="/p/{{ a.access_token }}" target="_blank">Apri galleria</a>{% endif %}
         {% else %}
         <a class="btn btn-ghost" href="/n/{{ a.slug }}" target="_blank">Apri galleria</a>
         {% endif %}

@@ -40,7 +40,7 @@
   {% endif %}
   <div class="cat-grid">
       {% for c in categories %}
-      <a class="cat-card" href="{% if c.is_private %}/p/{{ c.access_token }}{% else %}/n/{{ c.slug }}{% endif %}">
+      <a class="cat-card" href="{% if c.is_private %}{{ ("/p/" ~ c.access_token) if c.access_token else "#" }}{% else %}/n/{{ c.slug }}{% endif %}">
         {% if c.cover %}{% if loop.first %}{#
           Prima scheda: e' l'immagine piu' grande della pagina, quella su cui
           si misura il tempo di caricamento percepito. Si carica subito con

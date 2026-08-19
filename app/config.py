@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     # Sicurezza
     secret_key: str
     session_max_age: int = 86400          # durata sessione in secondi
+    # Quanto dura la sessione di chi ha spuntato "resta collegato su
+    # questo dispositivo". Novanta giorni: abbastanza da non rifare mai
+    # il login dal telefono, poco abbastanza da non essere per sempre.
+    session_max_age_lungo: int = 7776000  # 90 giorni
     rate_limit_login: int = 5             # tentativi login per finestra
 
     # Percorsi

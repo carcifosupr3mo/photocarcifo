@@ -100,7 +100,7 @@
   {% if children %}
   <div class="album-grid">
     {% for c in children %}
-    <a class="album-card" href="{% if c.is_private %}/p/{{ c.access_token }}{% else %}/n/{{ c.slug }}{% endif %}">
+    <a class="album-card" href="{% if c.is_private %}{{ ("/p/" ~ c.access_token) if c.access_token else "#" }}{% else %}/n/{{ c.slug }}{% endif %}">
       <div class="thumb">{% if c.cover %}<img decoding="async" data-src="/thumb/{{ c.cover }}" data-srcset="/thumb/{{ c.cover }} 1x, /thumb2x/{{ c.cover }} 2x" alt="{{ node.title }} {{ c.title }} — Photocarcifo">{% endif %}
         {% if not c.cover %}<div class="cat-logo"><img src="/static/icons/icon-192.png" alt="Photocarcifo"></div>{% endif %}{% if c.is_private %}<span class="badge-private">{{ t('com.privato') }}</span>{% endif %}</div>
       <div class="meta"><h2 class='card-titolo'>{{ c.title }}</h2>

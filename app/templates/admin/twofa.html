@@ -24,4 +24,18 @@
     <button class="btn btn-accent" type="submit">Attiva</button>
   </form>
 {% endif %}
+
+<hr style="border:0;border-top:1px solid var(--line);margin:2.5rem 0 2rem;">
+
+<h2 style="font-size:1.2rem;margin:0 0 .75rem;">Dispositivi ricordati</h2>
+<p style="color:var(--ink-soft);max-width:60ch;margin:0 0 1.25rem;">
+  Chi ha spuntato «Resta collegato su questo dispositivo» entrando resta
+  dentro novanta giorni, e su quel dispositivo non gli viene piu' chiesto il
+  codice di verifica. Se hai perso un telefono o hai spuntato la casella su
+  un computer che non e' tuo, questo pulsante li sgancia tutti in una volta —
+  anche quello che stai usando adesso.</p>
+<form class="form" method="post" action="/admin/2fa/dimentica-dispositivi">
+  <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+  <button class="btn btn-ghost" type="submit">Esci da tutti i dispositivi</button>
+</form>
 {% endblock %}

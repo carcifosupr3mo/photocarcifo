@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ..database import get_db, log_event
 from ..deps import require_admin_user, require_admin_api
-from ..security import verify_csrf, verify_password
+from ..security import verify_csrf, verify_password, dimentica_dispositivi
 from ..templating import templates
 
 router = APIRouter(prefix="/admin/2fa")
@@ -74,3 +74,22 @@ def disable(request: Request, csrf_token: str = Form(...), password: str = Form(
         conn.execute("UPDATE users SET totp_enabled=0, totp_secret=NULL WHERE id=?", (user["id"],))
     log_event("INFO", "auth", f"2FA disattivato per {user['username']}")
     return RedirectResponse(url="/admin/2fa", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/dimentica-dispositivi")
+def dimentica(request: Request, csrf_token: str = Form(...),
+              user: dict = Depends(require_admin_api)):
+    """Sgancia tutti i dispositivi che restavano collegati.
+
+    Serve in un caso solo, ma e' il caso che conta: un telefono perso o
+    prestato. Senza questo l'unico modo di annullare una sessione lunga
+    sarebbe cambiare la chiave di firma del sito, che pero' butta fuori
+    anche i visitatori dagli album riservati. Qui esce solo chi ha fatto
+    l'accesso, e ne esce ovunque — compreso il dispositivo da cui si sta
+    premendo il pulsante, che e' l'unico comportamento onesto.
+    """
+    _check_csrf(user, csrf_token)
+    dimentica_dispositivi(user["id"])
+    log_event("INFO", "auth",
+              f"Dispositivi ricordati sganciati per {user['username']}")
+    return RedirectResponse(url="/admin/login", status_code=status.HTTP_303_SEE_OTHER)

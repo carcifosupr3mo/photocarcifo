@@ -49,20 +49,78 @@ def _serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(get_settings().secret_key, salt="session")
 
 
-def create_session(user_id: int) -> str:
-    """Crea un cookie di sessione firmato contenente user_id e csrf token."""
-    payload = {"uid": user_id, "csrf": secrets.token_urlsafe(24)}
+def create_session(user_id: int, lungo: bool = False) -> str:
+    """Crea un cookie di sessione firmato contenente user_id e csrf token.
+
+    `lungo` e' la spunta "resta collegato su questo dispositivo". Non
+    cambia cosa contiene il cookie: cambia per quanto tempo la firma viene
+    considerata ancora buona, ed e' scritto dentro il cookie stesso perche'
+    a deciderlo dev'essere chi ha fatto l'accesso, non chi lo rilegge.
+    """
+    payload = {"uid": user_id, "csrf": secrets.token_urlsafe(24),
+               "emesso": time.time()}
+    if lungo:
+        payload["lungo"] = True
     return _serializer().dumps(payload)
 
 
+def _fidati_dal(user_id) -> float:
+    """Il momento da cui i dispositivi ricordati valgono. Spostandolo in
+    avanti si sganciano tutti in una volta: e' il modo di riprendersi un
+    telefono perso senza dover cambiare la chiave di firma del sito."""
+    from .database import get_db
+    try:
+        with get_db() as conn:
+            r = conn.execute("SELECT fidati_dal FROM users WHERE id=?",
+                             (user_id,)).fetchone()
+            return float(r["fidati_dal"]) if r else 0.0
+    except Exception:
+        # Se il database non risponde non si butta fuori nessuno: sarebbe
+        # trasformare un guasto di lettura in "rifai il login".
+        return 0.0
+
+
 def read_session(token: Optional[str]) -> Optional[dict]:
-    """Valida e decodifica il cookie di sessione. None se non valido/scaduto."""
+    """Valida e decodifica il cookie di sessione. None se non valido/scaduto.
+
+    Si legge due volte di proposito. La prima serve solo a sapere se chi ha
+    fatto l'accesso aveva chiesto di restare collegato; la seconda e' quella
+    che conta, e applica la durata giusta. Leggendo una volta sola con la
+    durata lunga, un cookie normale sarebbe rimasto valido novanta giorni
+    per il solo fatto di essere stato letto con il metro sbagliato.
+    """
     if not token:
         return None
+    impostazioni = get_settings()
     try:
-        return _serializer().loads(token, max_age=get_settings().session_max_age)
+        provvisorio = _serializer().loads(
+            token, max_age=impostazioni.session_max_age_lungo)
     except (BadSignature, SignatureExpired):
         return None
+
+    durata = (impostazioni.session_max_age_lungo if provvisorio.get("lungo")
+              else impostazioni.session_max_age)
+    try:
+        dati = _serializer().loads(token, max_age=durata)
+    except (BadSignature, SignatureExpired):
+        return None
+
+    # Lo sgancio dei dispositivi: tutto cio' che e' stato emesso prima di
+    # quel momento non vale piu'. Si guarda l'orario scritto dentro il
+    # biglietto e non quello della firma, perche' la firma conta i secondi
+    # interi e una sessione creata nello stesso secondo dello sgancio
+    # sarebbe nata gia' morta.
+    if float(dati.get("emesso", 0)) < _fidati_dal(dati.get("uid")):
+        return None
+    return dati
+
+
+def dimentica_dispositivi(user_id: int) -> None:
+    """Sgancia tutti i dispositivi ricordati, questo compreso."""
+    from .database import get_db
+    with get_db() as conn:
+        conn.execute("UPDATE users SET fidati_dal=? WHERE id=?",
+                     (time.time(), user_id))
 
 
 # ---------------- CSRF ----------------

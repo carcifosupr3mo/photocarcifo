@@ -123,6 +123,19 @@ def privacy(request: Request, node_id: int, csrf_token: str = Form(...),
                      (private, token if private else None, _now(), node_id))
         conn.execute("UPDATE nodes SET is_private=? WHERE rel_path LIKE ? ESCAPE '\\'",
                      (private, sottoalbero_like(node["rel_path"])))
+        # Le sottocartelle diventano private insieme alla madre, ma finora
+        # restavano senza link proprio: chi apriva una di quelle dal pannello
+        # finiva su "/p/None", perche' il modello scriveva nell'indirizzo il
+        # nulla che trovava. Un album privato senza link e' un album che non
+        # si puo' aprire in nessun modo, nemmeno da chi lo possiede.
+        if private:
+            orfani = conn.execute(
+                "SELECT id FROM nodes WHERE rel_path LIKE ? ESCAPE '\\' "
+                "AND is_private=1 AND (access_token IS NULL OR access_token='')",
+                (sottoalbero_like(node["rel_path"]),)).fetchall()
+            for o in orfani:
+                conn.execute("UPDATE nodes SET access_token=?, updated_at=? WHERE id=?",
+                             (generate_access_token(), _now(), o["id"]))
     return JSONResponse({"ok": True, "is_private": bool(private), "access_token": token if private else None})
 
 

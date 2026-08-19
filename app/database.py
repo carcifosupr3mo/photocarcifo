@@ -198,6 +198,10 @@ MIGRAZIONI: list[tuple[str, str, str]] = [
     ("media_numeri", "pos_y", "REAL"),
     ("media_numeri", "altezza", "REAL"),
     ("nodes", "data_foto", "REAL"),
+    # Da quando i dispositivi ricordati valgono. Spostandola in avanti
+    # si sganciano in un colpo tutti i telefoni e i computer che
+    # restavano collegati: e' il "esci da tutti i dispositivi".
+    ("users", "fidati_dal", "REAL NOT NULL DEFAULT 0"),
 ]
 
 # Gli indici stanno a parte perche' vanno creati DOPO le migrazioni: alcuni
