@@ -30,7 +30,7 @@
              data-preview="/preview/{{ mid }}" data-download="/download/{{ mid }}"
              data-alt="{{ a.titolo }} — Photocarcifo">
           <img decoding="async" data-src="/thumb/{{ mid }}"
-               data-srcset="/thumb/{{ mid }} 1x, /thumb2x/{{ mid }} 2x"
+               data-srcset="/thumb/{{ mid }} 640w, /thumb2x/{{ mid }} 1280w" sizes="(max-width:700px) 50vw, (max-width:1100px) 33vw, (max-width:1600px) 25vw, 275px"
                alt="{{ a.titolo }} — fotografia preferita">
         </div>
         {% endfor %}

@@ -251,9 +251,7 @@
       } else {
         lb.video.style.display = "none";
         lb.img.style.display = "block";
-        var grande = it.getAttribute("data-preview") || "";
-        var medio = grande.replace("/preview/", "/thumb2x/");
-        lb.img.src = (window.innerWidth <= 900 && window.devicePixelRatio <= 2) ? medio : grande;
+        lb.img.src = sorgenteDi(it);
         lb.img.alt = it.getAttribute("data-alt") || "";
       }
       lb.conta.textContent = T("di", {a: current + 1, b: items.length});
@@ -262,11 +260,27 @@
       precarica(current + 1); precarica(current - 1);
     }
 
+    /* Quale immagine si mostra a schermo intero. Su telefono basta il
+       formato da 1280 punti: l'anteprima piena pesa il doppio e va
+       preparata sul momento, mentre il 1280 e' gia' pronto sul disco. */
+    function sorgenteDi(it) {
+      var grande = it.getAttribute("data-preview") || "";
+      if (!grande) return "";
+      var medio = grande.replace("/preview/", "/thumb2x/");
+      return (window.innerWidth <= 900 && window.devicePixelRatio <= 2) ? medio : grande;
+    }
+
+    /* Le vicine si preparano mentre si guarda quella di adesso, cosi'
+       scorrere e' immediato. Deve scaricare ESATTAMENTE quello che poi
+       verra' mostrato: prima chiedeva sempre l'anteprima piena, quindi su
+       telefono tirava giu' due immagini da centotrentotto chilobyte che
+       nessuno avrebbe mai visto — e intanto quella che serviva davvero
+       restava da scaricare al momento del bisogno. */
     function precarica(i) {
       if (i < 0 || i >= items.length) return;
       var it = items[i];
       if (it.getAttribute("data-kind") === "video") return;
-      var u = it.getAttribute("data-preview");
+      var u = sorgenteDi(it);
       if (u) { var im = new Image(); im.src = u; }
     }
 

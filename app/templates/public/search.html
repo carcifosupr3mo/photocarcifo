@@ -37,7 +37,7 @@
            data-alt="{{ t('src.numero').format(n=numero) }} — {{ m.title }}"
            {% if m.width and m.height %}style="--prop: {{ m.width }} / {{ m.height }};"{% endif %}>
         <img decoding="async" data-src="/thumb/{{ m.id }}" loading="lazy"
-             data-srcset="/thumb/{{ m.id }} 1x, /thumb2x/{{ m.id }} 2x"
+             data-srcset="/thumb/{{ m.id }} 640w, /thumb2x/{{ m.id }} 1280w" sizes="(max-width:700px) 50vw, (max-width:1100px) 33vw, (max-width:1600px) 25vw, 275px"
              alt="{{ t('src.numero').format(n=numero) }} — {{ m.title }} — Photocarcifo"
              {% if m.width and m.height %}width="{{ m.width }}" height="{{ m.height }}"{% endif %}>
         <a class="foto-cartella"
@@ -61,7 +61,7 @@
     <div class="album-grid">
       {% for r in results %}
       <a class="album-card" href="{% if r.is_private %}{{ ("/p/" ~ r.access_token) if r.access_token else "#" }}{% else %}/n/{{ r.slug }}{% endif %}">
-        <div class="thumb">{% if r.cover %}<img decoding="async" data-src="/thumb/{{ r.cover }}" data-srcset="/thumb/{{ r.cover }} 1x, /thumb2x/{{ r.cover }} 2x" alt="{{ r.title }}">{% endif %}
+        <div class="thumb">{% if r.cover %}<img decoding="async" data-src="/thumb/{{ r.cover }}" data-srcset="/thumb/{{ r.cover }} 640w, /thumb2x/{{ r.cover }} 1280w" sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 400px" alt="{{ r.title }}">{% endif %}
           {% if r.is_private %}<span class="badge-private">{{ t('com.privato') }}</span>{% endif %}</div>
         <div class="meta">
           {% if r.parent_path %}<div class="res-path">{{ r.parent_path }}</div>{% endif %}
@@ -86,7 +86,7 @@
     <div class="album-grid">
       {% for r in results %}
       <a class="album-card" href="{% if r.is_private %}{{ ("/p/" ~ r.access_token) if r.access_token else "#" }}{% else %}/n/{{ r.slug }}{% endif %}">
-        <div class="thumb">{% if r.cover %}<img decoding="async" data-src="/thumb/{{ r.cover }}" data-srcset="/thumb/{{ r.cover }} 1x, /thumb2x/{{ r.cover }} 2x" alt="{{ r.title }}">{% endif %}
+        <div class="thumb">{% if r.cover %}<img decoding="async" data-src="/thumb/{{ r.cover }}" data-srcset="/thumb/{{ r.cover }} 640w, /thumb2x/{{ r.cover }} 1280w" sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 400px" alt="{{ r.title }}">{% endif %}
           {% if r.is_private %}<span class="badge-private">{{ t('com.privato') }}</span>{% endif %}</div>
         <div class="meta">
           {% if r.parent_path %}<div class="res-path">{{ r.parent_path }}</div>{% endif %}

@@ -91,3 +91,32 @@ def test_sitemap_non_contiene_pagine_riservate(client, dati):
     for chiave in ("slug_privato", "slug_nascosto"):
         if dati[chiave]:
             assert f"/n/{dati[chiave]}<" not in mappa, f"{chiave} finito nella sitemap"
+
+
+def test_le_miniature_dicono_quanto_saranno_grandi(client, dati):
+    """Con i descrittori "1x, 2x" il browser sceglie guardando solo lo
+    schermo: un telefono con tre punti fisici per punto di disegno prende
+    sempre il formato grande, anche per una casella larga meno di duecento
+    punti. Servono le larghezze reali (640w/1280w) piu' sizes."""
+    pagina = client.get(f"/n/{dati['slug']}").text
+    assert "640w" in pagina and "1280w" in pagina, \
+        "le miniature non dichiarano la loro larghezza"
+    assert " 1x," not in pagina, \
+        "sono tornati i descrittori 1x/2x: il telefono riscarichera' il doppio"
+    assert 'sizes="' in pagina, \
+        "senza sizes le larghezze non servono a niente"
+
+
+def test_ogni_srcset_ha_il_suo_sizes():
+    """Un srcset a larghezze senza sizes fa assumere al browser che
+    l'immagine occupi tutta la pagina, e sceglie sempre la piu' grande:
+    peggio che non averlo messo."""
+    import re
+    from pathlib import Path
+    radice = Path(__file__).resolve().parent.parent / "app" / "templates"
+    colpevoli = []
+    for f in radice.rglob("*.html"):
+        for n, riga in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+            if re.search(r'(data-)?srcset="[^"]*\dw', riga) and 'sizes="' not in riga:
+                colpevoli.append(f"{f.name}:{n}")
+    assert not colpevoli, f"srcset a larghezze senza sizes: {colpevoli}"

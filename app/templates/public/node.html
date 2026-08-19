@@ -101,7 +101,7 @@
   <div class="album-grid">
     {% for c in children %}
     <a class="album-card" href="{% if c.is_private %}{{ ("/p/" ~ c.access_token) if c.access_token else "#" }}{% else %}/n/{{ c.slug }}{% endif %}">
-      <div class="thumb">{% if c.cover %}<img decoding="async" data-src="/thumb/{{ c.cover }}" data-srcset="/thumb/{{ c.cover }} 1x, /thumb2x/{{ c.cover }} 2x" alt="{{ node.title }} {{ c.title }} — Photocarcifo">{% endif %}
+      <div class="thumb">{% if c.cover %}<img decoding="async" data-src="/thumb/{{ c.cover }}" data-srcset="/thumb/{{ c.cover }} 640w, /thumb2x/{{ c.cover }} 1280w" sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 400px" alt="{{ node.title }} {{ c.title }} — Photocarcifo">{% endif %}
         {% if not c.cover %}<div class="cat-logo"><img src="/static/icons/icon-192.png" alt="Photocarcifo"></div>{% endif %}{% if c.is_private %}<span class="badge-private">{{ t('com.privato') }}</span>{% endif %}</div>
       <div class="meta"><h2 class='card-titolo'>{{ c.title }}</h2>
         <div class="sub"><span>{{ c.total_media }} {{ t('com.foto') }}</span></div></div>
@@ -159,7 +159,21 @@
            {% if node.downloads_enabled %}data-download="/download/{{ m.id }}"{% endif %}
            data-alt="{{ node.title }} — Photocarcifo"
            {% if m.width and m.height %}style="--prop: {{ m.width }} / {{ m.height }};"{% endif %}>
-        <img decoding="async" {% if loop.first %}src="/thumb/{{ m.id }}" fetchpriority="high"{% else %}data-src="/thumb/{{ m.id }}" loading="lazy"{% endif %} data-srcset="/thumb/{{ m.id }} 1x, /thumb2x/{{ m.id }} 2x" alt="{{ node.title }} — fotografia {{ loop.index }}"
+        {#
+          I due formati sono descritti per larghezza reale (640w e 1280w) e
+          non con "1x, 2x". Con 1x/2x il browser sceglieva guardando solo lo
+          schermo: un telefono moderno, che conta tre punti fisici per punto
+          di disegno, si portava a casa il formato grande — settantadue
+          chilobyte — per riempire una casella larga meno di duecento punti,
+          dove il piccolo bastava e avanzava. Su una galleria intera erano
+          tre volte i dati necessari, pagati da chi naviga in mobilita'.
+          Con le larghezze e sizes il browser sa quanto spazio occupera'
+          l'immagine e prende quella giusta.
+          La prima fotografia porta srcset gia' scritto qui invece che
+          aggiunto dopo dallo script: e' quella che decide quando la pagina
+          sembra pronta, e cosi' non viene scaricata due volte.
+        #}
+        <img decoding="async" {% if loop.first %}src="/thumb/{{ m.id }}" srcset="/thumb/{{ m.id }} 640w, /thumb2x/{{ m.id }} 1280w" fetchpriority="high"{% else %}data-src="/thumb/{{ m.id }}" loading="lazy" data-srcset="/thumb/{{ m.id }} 640w, /thumb2x/{{ m.id }} 1280w"{% endif %} sizes="(max-width:700px) 50vw, (max-width:1100px) 33vw, (max-width:1600px) 25vw, 275px" alt="{{ node.title }} — fotografia {{ loop.index }}"
              {% if m.width and m.height %}width="{{ m.width }}" height="{{ m.height }}"{% endif %}>
       </div>
       {% endfor %}

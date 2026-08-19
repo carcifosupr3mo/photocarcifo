@@ -46,7 +46,7 @@
           si misura il tempo di caricamento percepito. Si carica subito con
           src invece che in modo pigro (aspettare il JavaScript la
           ritarderebbe) e si prende da /cover/, la versione alleggerita.
-        #}<img decoding="async" fetchpriority="high" src="/cover/{{ c.cover }}" alt="{{ c.title }}" class="loaded">{% else %}<img decoding="async" loading="lazy" data-src="/thumb/{{ c.cover }}" data-srcset="/thumb/{{ c.cover }} 1x, /thumb2x/{{ c.cover }} 2x" alt="{{ c.title }}">{% endif %}{% else %}<div class="cat-logo"><img src="/static/icons/icon-192.png" alt="Photocarcifo"></div>{% endif %}
+        #}<img decoding="async" fetchpriority="high" src="/cover/{{ c.cover }}" alt="{{ c.title }}" class="loaded">{% else %}<img decoding="async" loading="lazy" data-src="/thumb/{{ c.cover }}" data-srcset="/thumb/{{ c.cover }} 640w, /thumb2x/{{ c.cover }} 1280w" sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 400px" alt="{{ c.title }}">{% endif %}{% else %}<div class="cat-logo"><img src="/static/icons/icon-192.png" alt="Photocarcifo"></div>{% endif %}
         <div class="cat-scrim"></div>
         {% if c.is_private %}<span class="badge-private">{{ t('com.privato') }}</span>{% endif %}
         <div class="cat-label"><h2 class='card-titolo'>{{ c.title }}</h2><div class="n">{{ c.total_media }} {{ t('com.foto') }}</div></div>
