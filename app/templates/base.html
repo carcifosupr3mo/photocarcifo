@@ -60,6 +60,24 @@
   #}
   {% if stile_da_incorporare() %}<style>{{ stile_incorporato()|safe }}</style>
   {% else %}<link rel="stylesheet" href="{{ foglio_di_stile() }}">{% endif %}
+  {#
+    Chi cataloga i siti in automatico — i filtri di navigazione delle
+    aziende e delle scuole — legge queste righe prima di decidere su quale
+    scaffale mettere il sito. Il 19/08/2026 FortiGuard, quello usato
+    dall'amministrazione cantonale, lo aveva messo in "File Sharing and
+    Storage": la casella di Dropbox e WeTransfer, che quasi ogni rete di
+    lavoro blocca d'ufficio perche' e' la via classica per far uscire dati
+    da un'azienda. Con ogni probabilita' per via dei pulsanti "scarica
+    l'album", che a un programma somigliano a un deposito di file.
+    Non lo e': qui non si registra nessuno e nessuno carica niente di
+    proprio, si guardano le fotografie di Nathan. Queste righe lo dicono a
+    chiare lettere, nella lingua che quei programmi leggono.
+  #}
+  <meta name="author" content="Nathan — Photocarcifo">
+  <meta name="classification" content="Photography">
+  <meta name="category" content="Arts and Culture, Photography">
+  <meta name="keywords" content="fotografia, fotografo, portfolio fotografico, photography portfolio, motorsport, eventi, sport, ritratti, Ticino, Svizzera">
+  <meta name="rating" content="general">
   {% block head_extra %}{% endblock %}
   <script type="application/ld+json">
   {
@@ -70,7 +88,12 @@
     "url": "{{ site_url() }}",
     "image": "{{ site_url() }}/static/icons/icon-512.png",
     "areaServed": "CH",
-    "founder": { "@type": "Person", "name": "Nathan" },
+    "serviceType": "Photography",
+    "isAccessibleForFree": true,
+    "knowsAbout": ["Photography", "Motorsport photography",
+                   "Event photography", "Portrait photography"],
+    "founder": { "@type": "Person", "name": "Nathan",
+                 "jobTitle": "Photographer" },
     "sameAs": [
       "https://instagram.com/photocarcifo",
       "https://tiktok.com/@photocarcifo",
