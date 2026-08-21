@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.routing import Match
 from fastapi.staticfiles import StaticFiles
 
 from . import lingue
@@ -140,6 +141,31 @@ def _va_tradotto(percorso: str) -> bool:
     return primo not in lingue.CODICI
 
 
+def _pagina_esiste(request: Request, percorso: str) -> bool:
+    """Esiste davvero una pagina a questo indirizzo?
+
+    Serve per non spostare in un'altra lingua chi ha chiesto qualcosa che
+    non c'e'. Prima qualsiasi indirizzo inventato — /ads.txt, /manifest.json,
+    le mille porte che provano gli scanner — riceveva prima un 302 verso
+    /en/ads.txt e solo dopo il "non esiste": un giro in piu' per tutti, e
+    per i motori di ricerca una catena di rimandi che finisce nel nulla,
+    moltiplicata per cinque lingue.
+
+    Si chiede all'elenco delle rotte, che e' l'unico che lo sa davvero.
+    Costa il confronto di una quarantina di espressioni: microsecondi.
+    """
+    finto = dict(request.scope)
+    finto["path"] = percorso
+    for rotta in request.app.routes:
+        try:
+            esito, _ = rotta.matches(finto)
+        except Exception:
+            continue
+        if esito == Match.FULL:
+            return True
+    return False
+
+
 @app.middleware("http")
 async def lingua_nell_indirizzo(request: Request, call_next):
     percorso = request.url.path
@@ -181,6 +207,7 @@ async def lingua_nell_indirizzo(request: Request, call_next):
         # italiano ogni volta. I programmi automatici non vengono spostati:
         # devono vedere l'italiano all'indirizzo italiano, sempre.
         if (metodo_di_lettura and lingue.traducibile(percorso)
+                and _pagina_esiste(request, percorso)
                 and "text/html" in request.headers.get("accept", "")):
             agente = (request.headers.get("user-agent") or "").lower()
             if not any(s in agente for s in _AUTOMI_LINGUA):

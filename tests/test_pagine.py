@@ -120,3 +120,26 @@ def test_ogni_srcset_ha_il_suo_sizes():
             if re.search(r'(data-)?srcset="[^"]*\dw', riga) and 'sizes="' not in riga:
                 colpevoli.append(f"{f.name}:{n}")
     assert not colpevoli, f"srcset a larghezze senza sizes: {colpevoli}"
+
+
+def test_gli_indirizzi_inventati_non_fanno_il_giro_delle_lingue(client):
+    """Chi chiede una pagina che non esiste deve sentirsi dire subito che
+    non esiste. Prima veniva prima spostato su /en/quella-cosa, che non
+    esiste neanche li': un giro in piu' per il visitatore, e per i motori
+    di ricerca una catena di rimandi che finisce nel nulla, moltiplicata
+    per cinque lingue."""
+    r = client.get("/pagina-che-non-esiste-di-sicuro",
+                   headers={"accept": "text/html", "accept-language": "en-US,en"},
+                   follow_redirects=False)
+    assert r.status_code == 404, \
+        f"risposto {r.status_code} verso {r.headers.get('location')!r} invece di 404"
+
+
+def test_le_pagine_vere_seguono_ancora_la_lingua(client):
+    """L'aggiustamento qui sopra non deve aver spento lo spostamento
+    automatico per le pagine che esistono davvero."""
+    r = client.get("/novita",
+                   headers={"accept": "text/html", "accept-language": "en-US,en"},
+                   follow_redirects=False)
+    assert r.status_code == 302 and "/en/novita" in r.headers.get("location", ""), \
+        f"una pagina vera non segue piu' la lingua: {r.status_code} {r.headers.get('location')!r}"
