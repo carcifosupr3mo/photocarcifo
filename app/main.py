@@ -71,17 +71,30 @@ async def add_security_headers(request: Request, call_next):
     for key, value in security_headers().items():
         response.headers.setdefault(key, value)
 
-    # Segno che a questo browser il foglio di stile e' gia' arrivato dentro
-    # la pagina: dalla prossima gli si manda il collegamento, che lui ha in
-    # cache, invece di rispedirgli 67 KB ogni volta. Vedi templating.py.
-    if ("text/html" in response.headers.get("content-type", "")
-            and request.cookies.get(COOKIE_STILE) != "1"):
-        response.set_cookie(COOKIE_STILE, "1", max_age=30 * 24 * 3600,
-                            samesite="lax", secure=True, path="/")
-        # La pagina esce in due forme a seconda del segno: va detto, cosi'
-        # nessuna cache intermedia serve l'una al posto dell'altra.
+    if "text/html" in response.headers.get("content-type", ""):
+        # La pagina esce in due forme a seconda del biscotto del foglio di
+        # stile, e cambia anche con la lingua e con l'essere entrati o no
+        # nel pannello. Va detto SEMPRE, non solo la prima volta: prima
+        # questa riga stava dentro il ramo qui sotto, e la versione
+        # leggera — quella che riceve chi torna, cioe' la piu' comune —
+        # usciva senza. Una cache che non sa da cosa dipende una pagina la
+        # riusa per la richiesta sbagliata.
         vecchio = response.headers.get("vary")
-        response.headers["vary"] = f"{vecchio}, Cookie" if vecchio else "Cookie"
+        if "cookie" not in (vecchio or "").lower():
+            response.headers["vary"] = f"{vecchio}, Cookie" if vecchio else "Cookie"
+
+        # Le pagine si costruiscono in sette millisecondi e cambiano quando
+        # arriva una galleria nuova: non si tengono da parte. Senza questa
+        # riga ogni browser decideva per conto suo quanto tenersele, e chi
+        # tornava poteva non vedere per giorni le fotografie appena messe.
+        response.headers.setdefault("Cache-Control", "private, no-cache")
+
+        # Segno che a questo browser il foglio di stile e' gia' arrivato
+        # dentro la pagina: dalla prossima gli si manda il collegamento,
+        # che lui ha in cache, invece di rispedirglielo. Vedi templating.py.
+        if request.cookies.get(COOKIE_STILE) != "1":
+            response.set_cookie(COOKIE_STILE, "1", max_age=30 * 24 * 3600,
+                                samesite="lax", secure=True, path="/")
     return response
 
 

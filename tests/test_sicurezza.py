@@ -156,3 +156,27 @@ def test_errori_non_mostrano_dettagli_interni(client):
     assert r.status_code == 400
     for parola in ("int_parsing", "traceback", "File \"", "media_id"):
         assert parola not in r.text, f"la pagina di errore contiene '{parola}'"
+
+
+def test_le_pagine_dicono_sempre_da_cosa_dipendono(client, dati):
+    """La pagina esce in due forme a seconda del biscotto del foglio di
+    stile. Se non lo dichiara, una cache puo' servire la forma sbagliata.
+    Prima la riga c'era solo sulla prima visita: proprio la forma piu'
+    comune — quella di chi torna — usciva senza."""
+    for biscotti in ({}, {"pc_css": "1"}):
+        c = client
+        r = c.get("/", cookies=biscotti) if biscotti else c.get("/")
+        vary = r.headers.get("vary", "").lower()
+        assert "cookie" in vary, f"manca Vary: Cookie con biscotti={biscotti}"
+
+
+def test_le_pagine_non_si_tengono_da_parte(client):
+    """Senza una regola esplicita ogni browser decide per conto suo quanto
+    tenersi una pagina, e chi torna puo' non vedere per giorni le
+    fotografie appena pubblicate."""
+    r = client.get("/")
+    cc = r.headers.get("cache-control", "").lower()
+    assert "no-cache" in cc or "max-age=0" in cc, \
+        f"le pagine non dicono per quanto valgono: {cc!r}"
+    assert "public" not in cc, \
+        "una pagina che cambia con l'accesso non va data in pasto alle cache condivise"
