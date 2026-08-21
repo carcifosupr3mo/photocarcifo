@@ -335,3 +335,26 @@ tutto cio' che si rigenera da solo — `style.min.css` e `docs/CODICE.md`.
 Le copie notturne e il controllo di versione fanno due mestieri diversi e
 servono tutti e due: le copie riportano indietro **i dati**, la storia
 spiega cosa e' cambiato **nel codice** e perche'.
+
+## I copioni di sistema
+
+Dal 21/08/2026 i copioni che tengono in piedi il sito — messa in servizio,
+manutenzione notturna, diagnosi, riparazione, bot Telegram — stanno in
+`script/` e non piu' sparsi in `/usr/local/bin`. Li' e' rimasto un
+collegamento per ognuno, cosi' i servizi e i timer che li richiamano per
+indirizzo assoluto continuano a funzionare senza sapere nulla del
+cambiamento.
+
+Il motivo e' semplice: erano fuori dal repository, quindi non avevano
+storia. Le copie notturne li salvavano, ma "com'era prima di quella
+modifica" non lo sapeva nessuno — proprio per i file che, se si rompono,
+portano giu' tutto.
+
+    script/photocarcifo-applica.sh     mette in servizio una modifica
+    script/photocarcifo-notte.sh       manutenzione notturna
+    script/photocarcifo-diagnosi.sh    i 66 controlli di funzionamento
+    script/photocarcifo-ripara.sh      cerca i guasti e ripara i noti
+    script/photocarcifo-bot.py         il bot Telegram che risponde
+
+Si modificano qui dentro. Il collegamento in `/usr/local/bin` punta al
+file vero: non serve ricopiare niente.
