@@ -106,12 +106,26 @@ class Scanner:
         if is_private:
             import secrets
             token = secrets.token_urlsafe(16)
+        # Una cartella nuova dentro un album nascosto nasce nascosta.
+        #
+        # Il 22/08/2026, dividendo tre album in FOTO/ e VIDEO/, le due
+        # cartelle nuove dentro un album nascosto sono nate visibili: 48
+        # fotografie che erano state tolte dal sito di proposito sono
+        # tornate raggiungibili da chiunque. La protezione riservata
+        # (is_private) veniva gia' passata da chi chiama; questa no, e
+        # nessuno se ne sarebbe accorto finche' qualcuno non ci fosse
+        # arrivato. Basta aggiungere una sottocartella sul NAS.
+        nascosto = 0
+        if parent_id:
+            riga = conn.execute("SELECT hidden FROM nodes WHERE id=?",
+                                (parent_id,)).fetchone()
+            nascosto = int(riga["hidden"]) if riga else 0
         cur = conn.execute(
             "INSERT INTO nodes(parent_id, slug, rel_path, name, title, depth, "
-            "is_private, access_token, created_at, updated_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?)",
+            "is_private, access_token, hidden, created_at, updated_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
             (parent_id, slug, rel, name, _prettify(name), depth,
-             is_private, token, _now(), _now()),
+             is_private, token, nascosto, _now(), _now()),
         )
         self.result["nodes_added"] += 1
         return cur.lastrowid

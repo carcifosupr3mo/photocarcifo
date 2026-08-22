@@ -180,3 +180,29 @@ def test_le_pagine_non_si_tengono_da_parte(client):
         f"le pagine non dicono per quanto valgono: {cc!r}"
     assert "public" not in cc, \
         "una pagina che cambia con l'accesso non va data in pasto alle cache condivise"
+
+
+def test_nessun_album_espone_quello_che_il_genitore_nasconde():
+    """Una cartella nuova dentro un album nascosto o riservato deve nascere
+    protetta come lui.
+
+    Il 22/08/2026, dividendo tre album in FOTO/ e VIDEO/, le due cartelle
+    nate dentro un album nascosto sono nate visibili: 48 fotografie tolte
+    dal sito di proposito erano tornate raggiungibili da chiunque. Nessuno
+    se ne sarebbe accorto finche' qualcuno non ci fosse arrivato."""
+    from app.database import get_db
+    with get_db() as conn:
+        nodi = {r["id"]: dict(r) for r in conn.execute(
+            "SELECT id, parent_id, rel_path, hidden, is_private FROM nodes")}
+    buchi = []
+    for n in nodi.values():
+        p = nodi.get(n["parent_id"])
+        while p:
+            if p["hidden"] and not n["hidden"]:
+                buchi.append(f"{n['rel_path']} visibile dentro {p['rel_path']} nascosto")
+                break
+            if p["is_private"] and not n["is_private"]:
+                buchi.append(f"{n['rel_path']} pubblico dentro {p['rel_path']} riservato")
+                break
+            p = nodi.get(p["parent_id"])
+    assert not buchi, "protezione non ereditata:\n  " + "\n  ".join(buchi[:10])
