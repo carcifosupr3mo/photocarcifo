@@ -70,9 +70,14 @@ def _prepara(compito):
     """
     rel_path, mtime, kind, misure = compito
     try:
-        return prepara_gruppo(rel_path, mtime, kind, misure, FORMATI)
-    except Exception:
-        return 0, len(misure) * len(FORMATI)
+        fatte, errori = prepara_gruppo(rel_path, mtime, kind, misure, FORMATI)
+        return fatte, errori, ""
+    except Exception as guaio:
+        # Il motivo va riportato indietro, non buttato via. Prima questo
+        # ramo restituiva solo il numero: il registro diceva "437 non
+        # riusciti" e nessuno poteva sapere se fosse un file rotto, un
+        # permesso o il NAS che aveva smesso di rispondere.
+        return 0, len(misure) * len(FORMATI), f"{type(guaio).__name__}: {guaio}"
 
 
 def main() -> int:
@@ -106,6 +111,8 @@ def main() -> int:
     print(f"{len(compiti)} fotografie da controllare, {quanti} processi")
 
     fatte, media_visti, errori = 0, 0, 0
+    motivi: dict[str, int] = {}
+    primo_colpevole: dict[str, str] = {}
     # spawn invece di fork: i processi figli partono puliti, senza ereditare
     # la connessione al database aperta qui sopra.
     pool = mp.get_context("spawn").Pool(processes=quanti)
@@ -117,10 +124,14 @@ def main() -> int:
             if gb_liberi(cache) < GB_LIBERI_MINIMI:
                 print("Spazio in esaurimento: mi fermo qui.")
                 break
-            for f, e in pool.map(_prepara, compiti[inizio:inizio + BLOCCO]):
+            blocco = compiti[inizio:inizio + BLOCCO]
+            for compito, (f, e, motivo) in zip(blocco, pool.map(_prepara, blocco)):
                 fatte += f
                 errori += e
                 media_visti += 1
+                if motivo:
+                    motivi[motivo] = motivi.get(motivo, 0) + 1
+                    primo_colpevole.setdefault(motivo, compito[0])
     finally:
         pool.close()
         pool.join()
@@ -130,6 +141,18 @@ def main() -> int:
                  f"Spazio libero: {gb_liberi(cache):.1f} GB")
     print(messaggio)
     log_event("INFO", "cache", messaggio)
+
+    # Perche' non sono riuscite. Raggruppate per motivo, con il primo file
+    # che l'ha provocato: e' quello che serve per andare a guardare.
+    if motivi:
+        print("Motivi:")
+        for motivo, quante in sorted(motivi.items(), key=lambda x: -x[1]):
+            print(f"  {quante:>5}x  {motivo}")
+            print(f"         primo: {primo_colpevole[motivo]}")
+        peggiore = max(motivi.items(), key=lambda x: x[1])
+        log_event("WARNING", "cache",
+                  f"Miniature non riuscite: {peggiore[1]} volte «{peggiore[0]}» "
+                  f"(es. {primo_colpevole[peggiore[0]]})")
     return 0
 
 

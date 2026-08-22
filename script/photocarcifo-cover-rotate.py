@@ -32,6 +32,45 @@ def main():
                 cambiati += 1
     log_event("INFO", "cover", f"Copertine ruotate: {cambiati}")
     print(f"Copertine aggiornate: {cambiati}")
+    _prepara_le_copertine()
+
+
+def _prepara_le_copertine():
+    """Prepara subito l'immagine di ogni copertina appena scelta.
+
+    Scegliere la copertina e prepararla sono due cose diverse, e finora si
+    faceva solo la prima: ogni notte le copertine cambiavano e restavano da
+    costruire, cosi' il primo visitatore del mattino se le vedeva generare
+    una per una mentre aspettava. Su una fotografia sono due o tre decimi
+    di secondo, ma su un video il fotogramma va estratto con ffmpeg da un
+    file che sta sul NAS: misurato il 22/08/2026, undici secondi e mezzo
+    per una pagina con un solo album video dentro.
+
+    Sono centoquaranta immagini, una per album: pochi secondi in tutto, e
+    di notte, quando non aspetta nessuno.
+    """
+    from app.thumbnails import (prepara_gruppo, SIZE_COVER,
+                                FORMATO_WEBP, FORMATO_AVIF)
+    fatte = saltate = errori = 0
+    with get_db() as conn:
+        righe = conn.execute(
+            "SELECT m.rel_path, m.mtime, m.kind FROM nodes n "
+            "JOIN media m ON m.id = n.cover_media_id "
+            "WHERE n.cover_media_id IS NOT NULL").fetchall()
+    for r in righe:
+        try:
+            f, e = prepara_gruppo(r["rel_path"], r["mtime"], r["kind"],
+                                  [SIZE_COVER], (FORMATO_WEBP, FORMATO_AVIF))
+            fatte += f
+            errori += e
+            if not f and not e:
+                saltate += 1
+        except Exception:
+            errori += 1
+    messaggio = (f"Copertine preparate: {fatte} nuove, {saltate} gia' pronte"
+                 f"{f', {errori} non riuscite' if errori else ''}")
+    print(messaggio)
+    log_event("INFO", "cover", messaggio)
 
 if __name__ == "__main__":
     main()
