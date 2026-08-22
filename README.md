@@ -358,3 +358,21 @@ portano giu' tutto.
 
 Si modificano qui dentro. Il collegamento in `/usr/local/bin` punta al
 file vero: non serve ricopiare niente.
+
+## La configurazione di nginx
+
+Dal 22/08/2026 sta in `config/nginx/`, come i copioni. In `/etc/nginx` e'
+rimasto un collegamento, quindi nginx la trova dov'e' sempre stata.
+
+    config/nginx/photocarcifo.conf              il sito
+    config/nginx/snippets/photocarcifo-sicurezza.conf   le protezioni
+    config/nginx/snippets/photocarcifo-automi.conf      chi passa e chi no
+
+E' il file che decide come viene servito tutto, cambia spesso, e finora
+non aveva storia: le copie notturne lo salvavano, ma "cos'e' cambiato
+ieri" non lo sapeva nessuno. Si modifica qui dentro, poi
+`photocarcifo-applica.sh` lo verifica e lo mette in servizio.
+
+Il `nginx.conf` generale resta dov'e': e' un file della distribuzione,
+condiviso con tutto il resto della macchina, e non appartiene a questo
+progetto.
