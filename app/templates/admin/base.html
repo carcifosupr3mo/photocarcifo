@@ -11,7 +11,9 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-180.png">
   <link rel="manifest" href="/static/site.webmanifest">
   <meta name="theme-color" content="#0a0c14">
-  <link rel="stylesheet" href="{{ foglio_di_stile() }}">
+  {# Il pannello riceve il foglio intero: le sue regole sono state tolte da
+     quello pubblico, non da qui. #}
+  <link rel="stylesheet" href="{{ foglio_intero() }}">
 </head>
 <body class="is-admin">
 <div class="admin-shell">
@@ -88,7 +90,7 @@
   </aside>
   <main class="admin-main"><div class="admin-inner">{% block content %}{% endblock %}</div></main>
 </div>
-<script src="{{ asset('/static/js/avvisi.js') }}"></script>
+<script src="{{ asset('/static/js/avvisi.js') }}" defer></script>
 <script src="{{ asset('/static/js/admin-conferme.js') }}" defer></script>
 <script src="{{ asset('/static/js/admin-menu.js') }}" defer></script>
 {% block scripts %}{% endblock %}

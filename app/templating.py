@@ -224,15 +224,66 @@ def _scrivi_versione_ridotta(sorgente, testo: str) -> None:
         pass
 
 
-def _foglio_di_stile() -> str:
-    """Indirizzo del foglio da collegare: la versione ridotta se c'e'."""
+def _parte_pubblica() -> str:
+    """Il foglio senza le regole che servono solo al pannello.
+
+    Un quarto abbondante del foglio disegna schede degli album, albero
+    delle cartelle, caricamento e cestino: cose che un visitatore non
+    vedra' mai, e che gli venivano spedite lo stesso dentro ogni prima
+    pagina. Il pannello continua a ricevere il foglio intero, cosi' una
+    classificazione sbagliata puo' solo togliere una regola al sito
+    pubblico — e quel caso lo prende il test, che apre ogni pagina e
+    controlla che tutte le classi che usa esistano ancora.
+    """
+    from .stile_diviso import dividi
+    intero = _stile_incorporato()
+    if _cache_stile.get("pubblico_da") == intero[:64] and _cache_stile.get("pubblico"):
+        return _cache_stile["pubblico"]
+    pubblico, _ = dividi(intero)
+    _cache_stile["pubblico"] = pubblico
+    _cache_stile["pubblico_da"] = intero[:64]
+    _scrivi_file_accanto("style-pubblico.min.css", pubblico)
+    return pubblico
+
+
+def _scrivi_file_accanto(nome: str, testo: str) -> None:
+    """Salva un foglio accanto all'originale, senza fare drammi se non si
+    puo': in quel caso resta il file intero, piu' pesante ma identico."""
     from pathlib import Path
-    _stile_incorporato()          # garantisce che la versione ridotta esista
+    try:
+        css = Path(__file__).parent / "static" / "css"
+        destinazione = css / nome
+        if destinazione.exists() and destinazione.read_text(encoding="utf-8") == testo:
+            return
+        provvisorio = destinazione.with_suffix(".tmp")
+        provvisorio.write_text(testo, encoding="utf-8")
+        provvisorio.replace(destinazione)
+    except OSError:
+        pass
+
+
+def _foglio_di_stile() -> str:
+    """Indirizzo del foglio da collegare al sito pubblico."""
+    from pathlib import Path
+    _parte_pubblica()             # garantisce che i file esistano
+    css = Path(__file__).parent / "static" / "css"
+    if (css / "style-pubblico.min.css").exists():
+        return _asset("/static/css/style-pubblico.min.css")
+    if (css / "style.min.css").exists():
+        return _asset("/static/css/style.min.css")
+    return _asset("/static/css/style.css")
+
+
+def _foglio_intero() -> str:
+    """Indirizzo del foglio completo: lo usa solo il pannello."""
+    from pathlib import Path
+    _stile_incorporato()
     css = Path(__file__).parent / "static" / "css"
     if (css / "style.min.css").exists():
         return _asset("/static/css/style.min.css")
     return _asset("/static/css/style.css")
 
 
-templates.env.globals["stile_incorporato"] = _stile_incorporato
+templates.env.globals["stile_incorporato"] = _parte_pubblica
 templates.env.globals["foglio_di_stile"] = _foglio_di_stile
+templates.env.globals["foglio_intero"] = _foglio_intero

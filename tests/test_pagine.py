@@ -143,3 +143,35 @@ def test_le_pagine_vere_seguono_ancora_la_lingua(client):
                    follow_redirects=False)
     assert r.status_code == 302 and "/en/novita" in r.headers.get("location", ""), \
         f"una pagina vera non segue piu' la lingua: {r.status_code} {r.headers.get('location')!r}"
+
+
+def test_il_foglio_ridotto_non_perde_regole_al_pubblico(client, dati):
+    """Il foglio del sito e' diviso: al pannello va tutto, al pubblico
+    tutto tranne le regole che risultano usate solo dal pannello. La
+    divisione e' fatta guardando dove compaiono le classi, quindi puo'
+    sbagliare — e se sbaglia si vede solo aprendo la pagina giusta.
+
+    Qui si aprono tutte, si raccoglie ogni classe che usano davvero, e si
+    controlla che chi ha una regola nel foglio intero ce l'abbia anche in
+    quello pubblico."""
+    import re
+    from app.templating import _stile_incorporato, _parte_pubblica
+    intero, pubblico = _stile_incorporato(), _parte_pubblica()
+
+    usate = set()
+    pagine = ["/", "/novita", "/chi-sono", "/recensioni", "/search",
+              "/privacy", "/radunimoto", f"/n/{dati['slug']}", "/mie-preferite"]
+    for p in pagine:
+        r = client.get(p)
+        if r.status_code != 200:
+            continue
+        for gruppo in re.findall(r'class="([^"]+)"', r.text):
+            usate.update(gruppo.split())
+
+    def ha_regola(css, classe):
+        return re.search(r"\." + re.escape(classe) + r"[^\w-]", css) is not None
+
+    perse = [c for c in sorted(usate)
+             if ha_regola(intero, c) and not ha_regola(pubblico, c)]
+    assert not perse, (
+        f"regole tolte al pubblico ma usate da una sua pagina: {perse[:12]}")

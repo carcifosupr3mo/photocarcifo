@@ -267,9 +267,20 @@
     vietano il codice scritto dentro la pagina.
   #}
   <script id="pcTesti" type="application/json">{{ testi_js()|safe }}</script>
-  <script src="{{ asset('/static/js/testi.js') }}"></script>
-  {# Gli avvisi servono a tutti gli altri script: caricato subito dopo i testi. #}
-  <script src="{{ asset('/static/js/avvisi.js') }}"></script>
+  {#
+    Tutti con defer, compresi questi due.
+
+    Erano gli unici senza, e per questo il browser si fermava a scaricarli
+    ed eseguirli prima di finire di disegnare la pagina: due chilobyte
+    scarsi che costavano due giri di rete in mezzo al lavoro. Il motivo per
+    cui non l'avevano era il timore che gli altri script li trovassero
+    assenti, ma defer non rompe l'ordine: i file restano eseguiti nella
+    sequenza in cui sono scritti qui, solo dopo che la pagina e' pronta.
+    Anzi, e' piu' sicuro di prima: testi.js legge il blocco di dati qui
+    sopra, e senza defer lo leggeva mentre il documento era a meta'.
+  #}
+  <script src="{{ asset('/static/js/testi.js') }}" defer></script>
+  <script src="{{ asset('/static/js/avvisi.js') }}" defer></script>
   {% block scripts %}<script src="{{ asset('/static/js/app.js') }}" defer></script>{% endblock %}
   <script src="{{ asset('/static/js/menu.js') }}" defer></script>
   <script src="{{ asset('/static/js/ospite-nav.js') }}" defer></script>

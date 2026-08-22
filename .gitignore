@@ -26,3 +26,4 @@ backup/
 *.tmp
 *.parziale
 .cache/
+style-pubblico.min.css
