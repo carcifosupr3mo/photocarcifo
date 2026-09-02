@@ -83,12 +83,24 @@
   con la possibilità di rimuoverle, nella pagina
   <a href="/admin/ricerche">Ricerche</a>.
 </p>
+{% if totale_vuote %}
+<p class="badge-contatore" style="display:inline-flex;">{{ totale_vuote }} ricerche senza risultati da controllare</p>
+{% endif %}
 {% if ricerche_vuote %}
-<table class="table">
-  <thead><tr><th>Testo cercato</th><th>Volte</th></tr></thead>
+<table class="table tabella-schede">
+  <thead><tr><th>Testo cercato</th><th>Numero</th><th>Volte</th><th>Prima ricerca</th><th>Ultima ricerca</th></tr></thead>
   <tbody>
   {% for r in ricerche_vuote %}
-    <tr><td>{{ r.testo }}</td><td>{{ r.volte }}</td></tr>
+    {# Graduazione visiva per volte: 1 normale, 2-3 leggero, 4+ evidente
+       — stesso linguaggio di ".riga-nuova" gia' usato altrove (bordo
+       accento + sfondo tenue), solo piu' sfumato ai livelli bassi. #}
+    <tr{% if r.volte >= 4 %} class="riga-nuova"{% elif r.volte >= 2 %} style="background:rgba(43,75,255,.03);"{% endif %}>
+      <td data-eti="Testo">{{ r.testo }}</td>
+      <td data-eti="Numero">{% if r.numero %}<span class="badge-hidden" title="Letto come numero di tabella">n. {{ r.numero }}</span>{% else %}<span style="color:var(--ink-soft);">—</span>{% endif %}</td>
+      <td data-eti="Volte">{{ r.volte }}</td>
+      <td data-eti="Prima ricerca" style="color:var(--ink-soft);">{{ r.primo_at|fmt_date }}</td>
+      <td data-eti="Ultima ricerca" style="color:var(--ink-soft);">{{ r.ultimo_at|fmt_date }}</td>
+    </tr>
   {% endfor %}
   </tbody>
 </table>

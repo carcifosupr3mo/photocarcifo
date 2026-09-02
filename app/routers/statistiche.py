@@ -42,8 +42,8 @@ def pagina(request: Request, user: dict = Depends(require_admin_user)):
             "SELECT testo, numero, volte, risultati FROM ricerche "
             "ORDER BY volte DESC LIMIT 10").fetchall()
         ricerche_vuote = conn.execute(
-            "SELECT testo, numero, volte FROM ricerche "
-            "WHERE risultati=0 ORDER BY volte DESC LIMIT 10").fetchall()
+            "SELECT testo, numero, volte, primo_at, ultimo_at FROM ricerche "
+            "WHERE risultati=0 ORDER BY volte DESC, ultimo_at DESC LIMIT 20").fetchall()
         totale_ricerche = conn.execute("SELECT COUNT(*) c FROM ricerche").fetchone()["c"]
         totale_vuote = conn.execute(
             "SELECT COUNT(*) c FROM ricerche WHERE risultati=0").fetchone()["c"]

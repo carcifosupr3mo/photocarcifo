@@ -1415,6 +1415,9 @@ Stato al 02/09/2026: 1062 nodi, 1695 archi, 69 community, 106 file dal commit `3
 
 **Limite noto verificato**: gli import relativi Python (`from ..scanner import scan`) sono sotto-risolti (`imports_from` ha solo 6 archi su tutto il repo). `graphify explain <modulo>.py` mostra bene i simboli *contenuti* e le chiamate *interne* al file, ma non sempre chi lo *importa* da altri file. Per "chi dipende da X" quando `explain`/`path` non bastano, fallback a `grep -rn "import X\|from.*X import" app/` — mirato, non scansione integrale.
 
+
+**Aggiornamento 02/09/2026 (dopo sessione di sviluppo intensa)**: il grafo era rimasto fermo al commit `312a3b4` nonostante decine di commit successivi — il flag interno `stale` in `.graphify/branch.json` non si aggiorna automaticamente. Rigenerato con `graphify update --no-description --no-label`: 1062→1672 nodi, 1695→2629 archi. Verificato con query reale: `graphify explain _album_pubblici` trova correttamente `app/routers/raduni.py:73`, chiamata da `pagina()`. Da tenere a mente: rigenerare manualmente dopo sessioni di sviluppo consistenti, non fidarsi del solo campo `stale`. Nota anche: Graphify indicizza AST del codice, non schema SQL — cercare `raduni_albums` (nome tabella) non trova nulla, cercare le funzioni che la referenziano (`_album_pubblici`, `_album_admin`) sì.
+
 ---
 
 ## 42. Ponytail — YAGNI/minimalismo, disponibilità (aggiunto 02/09/2026)
