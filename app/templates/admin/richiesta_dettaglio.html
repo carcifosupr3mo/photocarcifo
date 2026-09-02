@@ -1,0 +1,60 @@
+{% extends "admin/base.html" %}
+{% set active = 'richieste' %}
+{% block title %}{{ r.nome }} {{ r.cognome }} — Richieste — {{ site_name() }}{% endblock %}
+
+{% block content %}
+<p class="mgr-crumbs">
+  <a href="/admin/richieste">Richieste</a><span class="sep">/</span>
+  <span class="current">{{ r.nome }} {{ r.cognome }}</span>
+</p>
+<h1>{{ r.nome }} {{ r.cognome }}</h1>
+<p style="color:var(--ink-soft);margin:.3rem 0 1.6rem;">
+  {{ r.motivo }} — {{ r.creato_at|fmt_date }}
+  {% if r.stato == 'Nuova' %}<span class="badge-contatore">Nuova</span>{% else %}· {{ r.stato }}{% endif %}
+</p>
+
+<div class="mgr-grid">
+  <div class="acard">
+    <div class="acard-body">
+      <div class="acard-txt" style="width:100%;">
+        <p><strong>Email:</strong> <a href="mailto:{{ r.email }}">{{ r.email }}</a></p>
+        {% if r.telefono %}
+        <p><strong>Telefono:</strong> <a href="tel:{{ r.telefono }}">{{ r.telefono }}</a></p>
+        {% endif %}
+        {% if r.data_evento %}<p><strong>Data evento:</strong> {{ r.data_evento }}</p>{% endif %}
+        {% if r.luogo %}<p><strong>Luogo:</strong> {{ r.luogo }}</p>{% endif %}
+        <p><strong>Lingua:</strong> {{ r.lingua }}</p>
+        <p style="margin-top:1rem;white-space:pre-wrap;">{{ r.messaggio }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p style="display:flex;gap:.6rem;flex-wrap:wrap;margin:1.4rem 0;">
+  <a class="btn btn-accent" href="mailto:{{ r.email }}">Rispondi via email</a>
+  {% if r.telefono %}
+  <a class="btn btn-ghost" href="tel:{{ r.telefono }}">Chiama</a>
+  <a class="btn btn-ghost" href="https://wa.me/{{ r.telefono|replace(' ', '')|replace('+', '') }}" target="_blank" rel="noopener">WhatsApp</a>
+  {% endif %}
+</p>
+
+<div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-end;">
+  <form method="post" action="/admin/richieste/{{ r.id }}/stato">
+    <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+    <label style="display:block;font-size:.82rem;margin-bottom:6px;color:var(--ink-soft);">Stato
+      <select name="stato" class="form" style="padding:.6rem .8rem;">
+        {% for s in stati %}
+        <option value="{{ s }}" {% if s == r.stato %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="btn btn-accent" type="submit">Aggiorna stato</button>
+  </form>
+
+  <form method="post" action="/admin/richieste/{{ r.id }}/elimina"
+        data-conferma="Eliminare definitivamente questa richiesta?">
+    <input type="hidden" name="csrf_token" value="{{ user.csrf }}">
+    <button class="btn" style="border-color:var(--accent-2);color:var(--accent-2);" type="submit">Elimina</button>
+  </form>
+</div>
+{% endblock %}

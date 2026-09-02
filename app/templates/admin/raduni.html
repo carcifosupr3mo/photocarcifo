@@ -1,0 +1,108 @@
+{% extends "admin/base.html" %}
+{% set active = 'raduni' %}
+{% block title %}Raduni — {{ site_name() }}{% endblock %}
+{% block content %}
+<h1>Calendario raduni</h1>
+<p style="color:var(--ink-soft);margin:.4rem 0 1.6rem;">
+  Pagina pubblica su <code>/radunimoto</code>, raggiungibile dal menu del sito.
+  Ogni appuntamento puo' avere album fotografici collegati: compaiono
+  pubblicamente solo quelli gia' visibili nel resto del sito (non privati,
+  non nascosti, non scaduti).
+</p>
+
+<h2>Avvertenza mostrata in pagina</h2>
+<div class="det-block">
+  <label for="r-avviso">Testo dell'avvertenza</label>
+  <textarea id="r-avviso" rows="4">{{ avviso }}</textarea>
+  <div class="det-row" style="margin-top:.8rem;">
+    <button class="btn btn-accent" id="r-salva-avviso" type="button">Salva</button>
+    <a class="btn btn-ghost" href="/radunimoto" target="_blank">Apri la pagina</a>
+  </div>
+  <span class="copia-eco" id="r-eco"></span>
+</div>
+
+<h2 style="margin-top:2rem;">Nuovo appuntamento</h2>
+<div class="det-block">
+  <div class="rad-form">
+    <div><label for="r-data">Data</label>
+      <input type="date" id="r-data"></div>
+    <div><label for="r-ora">Ora</label>
+      <input type="text" id="r-ora" placeholder="14:00"></div>
+  </div>
+  <label for="r-luogo" style="margin-top:.6rem;">Luogo</label>
+  <input type="text" id="r-luogo" placeholder="Zona Industriale Riazzino">
+  <label for="r-note" style="margin-top:.6rem;">Note</label>
+  <input type="text" id="r-note" placeholder="ritrovo al parcheggio">
+  <label for="r-mappa" style="margin-top:.6rem;">Collegamento alle mappe</label>
+  <input type="url" id="r-mappa" placeholder="https://maps.app.goo.gl/...">
+  <p class="up-hint">Facoltativo. Da Google Maps: Condividi, Copia link.
+    Sono accettati Google Maps, Apple Maps, OpenStreetMap e Waze.</p>
+  <div class="det-row" style="margin-top:.8rem;">
+    <button class="btn btn-accent" id="r-aggiungi" type="button">Aggiungi</button>
+  </div>
+</div>
+
+<h2 style="margin-top:2rem;">Appuntamenti ({{ raduni|length }})</h2>
+{% if raduni %}
+<div class="rad-lista">
+  {% for r in raduni %}
+  <div class="rad-voce">
+    <div class="rad-data">
+      <span class="rad-giorno">{{ r.data[8:10] }}</span>
+      <span class="rad-mese">{{ r.data[5:7] }}/{{ r.data[0:4] }}</span>
+    </div>
+    <div class="rad-info">
+      <h3>{{ r.luogo }}</h3>
+      {% if r.ora %}<p class="rad-ora">{{ r.ora }}</p>{% endif %}
+      {% if r.note %}<p class="rad-note">{{ r.note }}</p>{% endif %}
+      <div class="rad-mod">
+        <input type="url" class="rad-link" data-mappa="{{ r.id }}"
+               value="{{ r.mappa or '' }}"
+               aria-label="Collegamento alla mappa di {{ r.luogo }}"
+               placeholder="https://maps.app.goo.gl/...">
+        <button class="btn btn-ghost" data-salva-mappa="{{ r.id }}" type="button">Salva</button>
+      </div>
+      {% if r.mappa %}<a class="rad-mappa" href="{{ r.mappa }}" target="_blank"
+        rel="noopener nofollow">Apri nelle mappe</a>{% endif %}
+
+      {#
+        Album collegati: solo un legame nella tabella raduni_albums, mai
+        una copia. "Rimuovi dal raduno" toglie solo questo legame — l'album,
+        le foto e i file sul NAS restano dove sono sempre stati.
+      #}
+      <div class="rad-album" data-raduno-album="{{ r.id }}">
+        <p class="rad-album-tit">Album collegati ({{ r.album|length }})</p>
+        {% if r.album %}
+        <ul class="rad-album-lista">
+          {% for a in r.album %}
+          <li>
+            <a href="/n/{{ a.slug }}" target="_blank">{{ a.title }}</a>
+            {% if a.is_private %}<span class="badge-private">privato</span>{% endif %}
+            {% if a.hidden %}<span class="badge-private">nascosto</span>{% endif %}
+            <span class="sub">{{ a.total_media }} foto</span>
+            <button class="btn btn-ghost btn-sm" type="button"
+                    data-rimuovi-album="{{ r.id }}" data-node="{{ a.id }}">
+              Rimuovi dal raduno
+            </button>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        <div class="rad-album-aggiungi">
+          <input type="text" class="rad-album-cerca" data-cerca-album="{{ r.id }}"
+                 placeholder="Cerca album per nome…" autocomplete="off">
+          <div class="rad-album-risultati" data-risultati-album="{{ r.id }}" hidden></div>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-ghost rad-x" data-elimina="{{ r.id }}" type="button">Elimina</button>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty"><p>Nessun appuntamento inserito.</p></div>
+{% endif %}
+
+<input type="hidden" id="csrf" value="{{ user.csrf }}">
+<script src="{{ asset('/static/js/admin-raduni.js') }}" defer></script>
+{% endblock %}

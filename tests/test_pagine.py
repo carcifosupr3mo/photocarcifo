@@ -1,0 +1,225 @@
+"""Ogni pagina pubblica risponde, in tutte e cinque le lingue.
+
+Questi test hanno una ragione precisa. Il 17/08/2026 un modello di pagina e'
+stato modificato per usare una funzione che il processo in esecuzione non
+conosceva ancora: per pochi secondi ogni pagina del sito ha risposto
+"errore interno", e in quella finestra e' passato Googlebot. Un test che
+apre tutte le pagine avrebbe fermato la cosa prima che arrivasse in rete.
+"""
+import pytest
+
+LINGUE = ["", "en/", "fr/", "de/", "es/"]
+PAGINE = ["", "novita", "chi-sono", "recensioni", "privacy", "search"]
+
+
+@pytest.mark.parametrize("lingua", LINGUE)
+@pytest.mark.parametrize("pagina", PAGINE)
+def test_pagine_fisse(client, lingua, pagina):
+    r = client.get(f"/{lingua}{pagina}", headers={"accept": "text/html"})
+    assert r.status_code == 200, f"/{lingua}{pagina} ha risposto {r.status_code}"
+    assert "<html" in r.text.lower()
+
+
+def test_homepage_ricerca_non_ha_autofocus(client):
+    """Il campo di ricerca in home non deve aprire da solo la tastiera al
+    caricamento/reload: niente attributo autofocus sull'input. Deve restare
+    comunque raggiungibile con click/tap e Tab (nessun tabindex=-1)."""
+    r = client.get("/")
+    assert r.status_code == 200
+    import re
+    m = re.search(r'<input[^>]*name="q"[^>]*>', r.text)
+    assert m, "campo di ricerca non trovato in home"
+    campo = m.group(0)
+    assert "autofocus" not in campo, "il campo ricerca non deve avere autofocus"
+    assert 'tabindex="-1"' not in campo, "il campo deve restare raggiungibile con Tab"
+
+
+@pytest.mark.parametrize("lingua", LINGUE)
+def test_album_pubblico(client, dati, lingua):
+    if not dati["slug"]:
+        pytest.skip("nessun album pubblico nel database")
+    r = client.get(f"/{lingua}n/{dati['slug']}", headers={"accept": "text/html"})
+    assert r.status_code == 200
+
+
+def test_lingua_segue_indirizzo(client):
+    """L'indirizzo comanda sulla lingua: e' cio' che rende indicizzabili
+    le traduzioni. Se tornasse a comandare il cookie, ogni indirizzo
+    mostrerebbe cinque contenuti diversi e Google ne terrebbe uno solo."""
+    atteso = {"": "it", "en/": "en", "fr/": "fr", "de/": "de", "es/": "es"}
+    for prefisso, codice in atteso.items():
+        r = client.get(f"/{prefisso}", headers={"accept": "text/html"})
+        assert f'<html lang="{codice}"' in r.text, f"/{prefisso} non e' in {codice}"
+
+
+def test_italiano_senza_prefisso(client):
+    """/it/... non deve esistere: sarebbe un secondo indirizzo per la
+    stessa pagina, cioe' un doppione per i motori di ricerca."""
+    r = client.get("/it/", follow_redirects=False)
+    assert r.status_code == 301
+    assert r.headers["location"] == "/"
+
+
+def test_hreflang_reciproci(client, dati):
+    """Ogni pagina dichiara tutte e cinque le versioni piu' x-default.
+    Se una mancasse, Google scarterebbe quella traduzione."""
+    r = client.get(f"/n/{dati['slug']}", headers={"accept": "text/html"})
+    for codice in ("it", "en", "fr", "de", "es", "x-default"):
+        assert f'hreflang="{codice}"' in r.text, f"manca hreflang {codice}"
+
+
+def test_una_sola_pagina_ufficiale(client, dati):
+    """Il canonical di ogni lingua punta a se stesso, non all'italiano."""
+    r = client.get(f"/fr/n/{dati['slug']}", headers={"accept": "text/html"})
+    assert f'rel="canonical" href="https://photocarcifo.ch/fr/n/{dati["slug"]}"' in r.text
+
+
+def test_collegamenti_restano_nella_lingua(client):
+    """Navigando dentro una lingua non si deve ricadere in italiano."""
+    r = client.get("/es/", headers={"accept": "text/html"})
+    interni = [x for x in r.text.split('href="')[1:]]
+    album = [x.split('"')[0] for x in interni if x.startswith("/n/")]
+    assert not album, f"collegamenti rimasti in italiano: {album[:3]}"
+
+
+def test_barra_finale_mantiene_la_lingua(client):
+    r = client.get("/fr/n/bmx/", follow_redirects=False)
+    assert r.status_code == 301
+    assert r.headers["location"] == "/fr/n/bmx"
+
+
+def test_indirizzi_di_servizio(client):
+    for percorso, tipo in (("/robots.txt", "text/plain"),
+                           ("/sitemap.xml", "application/xml"),
+                           ("/novita.xml", "application/rss+xml"),
+                           ("/healthz", "text/plain")):
+        r = client.get(percorso)
+        assert r.status_code == 200, percorso
+        assert tipo in r.headers["content-type"], percorso
+
+
+def test_sitemap_non_contiene_pagine_riservate(client, dati):
+    """Un album privato o nascosto nella sitemap sarebbe un invito a
+    indicizzarlo: e' il contrario di cio' per cui e' riservato."""
+    mappa = client.get("/sitemap.xml").text
+    for chiave in ("slug_privato", "slug_nascosto"):
+        if dati[chiave]:
+            assert f"/n/{dati[chiave]}<" not in mappa, f"{chiave} finito nella sitemap"
+
+
+def test_le_miniature_dicono_quanto_saranno_grandi(client, dati):
+    """Con i descrittori "1x, 2x" il browser sceglie guardando solo lo
+    schermo: un telefono con tre punti fisici per punto di disegno prende
+    sempre il formato grande, anche per una casella larga meno di duecento
+    punti. Servono le larghezze reali (640w/1280w) piu' sizes."""
+    pagina = client.get(f"/n/{dati['slug']}").text
+    assert "640w" in pagina and "1280w" in pagina, \
+        "le miniature non dichiarano la loro larghezza"
+    assert " 1x," not in pagina, \
+        "sono tornati i descrittori 1x/2x: il telefono riscarichera' il doppio"
+    assert 'sizes="' in pagina, \
+        "senza sizes le larghezze non servono a niente"
+
+
+def test_ogni_srcset_ha_il_suo_sizes():
+    """Un srcset a larghezze senza sizes fa assumere al browser che
+    l'immagine occupi tutta la pagina, e sceglie sempre la piu' grande:
+    peggio che non averlo messo."""
+    import re
+    from pathlib import Path
+    radice = Path(__file__).resolve().parent.parent / "app" / "templates"
+    colpevoli = []
+    for f in radice.rglob("*.html"):
+        for n, riga in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+            if re.search(r'(data-)?srcset="[^"]*\dw', riga) and 'sizes="' not in riga:
+                colpevoli.append(f"{f.name}:{n}")
+    assert not colpevoli, f"srcset a larghezze senza sizes: {colpevoli}"
+
+
+def test_gli_indirizzi_inventati_non_fanno_il_giro_delle_lingue(client):
+    """Chi chiede una pagina che non esiste deve sentirsi dire subito che
+    non esiste. Prima veniva prima spostato su /en/quella-cosa, che non
+    esiste neanche li': un giro in piu' per il visitatore, e per i motori
+    di ricerca una catena di rimandi che finisce nel nulla, moltiplicata
+    per cinque lingue."""
+    r = client.get("/pagina-che-non-esiste-di-sicuro",
+                   headers={"accept": "text/html", "accept-language": "en-US,en"},
+                   follow_redirects=False)
+    assert r.status_code == 404, \
+        f"risposto {r.status_code} verso {r.headers.get('location')!r} invece di 404"
+
+
+def test_le_pagine_vere_seguono_ancora_la_lingua(client):
+    """L'aggiustamento qui sopra non deve aver spento lo spostamento
+    automatico per le pagine che esistono davvero."""
+    r = client.get("/novita",
+                   headers={"accept": "text/html", "accept-language": "en-US,en"},
+                   follow_redirects=False)
+    assert r.status_code == 302 and "/en/novita" in r.headers.get("location", ""), \
+        f"una pagina vera non segue piu' la lingua: {r.status_code} {r.headers.get('location')!r}"
+
+
+def test_il_foglio_ridotto_non_perde_regole_al_pubblico(client, dati):
+    """Il foglio del sito e' diviso: al pannello va tutto, al pubblico
+    tutto tranne le regole che risultano usate solo dal pannello. La
+    divisione e' fatta guardando dove compaiono le classi, quindi puo'
+    sbagliare — e se sbaglia si vede solo aprendo la pagina giusta.
+
+    Qui si aprono tutte, si raccoglie ogni classe che usano davvero, e si
+    controlla che chi ha una regola nel foglio intero ce l'abbia anche in
+    quello pubblico."""
+    import re
+    from app.templating import _stile_incorporato, _parte_pubblica
+    intero, pubblico = _stile_incorporato(), _parte_pubblica()
+
+    usate = set()
+    pagine = ["/", "/novita", "/chi-sono", "/recensioni", "/search",
+              "/privacy", "/radunimoto", f"/n/{dati['slug']}", "/mie-preferite"]
+    for p in pagine:
+        r = client.get(p)
+        if r.status_code != 200:
+            continue
+        for gruppo in re.findall(r'class="([^"]+)"', r.text):
+            usate.update(gruppo.split())
+
+    def ha_regola(css, classe):
+        return re.search(r"\." + re.escape(classe) + r"[^\w-]", css) is not None
+
+    perse = [c for c in sorted(usate)
+             if ha_regola(intero, c) and not ha_regola(pubblico, c)]
+    assert not perse, (
+        f"regole tolte al pubblico ma usate da una sua pagina: {perse[:12]}")
+
+
+def test_niente_banner_onboarding_ne_suggerimento_numero_gara(client, dati):
+    """Rimossi entrambi (26/08/2026): il banner "una volta sola" duplicava
+    la microcopy sempre visibile (avere sia banner sia testo permanente
+    era proprio cio' che si voleva evitare), e il suggerimento sul numero
+    di gara era un'istruzione in piu' per una ricerca che il campo in
+    home gia' spiega da solo (placeholder "Cerca album, evento o numero
+    foto..."). La ricerca per numero deve continuare a funzionare (vedi
+    tests/test_ricerca.py) — qui si controlla solo che non resti il
+    richiamo testuale."""
+    if not dati["slug"]:
+        pytest.skip("nessun album pubblico nel database")
+    r = client.get(f"/n/{dati['slug']}")
+    assert r.status_code == 200
+    assert "onboardingAvviso" not in r.text
+    assert "/static/js/onboarding.js" not in r.text
+    assert "cerca-numero" not in r.text
+    assert "numero di gara" not in r.text.lower()
+
+
+def test_controlli_selezione_hanno_spiegazione_accessibile(client, dati):
+    """Il bottone "Seleziona" deve avere un titolo/tooltip breve, e la riga
+    compatta ❤️/☑ deve restare visibile senza dipendere dall'hover (chi
+    e' su telefono non ha passaggio del mouse)."""
+    if not dati["slug"]:
+        pytest.skip("nessun album pubblico nel database")
+    r = client.get(f"/n/{dati['slug']}")
+    assert r.status_code == 200
+    if 'id="selMode"' not in r.text:
+        pytest.skip("album senza fotografie: la barra selezione non compare")
+    blocco = r.text.split('id="selMode"')[1].split(">")[0]
+    assert "title=" in blocco
+    assert "toolbar-aiuto" in r.text

@@ -1,0 +1,23 @@
+{% extends "admin/base.html" %}
+{% set active = 'logs' %}
+{% block title %}Log — {{ site_name() }}{% endblock %}
+
+{% block content %}
+<h1>Log di sistema</h1>
+<p style="color:var(--ink-soft); margin-bottom:2rem;">Ultimi 200 eventi.</p>
+
+{% if logs %}
+<div class="log-list">
+  {% for log in logs %}
+  <div class="row">
+    <span>{{ log.ts|fmt_date }} {{ log.ts[11:19] }}</span>
+    <span class="lvl-{{ log.level }}">{{ log.level }}</span>
+    <span>{{ log.category }}</span>
+    <span>{{ log.message }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty"><p>Nessun evento registrato.</p></div>
+{% endif %}
+{% endblock %}

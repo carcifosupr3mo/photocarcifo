@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}{{ t('rec.titolo') }} — {{ site_name() }}{% endblock %}
+{% block description %}{{ t('rec.sotto') }}{% endblock %}
+{% block content %}
+
+<section class="hero"><div class="container">
+  <nav class="breadcrumb" aria-label="{{ t('com.percorso') }}">
+    <a href="/">{{ t('com.home') }}</a><span>/</span><span class="current">{{ t('rec.titolo') }}</span>
+  </nav>
+  <h1>{{ t('rec.titolo') }}</h1>
+  <p class="rec-sotto">{{ t('rec.sotto') }}</p>
+  {% if media %}
+  <div class="rec-media">
+    {# Le stelle piene arrivano fino al voto medio arrotondato. #}
+    <span class="rec-stelle" aria-hidden="true">{% for i in range(1, 6) %}<span
+      class="{% if i <= media|round(0, 'common')|int %}piena{% endif %}">★</span>{% endfor %}</span>
+    <span class="rec-media-testo">{% if quante == 1 %}{{
+      t('rec.media_una').format(media=media) }}{% else %}{{
+      t('rec.media').format(media=media, quante=quante) }}{% endif %}</span>
+  </div>
+  {% endif %}
+</div></section>
+
+<section class="section"><div class="container">
+
+  {% if grazie %}<div class="rec-esito ok">{{ t('rec.grazie') }}</div>{% endif %}
+  {% if errore %}<div class="rec-esito ko">{{ errore }}</div>{% endif %}
+
+  {% if recensioni %}
+  <div class="rec-lista">
+    {% for r in recensioni %}
+    <article class="rec-voce">
+      <div class="rec-testa">
+        <span class="rec-stelle" aria-label="{{ t('rec.stelle').format(n=r.voto) }}">{% for i in range(1, 6) %}<span
+          class="{% if i <= r.voto %}piena{% endif %}" aria-hidden="true">★</span>{% endfor %}</span>
+        <span class="rec-data">{{ r.creato_at[:10] }}</span>
+      </div>
+      <p class="rec-testo">{{ r.testo }}</p>
+      <p class="rec-firma">{{ r.nome }}{% if r.evento %} <span class="rec-evento">— {{ r.evento }}</span>{% endif %}</p>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty"><p>{{ t('rec.vuoto') }}</p></div>
+  {% endif %}
+
+  <div class="rec-modulo">
+    <h2>{{ t('rec.scrivi') }}</h2>
+    <form method="post" action="/recensioni" class="form" data-invio-unico>
+      <div class="field">
+        <label for="recNome">{{ t('rec.nome') }}</label>
+        <input type="text" id="recNome" name="nome" maxlength="60" required
+               autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="recEvento">{{ t('rec.evento') }}</label>
+        <input type="text" id="recEvento" name="evento" maxlength="80"
+               placeholder="{{ t('rec.evento_ph') }}">
+      </div>
+      <fieldset class="field rec-voti">
+        <legend>{{ t('rec.voto') }}</legend>
+        {#
+          Le stelle sono pulsanti di scelta veri, disegnati con il foglio di
+          stile: funzionano anche senza JavaScript e si usano da tastiera.
+          L'ordine e' invertito (5..1) perche' cosi' il foglio di stile puo'
+          accendere le stelle precedenti a quella scelta.
+        #}
+        {% for v in [5, 4, 3, 2, 1] %}
+        <input type="radio" id="v{{ v }}" name="voto" value="{{ v }}" required>
+        <label for="v{{ v }}" title="{{ t('rec.stelle').format(n=v) }}"
+               aria-label="{{ t('rec.stelle').format(n=v) }}">★</label>
+        {% endfor %}
+      </fieldset>
+      <div class="field">
+        <label for="recTesto">{{ t('rec.testo') }}</label>
+        <textarea id="recTesto" name="testo" rows="5" maxlength="1500" required
+                  placeholder="{{ t('rec.testo_ph') }}"></textarea>
+      </div>
+      {#
+        Campo trappola: e' nascosto e nessuna persona lo vede, ma i programmi
+        che riempiono i moduli in automatico lo compilano lo stesso. Se
+        arriva pieno, l'invio viene scartato.
+      #}
+      <div class="rec-trappola" aria-hidden="true">
+        <label for="sito">Sito</label>
+        <input type="text" id="sito" name="sito" tabindex="-1" autocomplete="off">
+      </div>
+      <button class="btn btn-accent" type="submit">{{ t('rec.invia') }}</button>
+      <p class="rec-nota">{{ t('rec.moderazione') }}</p>
+    </form>
+  </div>
+
+</div></section>
+{% endblock %}

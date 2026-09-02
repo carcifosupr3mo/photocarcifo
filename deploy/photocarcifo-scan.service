@@ -1,0 +1,10 @@
+[Unit]
+Description=Photocarcifo - Scansione incrementale del NAS Synology
+After=photocarcifo.service
+
+[Service]
+Type=oneshot
+User=photocarcifo
+Group=photocarcifo
+WorkingDirectory=/opt/photocarcifo
+ExecStart=/opt/photocarcifo/venv/bin/python -m app.cli scan

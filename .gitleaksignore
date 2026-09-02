@@ -1,0 +1,10 @@
+# Falsi positivi verificati manualmente in fase di audit (02/09/2026).
+#
+# tests/test_indexnow.py:20 — chiave IndexNow di fixture, non il valore
+# reale di produzione. Per design del protocollo IndexNow la chiave non è
+# comunque un segreto: va pubblicata in chiaro su /<chiave>.txt.
+tests/test_indexnow.py:generic-api-key:20
+
+# tests/test_ban_alert.py:385 — stringa letterale "SEGRETO123456" usata
+# come valore di test per il parsing dei log di accesso, non un token reale.
+tests/test_ban_alert.py:generic-api-key:385

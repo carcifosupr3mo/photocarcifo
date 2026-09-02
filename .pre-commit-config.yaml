@@ -1,0 +1,37 @@
+# Controlli automatici prima di ogni commit.
+#
+# Installazione (una tantum):
+#   pip install pre-commit
+#   pre-commit install
+#
+# Da quel momento gira da solo ad ogni "git commit". Per lanciarlo a mano
+# su tutti i file:
+#   pre-commit run --all-files
+repos:
+  # Secret scanning: blocca il commit se rileva credenziali, chiavi o
+  # token, confrontando anche con la history già presente.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  # Controlli di igiene di base: niente file enormi, niente merge conflict
+  # dimenticati, niente chiavi private, terminatori di riga coerenti.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=5000"]
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-toml
+
+  # Sintassi Python: fallisce se un file non compila o ha importazioni
+  # inutilizzate palesi. Stesso controllo che gira in photocarcifo-applica.sh.
+  - repo: https://github.com/PyCQA/pyflakes
+    rev: 3.4.0
+    hooks:
+      - id: pyflakes

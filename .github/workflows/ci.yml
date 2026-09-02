@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Installa le dipendenze
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Controllo sintassi e import inutilizzati (pyflakes)
+        run: python -m pyflakes app tests
+
+      - name: Verifica che l'app si importi senza errori
+        run: python -c "from app.main import app"
+
+      - name: Test
+        env:
+          # Configurazione minima per far partire l'app in ambiente CI:
+          # nessun valore reale, nessuna infrastruttura coinvolta.
+          SECRET_KEY: "ci-test-key-not-for-production-0000000000000000"
+          PHOTO_ROOT: "/tmp/ci-photo-root"
+          DATA_DIR: "/tmp/ci-data"
+          ADMIN_USERNAME: "admin"
+          ADMIN_PASSWORD: "ci-test-password"
+          SITE_URL: "http://localhost:8000"
+        run: |
+          mkdir -p /tmp/ci-photo-root /tmp/ci-data
+          # In produzione la suite gira contro il database reale, in sola
+          # lettura (vedi tests/conftest.py e README). In CI il database e'
+          # vuoto: una decina di test che presuppongono foto/album gia'
+          # esistenti (copertine, permessi sui media di un album con
+          # contenuto reale) non hanno nulla da leggere e vengono esclusi
+          # qui, non modificati ne' saltati silenziosamente altrove. Tutto
+          # il resto della suite - inclusi i controlli di sicurezza
+          # strutturali su permessi e CSRF - gira per intero.
+          python -m pytest tests -q \
+            --deselect tests/test_accesso.py::test_il_pulsante_sgancia_tutti_i_dispositivi \
+            --deselect tests/test_pagine.py::test_una_sola_pagina_ufficiale \
+            --deselect tests/test_pagine.py::test_le_miniature_dicono_quanto_saranno_grandi \
+            --deselect tests/test_sicurezza.py::test_copertina_rifiuta_una_foto_di_un_altro_album \
+            --deselect tests/test_sicurezza.py::test_copertina_rifiuta_un_identificativo_non_numerico \
+            --deselect tests/test_sicurezza.py::test_copertina_senza_permessi_non_passa \
+            --deselect tests/test_sicurezza.py::test_copertina_cancellata_ricade_su_quella_automatica \
+            --deselect tests/test_sicurezza.py::test_api_media_senza_permessi_non_passa \
+            --deselect tests/test_sicurezza.py::test_api_media_restituisce_solo_foto_del_nodo_richiesto \
+            --deselect tests/test_sicurezza.py::test_biscottino_zip_e_marcato_secure
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

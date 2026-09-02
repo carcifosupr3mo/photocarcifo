@@ -1,0 +1,63 @@
+{% extends "admin/base.html" %}
+{% set active = 'richieste' %}
+{% block title %}Richieste — {{ site_name() }}{% endblock %}
+
+{% block content %}
+<h1>Richieste di contatto</h1>
+<p style="color:var(--ink-soft);margin:.4rem 0 1.6rem;max-width:60ch;">
+  Messaggi arrivati dal modulo pubblico "Contattami", più recenti in cima.
+  Le righe evidenziate sono ancora da guardare.</p>
+
+<form method="get" action="/admin/richieste" class="richieste-filtri" style="margin-bottom:1.4rem;">
+  <div class="chip-riga" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.9rem;">
+    <a class="chip{% if not filtro_stato %} chip-attivo{% endif %}"
+       href="/admin/richieste?{% if filtro_q %}q={{ filtro_q|urlencode }}&{% endif %}ordine={{ filtro_ordine }}">
+       Tutte ({{ totale }})</a>
+    {% for s in stati %}
+    <a class="chip{% if filtro_stato == s %} chip-attivo{% endif %}"
+       href="/admin/richieste?stato={{ s|urlencode }}{% if filtro_q %}&q={{ filtro_q|urlencode }}{% endif %}&ordine={{ filtro_ordine }}">
+       {{ s }} ({{ conteggi.get(s, 0) }})</a>
+    {% endfor %}
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;">
+    <input type="hidden" name="stato" value="{{ filtro_stato }}">
+    <input type="search" name="q" value="{{ filtro_q }}" placeholder="Cerca per nome, email, motivo…"
+           style="flex:1 1 16rem;min-width:0;">
+    <select name="ordine">
+      <option value="recenti"{% if filtro_ordine == 'recenti' %} selected{% endif %}>Più recenti</option>
+      <option value="vecchi"{% if filtro_ordine == 'vecchi' %} selected{% endif %}>Più vecchie</option>
+    </select>
+    <button class="btn" type="submit">Filtra</button>
+    {% if filtro_stato or filtro_q or filtro_ordine != 'recenti' %}
+    <a class="btn btn-ghost" href="/admin/richieste">Azzera</a>
+    {% endif %}
+  </div>
+</form>
+
+{% if richieste %}
+<table class="table tabella-schede">
+  <thead>
+    <tr>
+      <th>Nome</th>
+      <th>Motivo</th>
+      <th style="width:9rem;">Data</th>
+      <th style="width:8rem;">Stato</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in richieste %}
+    <tr class="{% if r.stato == 'Nuova' %}riga-nuova{% endif %}">
+      <td data-eti="Nome"><a href="/admin/richieste/{{ r.id }}">{{ r.nome }} {{ r.cognome }}</a></td>
+      <td data-eti="Motivo">{{ r.motivo }}</td>
+      <td data-eti="Data" style="color:var(--ink-soft);">{{ r.creato_at|fmt_date }}</td>
+      <td data-eti="Stato">
+        {% if r.stato == 'Nuova' %}<span class="badge-contatore">Nuova</span>{% else %}{{ r.stato }}{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty"><p>Nessuna richiesta trovata con questi filtri.</p></div>
+{% endif %}
+{% endblock %}

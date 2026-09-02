@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}{% if numero %}{{ t('src.numero').format(n=numero) }} — {{ site_name() }}{% else %}{{ t('src.titolo') }} — {{ site_name() }}{% endif %}{% endblock %}
+{% block head_extra %}<meta name="robots" content="noindex"><meta name="googlebot" content="noindex">{% endblock %}
+{% block content %}
+<section class="hero"><div class="container">
+  <p class="eyebrow" style="color:var(--accent);">{{ t('src.eyebrow') }}</p>
+  <h1>{% if numero %}{{ t('src.numero').format(n=numero) }}{% else %}{{ t('src.titolo') }}{% endif %}</h1>
+  <form method="get" action="/search" class="search-bar">
+    {#
+      aria-label e non solo il testo suggerito: il suggerimento sparisce
+      appena si scrive, e diversi lettori di schermo non lo annunciano
+      affatto. Senza etichetta, chi non vede la lente accanto al campo
+      sente soltanto "casella di testo" sulla pagina piu' usata del sito.
+    #}
+    <input type="search" name="q" value="{{ query }}" autofocus
+           aria-label="{{ t('src.placeholder') }}"
+           placeholder="{{ t('src.placeholder') }}">
+    <button class="btn btn-accent" type="submit">{{ t('src.btn') }}</button>
+  </form>
+  <p class="search-aiuto">{{ t('src.aiuto') }}</p>
+</div></section>
+
+<section class="section"><div class="container">
+  {% if numero %}
+    {# --- Ricerca per numero di gara: si mostrano le fotografie --- #}
+    {% if foto %}
+    <p class="eyebrow" style="margin-bottom:1.5rem;">{% if totale == 1 %}{{
+      t('src.trovata').format(n=numero) }}{% else %}{{
+      t('src.trovate').format(tot=totale, n=numero) }}{% endif %}{% if pagine > 1 %} —
+      {{ t('src.pagina').format(p=page, n=pagine) }}{% endif %}</p>
+
+    <div class="photo-grid" data-selectable="0">
+      {% for m in foto %}
+      <div class="photo" data-id="{{ m.id }}" data-kind="{{ m.kind }}"
+           {% if m.kind == 'video' %}data-video="/video/{{ m.id }}"{% else %}data-preview="/preview/{{ m.id }}"{% endif %}
+           {% if m.downloads_enabled %}data-download="/download/{{ m.id }}"{% endif %}
+           data-alt="{{ t('src.numero').format(n=numero) }} — {{ m.title }}"
+           {% if m.width and m.height %}style="--prop: {{ m.width }} / {{ m.height }};"{% endif %}>
+        <img decoding="async" data-src="/thumb/{{ m.id }}" loading="lazy"
+             data-srcset="/thumb/{{ m.id }} 640w, /thumb2x/{{ m.id }} 1280w" sizes="(max-width:700px) 50vw, (max-width:1100px) 33vw, (max-width:1600px) 25vw, 275px"
+             alt="{{ t('src.numero').format(n=numero) }} — {{ m.title }} — Photocarcifo"
+             {% if m.width and m.height %}width="{{ m.width }}" height="{{ m.height }}"{% endif %}>
+        <a class="foto-cartella"
+           href="{% if m.is_private %}{{ ("/p/" ~ m.access_token) if m.access_token else "#" }}{% else %}/n/{{ m.slug }}{% endif %}">{{ m.title }}</a>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if pagine > 1 %}
+    <nav class="pager" aria-label="{{ t('com.pagine') }}">
+      {% if page > 1 %}<a class="btn btn-ghost" href="/search?q={{ numero }}&page={{ page - 1 }}">{{ t('com.indietro') }}</a>{% endif %}
+      <span class="pager-now">{{ t('com.pagina_di').format(p=page, n=pagine) }}</span>
+      {% if page < pagine %}<a class="btn" href="/search?q={{ numero }}&page={{ page + 1 }}">{{ t('com.altre') }}</a>{% endif %}
+    </nav>
+    {% endif %}
+
+    {# Lo stesso testo puo' essere anche il nome di un album: si mostrano
+       sotto le foto, invece di farli perdere. #}
+    {% if results %}
+    <p class="eyebrow" style="margin:3rem 0 1.5rem;">{{ t('src.anche').format(q=query) }}</p>
+    <div class="album-grid">
+      {% for r in results %}
+      <a class="album-card" href="{% if r.is_private %}{{ ("/p/" ~ r.access_token) if r.access_token else "#" }}{% else %}/n/{{ r.slug }}{% endif %}">
+        <div class="thumb">{% if r.cover %}<img decoding="async" data-src="/thumb/{{ r.cover }}" data-srcset="/thumb/{{ r.cover }} 640w, /thumb2x/{{ r.cover }} 1280w" sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 400px" alt="{{ r.title }}">{% endif %}
+          {% if r.is_private %}<span class="badge-private">{{ t('com.privato') }}</span>{% endif %}</div>
+        <div class="meta">
+          {% if r.parent_path %}<div class="res-path">{{ r.parent_path }}</div>{% endif %}
+          <h3>{{ r.title }}</h3>
+          <div class="sub"><span>{{ r.total_media }} {{ t('com.foto') }}</span></div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="empty">
+      <p>{{ t('src.nessuna').format(n=numero) }}</p>
+      <p class="search-aiuto" style="margin:0.5rem auto 0;">{{ t('src.attesa') }}</p>
+    </div>
+    {% endif %}
+
+  {% elif query %}
+    {# --- Ricerca testuale: si mostrano le cartelle, come prima --- #}
+    {% if results %}
+    <p class="eyebrow" style="margin-bottom:1.5rem;">{{ t('src.risultati').format(n=results|length, q=query) }}</p>
+    <div class="album-grid">
+      {% for r in results %}
+      <a class="album-card" href="{% if r.is_private %}{{ ("/p/" ~ r.access_token) if r.access_token else "#" }}{% else %}/n/{{ r.slug }}{% endif %}">
+        <div class="thumb">{% if r.cover %}<img decoding="async" data-src="/thumb/{{ r.cover }}" data-srcset="/thumb/{{ r.cover }} 640w, /thumb2x/{{ r.cover }} 1280w" sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 400px" alt="{{ r.title }}">{% endif %}
+          {% if r.is_private %}<span class="badge-private">{{ t('com.privato') }}</span>{% endif %}</div>
+        <div class="meta">
+          {% if r.parent_path %}<div class="res-path">{{ r.parent_path }}</div>{% endif %}
+          <h3>{{ r.title }}</h3>
+          <div class="sub"><span>{{ r.total_media }} {{ t('com.foto') }}</span></div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}<div class="empty"><p>{{ t('src.nessun_risultato').format(q=query) }}</p></div>{% endif %}
+  {% else %}
+    <div class="empty"><p>{{ t('src.invito') }}</p></div>
+  {% endif %}
+</div></section>
+{% endblock %}

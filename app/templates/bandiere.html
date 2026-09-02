@@ -1,0 +1,39 @@
+{#
+  Bandiere disegnate, non emoji.
+
+  Le emoji delle bandiere non si vedono ovunque: su Windows il browser non le
+  disegna proprio, e su parecchi Android e Linux mancano dal set di caratteri.
+  Al loro posto compariva un riquadro vuoto o due lettere. Queste invece sono
+  disegni veri, uguali su ogni dispositivo e senza scaricare nulla da fuori.
+
+  Sono definite una volta sola qui in fondo alla pagina e richiamate dove
+  servono, cosi' non vengono ripetute a ogni voce del menu.
+#}
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+  <symbol id="fl-it" viewBox="0 0 60 40">
+    <rect width="20" height="40" fill="#008C45"/>
+    <rect x="20" width="20" height="40" fill="#F4F5F0"/>
+    <rect x="40" width="20" height="40" fill="#CD212A"/>
+  </symbol>
+  <symbol id="fl-en" viewBox="0 0 60 40">
+    <rect width="60" height="40" fill="#012169"/>
+    <path d="M0,0 L60,40 M60,0 L0,40" stroke="#FFF" stroke-width="9"/>
+    <path d="M0,0 L60,40 M60,0 L0,40" stroke="#C8102E" stroke-width="4"/>
+    <path d="M30,0 V40 M0,20 H60" stroke="#FFF" stroke-width="14"/>
+    <path d="M30,0 V40 M0,20 H60" stroke="#C8102E" stroke-width="8"/>
+  </symbol>
+  <symbol id="fl-fr" viewBox="0 0 60 40">
+    <rect width="20" height="40" fill="#002395"/>
+    <rect x="20" width="20" height="40" fill="#F4F5F0"/>
+    <rect x="40" width="20" height="40" fill="#ED2939"/>
+  </symbol>
+  <symbol id="fl-de" viewBox="0 0 60 40">
+    <rect width="60" height="13.34" fill="#000"/>
+    <rect y="13.34" width="60" height="13.33" fill="#DD0000"/>
+    <rect y="26.67" width="60" height="13.33" fill="#FFCE00"/>
+  </symbol>
+  <symbol id="fl-es" viewBox="0 0 60 40">
+    <rect width="60" height="40" fill="#AA151B"/>
+    <rect y="10" width="60" height="20" fill="#F1BF00"/>
+  </symbol>
+</svg>

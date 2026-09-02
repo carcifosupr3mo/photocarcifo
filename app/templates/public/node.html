@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block title %}{{ node.title }} — {{ site_name() }}{% endblock %}
+{#
+  Nel blocco qui sotto sta tutto quello che va nella testa della pagina.
+
+  La seconda meta' e' il percorso strutturato per i motori di ricerca: la
+  stessa scaletta della briciola di pane in cima alla pagina, scritta in un
+  formato che Google sa leggere. Nei risultati compare
+  "photocarcifo.ch > BMX > Zetwil" al posto dell'indirizzo grezzo.
+  Le cartelle riservate restano fuori: hanno un indirizzo segreto e non
+  devono finire in nessun elenco pubblico.
+#}
+{% block head_extra %}{% if node.is_private or node.hidden %}<meta name="robots" content="noindex, nofollow">{% endif %}
+{%- if not node.is_private and not via_token %}
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
+{"@type":"ListItem","position":1,"name":{{ t('com.home')|tojson }},"item":{{ (site_url() ~ pref() ~ '/')|tojson }}}
+{%- for cr in crumbs %}{% if not cr.is_private %},
+{"@type":"ListItem","position":{{ loop.index + 1 }},"name":{{ cr.title|tojson }},"item":{{ (site_url() ~ pref() ~ '/n/' ~ cr.slug)|tojson }}}
+{%- endif %}{% endfor %}]}
+</script>
+{%- endif %}
+{#
+  Proprieta' delle fotografie, in forma leggibile da Google Immagini.
+
+  Una fotografia trovata su Google, senza questo blocco, e' un'immagine e
+  basta: nessuno sa di chi sia ne' a chi chiedere per usarla. Con, accanto
+  compare l'indicazione dei diritti e il collegamento alle condizioni.
+  E' la controparte pubblica della firma incorporata nei file, in
+  thumbnails.py: quella viaggia dentro l'immagine, questa sta nella pagina.
+
+  Solo per gli album pubblici: quelli riservati non vanno in nessun indice.
+#}
+{%- if not node.is_private and not via_token and media %}
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+{%- for m in media %}{% if m.kind == 'image' %}{% if not loop.first %},{% endif %}
+{"@type":"ImageObject",
+"contentUrl":{{ (site_url() ~ '/preview/' ~ m.id|string)|tojson }},
+"acquireLicensePage":{{ (site_url() ~ '/privacy')|tojson }},
+"license":{{ (site_url() ~ '/privacy')|tojson }},
+"creditText":{{ site_name()|tojson }},
+"creator":{"@type":"Person","name":{{ site_name()|tojson }}},
+"copyrightNotice":{{ ('© ' ~ site_name())|tojson }}}
+{%- endif %}{% endfor %}]}
+</script>
+{%- endif %}{% endblock %}
+{#
+  Ogni pagina di un album affollato indica se stessa come indirizzo
+  ufficiale. Indicando sempre e solo la prima, i motori di ricerca
+  scartavano tutte le successive: le foto dalla 121 in poi non finivano
+  mai nei risultati.
+#}
+{% block canonical %}{{ site_url() }}{{ pref() }}{{ request.url.path }}{% if page and page > 1 %}?page={{ page }}{% endif %}{% endblock %}
+{% block og_title %}{{ node.title }} — {{ site_name() }}{% endblock %}
+{% block description %}{{ t('node.descrizione').format(n=node.total_media, titolo=node.title) }}{% endblock %}
+{#
+  og_media e' la prima foto dell'album; per le cartelle che contengono solo
+  altre cartelle e' una copertina presa a caso da dentro, diversa a ogni
+  condivisione. Se non c'e' proprio nulla resta il logo di base.html.
+#}
+{% block og_image %}{% if og_media %}<meta property="og:image" content="{{ site_url() }}/social/{{ og_media }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/jpeg">{% else %}{{ super() }}{% endif %}{% endblock %}
+{% set base_url = ('/p/' ~ node.access_token) if via_token else ('/n/' ~ node.slug) %}
+
+{% block content %}
+<section class="hero"><div class="container">
+  <nav class="breadcrumb" aria-label="{{ t('com.percorso') }}">
+    <a href="/">{{ t('com.home') }}</a>
+    {% for cr in crumbs %}<span>/</span>
+      {#
+        cr.sbloccato viene deciso lato server (tree.py:_breadcrumb), non
+        qui: il template si limita a leggerlo. Un antenato riservato che
+        il visitatore non ha il diritto di vedere arriva gia' con
+        title/access_token annullati (None) — non mostra mai il nome
+        vero ne' un link, solo l'etichetta neutra "Privato", cosi' come
+        una cartella senza nome proprio.
+      #}
+      {% if loop.last %}<span class="current">{{ cr.title if cr.sbloccato else t('com.privato') }}</span>
+      {% elif not cr.sbloccato %}<span class="current">{{ t('com.privato') }}</span>
+      {% elif cr.is_private %}{% if cr.access_token %}<a href="/p/{{ cr.access_token }}">{{ cr.title }}</a>{% else %}<span class="current">{{ cr.title }}</span>{% endif %}
+      {% else %}<a href="/n/{{ cr.slug }}">{{ cr.title }}</a>{% endif %}
+    {% endfor %}
+  </nav>
+  <h1>{{ node.title }}{% if node.is_private %} <span class="badge-private">{{ t('com.privato') }}</span>{% endif %}</h1>
+</div></section>
+
+<section class="section"><div class="container">
+  {% if children and children|length > 1 %}
+  <div class="ordina-bar">
+    <span class="ordina-eti">{{ t('ord.eti') }}</span>
+    {#
+      rel="nofollow": i quattro ordinamenti mostrano gli stessi album in
+      sequenza diversa. Per chi legge il sito sono comodi, per un motore di
+      ricerca sono quattro copie della stessa pagina da scartare una per
+      una. Cosi' non le va nemmeno a leggere.
+    #}
+    <div class="ordina-scelte">
+      <a rel="nofollow" href="?ordine=recenti" class="{% if ordine == 'recenti' %}attivo{% endif %}">{{ t('ord.recenti') }}</a>
+      <a rel="nofollow" href="?ordine=vecchi" class="{% if ordine == 'vecchi' %}attivo{% endif %}">{{ t('ord.vecchi') }}</a>
+      <a rel="nofollow" href="?ordine=nome" class="{% if ordine == 'nome' %}attivo{% endif %}">{{ t('ord.nome') }}</a>
+      <a rel="nofollow" href="?ordine=foto" class="{% if ordine == 'foto' %}attivo{% endif %}">{{ t('ord.foto') }}</a>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if children %}
+  <div class="album-grid">
+    {% for c in children %}
+    <a class="album-card" href="{% if c.is_private %}{{ ("/p/" ~ c.access_token) if c.access_token else "#" }}{% else %}/n/{{ c.slug }}{% endif %}">
+      <div class="thumb">{% if c.cover %}<img decoding="async" data-src="/thumb/{{ c.cover }}" data-srcset="/thumb/{{ c.cover }} 640w, /thumb2x/{{ c.cover }} 1280w" sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 400px" alt="{{ node.title }} {{ c.title }} — Photocarcifo">{% endif %}
+        {% if not c.cover %}<div class="cat-logo"><img src="/static/icons/icon-192.png" alt="Photocarcifo"></div>{% endif %}{% if c.is_private %}<span class="badge-private">{{ t('com.privato') }}</span>{% endif %}</div>
+      <div class="meta"><h2 class='card-titolo'>{{ c.title }}</h2>
+        <div class="sub"><span>{{ c.total_media }} {{ t('com.foto') }}</span></div></div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if media %}
+    <div class="dl-toolbar">
+      {% if node.downloads_enabled %}
+      {#
+        rel="nofollow": questo collegamento non e' una pagina da visitare,
+        e' un ordine di lavoro. Seguendolo, il programma di Meta ha fatto
+        impacchettare al server tre archivi da 2, 1,6 e 1,1 GB. Il divieto
+        da solo non basta (chi lo ignora lo ignora), ma toglie di mezzo
+        tutti quelli che le regole le rispettano.
+      #}
+      <a class="btn" id="dlTutto" rel="nofollow" href="/zip/node/{{ node.id }}">{{ t('node.scarica_tutto') }} ({{ total_media }})</a>
+      {% else %}
+      <p class="dl-disattivi">{{ t('node.download_disattivi') }}</p>
+      {% endif %}
+      <button class="btn btn-ghost" id="selMode" type="button" title="{{ t('node.seleziona_aiuto') }}" aria-describedby="selModeAiuto">{{ t('node.seleziona') }}</button>
+      {% if node.downloads_enabled %}
+      <button class="btn btn-accent" id="dlSel" type="button" style="display:none;">{{ t('node.scarica_sel') }}</button>
+      {% endif %}
+      {# Condividere non e' scaricare: il collegamento mostra la galleria e
+         basta, e lo ZIP dentro la pagina condivisa resta comunque legato a
+         downloads_enabled. Il bottone quindi non dipende dai download,
+         altrimenti in un album a download spento non si potrebbe piu'
+         condividere una scelta di fotografie pur potendole vedere. #}
+      <button class="btn btn-ghost" id="shareSel" type="button" style="display:none;">{{ t('node.condividi_sel') }}</button>
+      {% if is_admin %}
+      <button class="btn btn-danger" id="delSel" type="button" style="display:none;">{{ t('node.cestino') }}</button>
+      {% endif %}
+      <a class="btn btn-ghost" id="dlPref" href="#" style="display:none;">{{ t('node.scarica_pref') }}</a>
+      <button class="btn btn-ghost" id="selTutte" type="button" style="display:none;">{{ t('node.tutte') }}</button>
+      <button class="btn btn-ghost" id="selCancel" type="button" style="display:none;">{{ t('node.annulla') }}</button>
+      {# Quante fotografie sono scelte in tutto l'album e non solo in questa
+         pagina: la selezione sopravvive al cambio pagina, quindi senza
+         questo riscontro chi sceglie immagini sparse non sa piu' quante ne
+         ha in mano. Lo riempie refreshBar(). #}
+      <p id="selEcho" role="status" aria-live="polite" style="display:none;"></p>
+    </div>
+    {#
+      Testo sempre visibile e non solo a comparsa (title/tooltip): su
+      telefono non c'e' passaggio del mouse, quindi la spiegazione dei due
+      controlli distinti — cuore e casella — deve stare gia' scritta,
+      piccola e discreta, accanto alla barra.
+    #}
+    <p class="toolbar-aiuto" id="selModeAiuto">{{ t('node.controlli_aiuto') }}</p>
+
+    <div class="vista-bar">
+      <span class="ordina-eti">{{ t('node.vista') }}</span>
+      <div class="vista-scelte" role="group" aria-label="{{ t('node.vista') }}">
+        <button type="button" data-vista="griglia" aria-label="{{ t('node.molte') }}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="1"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1"/></svg>
+          <span>{{ t('node.griglia') }}</span>
+        </button>
+        <button type="button" data-vista="grande" aria-label="{{ t('node.una') }}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/></svg>
+          <span>{{ t('node.grande') }}</span>
+        </button>
+      </div>
+    </div>
+
+    {% if pages > 1 %}
+    <p class="page-info">{{ t('node.da_a').format(a=(page - 1) * page_size + 1,
+      b=[page * page_size, total_media]|min, tot=total_media) }}</p>
+    {% endif %}
+
+    <div class="photo-grid" data-node-id="{{ node.id }}" data-selectable="{{ '1' if (node.downloads_enabled or is_admin) else '0' }}">
+      {% for m in media %}
+      <div class="photo" data-id="{{ m.id }}" data-kind="{{ m.kind }}"
+           {% if m.kind == 'video' %}data-video="/video/{{ m.id }}"{% else %}data-preview="/preview/{{ m.id }}"{% endif %}
+           {% if node.downloads_enabled %}data-download="/download/{{ m.id }}"{% endif %}
+           data-alt="{{ node.title }} — Photocarcifo"
+           {% if is_admin and node.cover_media_id == m.id %}data-copertina="1"{% endif %}
+           {% if m.width and m.height %}style="--prop: {{ m.width }} / {{ m.height }};"{% endif %}>
+        {#
+          I due formati sono descritti per larghezza reale (640w e 1280w) e
+          non con "1x, 2x". Con 1x/2x il browser sceglieva guardando solo lo
+          schermo: un telefono moderno, che conta tre punti fisici per punto
+          di disegno, si portava a casa il formato grande — settantadue
+          chilobyte — per riempire una casella larga meno di duecento punti,
+          dove il piccolo bastava e avanzava. Su una galleria intera erano
+          tre volte i dati necessari, pagati da chi naviga in mobilita'.
+          Con le larghezze e sizes il browser sa quanto spazio occupera'
+          l'immagine e prende quella giusta.
+          La prima fotografia porta srcset gia' scritto qui invece che
+          aggiunto dopo dallo script: e' quella che decide quando la pagina
+          sembra pronta, e cosi' non viene scaricata due volte.
+        #}
+        <img decoding="async" {% if loop.first %}src="/thumb/{{ m.id }}" srcset="/thumb/{{ m.id }} 640w, /thumb2x/{{ m.id }} 1280w" fetchpriority="high"{% else %}data-src="/thumb/{{ m.id }}" loading="lazy" data-srcset="/thumb/{{ m.id }} 640w, /thumb2x/{{ m.id }} 1280w"{% endif %} sizes="(max-width:700px) 50vw, (max-width:1100px) 33vw, (max-width:1600px) 25vw, 275px" alt="{{ node.title }} — fotografia {{ loop.index }}"
+             {% if m.width and m.height %}width="{{ m.width }}" height="{{ m.height }}"{% endif %}>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if pages > 1 %}
+    <nav class="pager" aria-label="{{ t('com.pagine') }}">
+      {#
+        rel="nofollow", come gia' sui quattro ordinamenti qui sopra:
+        senza, un crawler che segue i link normali di un album grande
+        arriva a ?page=2, poi da li' a ?page=3, e cosi' fino all'ultima —
+        per un album da qualche migliaio di foto sono decine di indirizzi
+        in piu' scoperti da un solo album, moltiplicati su tutti gli
+        album grandi del sito. La prima pagina resta l'unica che un
+        crawler raggiunge seguendo i link; le altre restano comunque
+        raggiungibili a chi le apre a mano (il pulsante funziona
+        lo stesso, nofollow riguarda solo chi segue i link in automatico).
+      #}
+      {% if page > 1 %}<a class="btn btn-ghost" rel="nofollow" href="{{ base_url }}?page={{ page - 1 }}">{{ t('com.indietro') }}</a>{% endif %}
+      <span class="pager-now">{{ t('com.pagina_di').format(p=page, n=pages) }}</span>
+      {% if page < pages %}<a class="btn" rel="nofollow" href="{{ base_url }}?page={{ page + 1 }}">{{ t('com.altre') }}</a>{% endif %}
+    </nav>
+    {% endif %}
+  {% endif %}
+
+  {% if not children and not media %}
+  <div class="empty"><p>{{ t('node.vuota') }}</p></div>{% endif %}
+</div></section>
+{% if is_admin %}<input type="hidden" id="csrf" value="{{ is_admin_csrf }}">{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ asset('/static/js/vista.js') }}" defer></script>
+<script src="{{ asset('/static/js/app.js') }}" defer></script>
+<script src="{{ asset('/static/js/preferiti-nome.js') }}" defer></script>
+<script src="{{ asset('/static/js/preferiti.js') }}" defer></script>
+{% endblock %}

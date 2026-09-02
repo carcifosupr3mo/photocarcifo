@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}{{ site_name() }} — {{ t('nav.portfolio') }}{% endblock %}
+{% block description %}{{ t('home.descrizione') }}{% endblock %}
+{% block content %}
+
+<section class="intro-hero">
+  <div class="container">
+    <p class="eyebrow">{{ t('home.eyebrow') }}</p>
+    <h1>{{ t('home.saluto') }}<span class="dot">.</span></h1>
+    <form method="get" action="/" class="search-bar" id="ricerca">
+      <input type="search" name="q" value="{{ q or '' }}"
+             aria-label="{{ t('src.placeholder') }}"
+             placeholder="{{ t('home.cerca_placeholder') }}">
+      <button class="btn btn-accent" type="submit">{{ t('src.btn') }}</button>
+    </form>
+  </div>
+</section>
+
+{% if q %}
+<section class="section" id="portfolio">
+  <div class="container">
+    {% if risultati_ricerca or foto_ricerca %}
+      {% if risultati_ricerca %}
+      <p class="eyebrow" style="margin-bottom:1.5rem;">{{ t('src.risultati').format(n=risultati_ricerca|length, q=q) }}</p>
+      <div class="album-grid">
+        {% for r in risultati_ricerca %}
+        <a class="album-card" href="{% if r.is_private %}{{ ("/p/" ~ r.access_token) if r.access_token else "#" }}{% else %}/n/{{ r.slug }}{% endif %}">
+          <div class="thumb">{% if r.cover %}<img decoding="async" data-src="/thumb/{{ r.cover }}" data-srcset="/thumb/{{ r.cover }} 640w, /thumb2x/{{ r.cover }} 1280w" sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 400px" alt="{{ r.title }}">{% endif %}
+            {% if r.is_private %}<span class="badge-private">{{ t('com.privato') }}</span>{% endif %}</div>
+          <div class="meta">
+            {% if r.parent_path %}<div class="res-path">{{ r.parent_path }}</div>{% endif %}
+            <h3>{{ r.title }}</h3>
+            <div class="sub"><span>{{ r.total_media }} {{ t('com.foto') }}</span></div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if foto_ricerca %}
+      <p class="eyebrow" style="margin:3rem 0 1.5rem;">{% if totale_ricerca == 1 %}{{
+        t('src.trovata').format(n=numero_ricerca) }}{% else %}{{
+        t('src.trovate').format(tot=totale_ricerca, n=numero_ricerca) }}{% endif %}{% if pagine_ricerca > 1 %} —
+        {{ t('src.pagina').format(p=page_ricerca, n=pagine_ricerca) }}{% endif %}</p>
+      <div class="photo-grid" data-selectable="0">
+        {% for m in foto_ricerca %}
+        <div class="photo" data-id="{{ m.id }}" data-kind="{{ m.kind }}"
+             {% if m.kind == 'video' %}data-video="/video/{{ m.id }}"{% else %}data-preview="/preview/{{ m.id }}"{% endif %}
+             {% if m.downloads_enabled %}data-download="/download/{{ m.id }}"{% endif %}
+             data-alt="{{ t('src.numero').format(n=numero_ricerca) }} — {{ m.title }}"
+             {% if m.width and m.height %}style="--prop: {{ m.width }} / {{ m.height }};"{% endif %}>
+          <img decoding="async" data-src="/thumb/{{ m.id }}" loading="lazy"
+               data-srcset="/thumb/{{ m.id }} 640w, /thumb2x/{{ m.id }} 1280w" sizes="(max-width:700px) 50vw, (max-width:1100px) 33vw, (max-width:1600px) 25vw, 275px"
+               alt="{{ t('src.numero').format(n=numero_ricerca) }} — {{ m.title }} — Photocarcifo"
+               {% if m.width and m.height %}width="{{ m.width }}" height="{{ m.height }}"{% endif %}>
+          <a class="foto-cartella"
+             href="{% if m.is_private %}{{ ("/p/" ~ m.access_token) if m.access_token else "#" }}{% else %}/n/{{ m.slug }}{% endif %}">{{ m.title }}</a>
+        </div>
+        {% endfor %}
+      </div>
+      {% if pagine_ricerca > 1 %}
+      <nav class="pager" aria-label="{{ t('com.pagine') }}">
+        {# rel="nofollow": stesso motivo della paginazione degli album in
+           node.html — un crawler non deve scoprire ?q=...&page=N seguendo
+           i link, la pagina resta comunque apribile a mano. #}
+        {% if page_ricerca > 1 %}<a class="btn btn-ghost" rel="nofollow" href="/?q={{ q|urlencode }}&page={{ page_ricerca - 1 }}#ricerca">{{ t('com.indietro') }}</a>{% endif %}
+        <span class="pager-now">{{ t('com.pagina_di').format(p=page_ricerca, n=pagine_ricerca) }}</span>
+        {% if page_ricerca < pagine_ricerca %}<a class="btn" rel="nofollow" href="/?q={{ q|urlencode }}&page={{ page_ricerca + 1 }}#ricerca">{{ t('com.altre') }}</a>{% endif %}
+      </nav>
+      {% endif %}
+      {% endif %}
+    {% else %}
+    <div class="empty"><p>{{ t('src.nessun_risultato').format(q=q) }}</p></div>
+    {% endif %}
+  </div>
+</section>
+{% else %}
+<section class="section" id="portfolio">
+  <div class="container">
+    <p class="eyebrow">{{ t('nav.portfolio') }}</p>
+    {% if categories %}
+    {% if categories and categories|length > 1 %}
+  <div class="ordina-bar">
+    <span class="ordina-eti">{{ t('ord.eti') }}</span>
+    {# rel="nofollow": stessi album, solo in ordine diverso. Vedi node.html. #}
+    <div class="ordina-scelte">
+      <a rel="nofollow" href="?ordine=recenti" class="{% if ordine == 'recenti' %}attivo{% endif %}">{{ t('ord.recenti') }}</a>
+      <a rel="nofollow" href="?ordine=vecchi" class="{% if ordine == 'vecchi' %}attivo{% endif %}">{{ t('ord.vecchi') }}</a>
+      <a rel="nofollow" href="?ordine=nome" class="{% if ordine == 'nome' %}attivo{% endif %}">{{ t('ord.nome') }}</a>
+      <a rel="nofollow" href="?ordine=foto" class="{% if ordine == 'foto' %}attivo{% endif %}">{{ t('ord.foto') }}</a>
+    </div>
+  </div>
+  {% endif %}
+  <div class="cat-grid">
+      {% for c in categories %}
+      <a class="cat-card" href="{% if c.is_private %}{{ ("/p/" ~ c.access_token) if c.access_token else "#" }}{% else %}/n/{{ c.slug }}{% endif %}">
+        {% if c.cover %}{% if loop.first %}{#
+          Prima scheda: e' l'immagine piu' grande della pagina, quella su cui
+          si misura il tempo di caricamento percepito. Si carica subito con
+          src invece che in modo pigro (aspettare il JavaScript la
+          ritarderebbe) e si prende da /cover/, la versione alleggerita.
+        #}<img decoding="async" fetchpriority="high" src="/cover/{{ c.cover }}" alt="{{ c.title }}" class="loaded">{% else %}<img decoding="async" loading="lazy" data-src="/thumb/{{ c.cover }}" data-srcset="/thumb/{{ c.cover }} 640w, /thumb2x/{{ c.cover }} 1280w" sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 400px" alt="{{ c.title }}">{% endif %}{% else %}<div class="cat-logo"><img src="/static/icons/icon-192.png" alt="Photocarcifo"></div>{% endif %}
+        <div class="cat-scrim"></div>
+        {% if c.is_private %}<span class="badge-private">{{ t('com.privato') }}</span>{% endif %}
+        <div class="cat-label"><h2 class='card-titolo'>{{ c.title }}</h2><div class="n">{{ c.total_media }} {{ t('com.foto') }}</div></div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}<div class="empty"><p>{{ t('home.vuoto') }}</p></div>{% endif %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

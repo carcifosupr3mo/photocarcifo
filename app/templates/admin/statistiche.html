@@ -1,0 +1,96 @@
+{% extends "admin/base.html" %}
+{% set active = 'statistiche' %}
+{% block title %}Statistiche — {{ site_name() }}{% endblock %}
+{% block content %}
+<h1>Statistiche</h1>
+<p style="color:var(--ink-soft);margin-bottom:1.6rem;">
+  Storico completo per album. Per gli ultimi 30 giorni vedi la
+  <a href="/admin">Panoramica</a>; per il dettaglio delle singole ricerche
+  la pagina <a href="/admin/ricerche">Ricerche</a>.
+</p>
+
+<h2>Album più aperti (storico)</h2>
+{% if top_aperture %}
+<table class="table">
+  <thead><tr><th>Album</th><th>Aperture</th></tr></thead>
+  <tbody>
+  {% for r in top_aperture %}
+    <tr><td>{{ r.title or r.rel_path }}</td><td>{{ r.quante }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p style="color:var(--ink-soft);">Nessuna apertura registrata.</p>{% endif %}
+
+<h2>Album più scaricati (foto singole)</h2>
+{% if top_download %}
+<table class="table">
+  <thead><tr><th>Album</th><th>Download</th></tr></thead>
+  <tbody>
+  {% for r in top_download %}
+    <tr><td>{{ r.title or r.rel_path }}</td><td>{{ r.quante }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p style="color:var(--ink-soft);">Nessun download registrato.</p>{% endif %}
+
+<h2>ZIP più scaricati</h2>
+{% if top_zip %}
+<table class="table">
+  <thead><tr><th>Album</th><th>ZIP scaricati</th></tr></thead>
+  <tbody>
+  {% for r in top_zip %}
+    <tr><td>{{ r.title or r.rel_path }}</td><td>{{ r.quante }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p style="color:var(--ink-soft);">Nessuno ZIP scaricato.</p>{% endif %}
+
+<h2>Andamento mensile</h2>
+{% if andamento %}
+<table class="table">
+  <thead><tr><th>Mese</th><th>Evento</th><th>Quante</th></tr></thead>
+  <tbody>
+  {% for r in andamento %}
+    <tr><td>{{ r.mese }}</td><td>{{ {'open':'Aperture','download':'Download','zip':'ZIP'}[r.event] or r.event }}</td><td>{{ r.quante }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p style="color:var(--ink-soft);">Ancora nessun dato mensile.</p>{% endif %}
+
+<h2>Ricerche</h2>
+<div class="stat-grid">
+  <div class="stat-card"><div class="num">{{ totale_ricerche }}</div><div class="lbl">Testi diversi cercati</div></div>
+  <div class="stat-card"><div class="num">{{ totale_vuote }}</div><div class="lbl">Senza risultati</div></div>
+  <div class="stat-card"><div class="num">{{ totale_preferiti }}</div><div class="lbl">Foto preferite dai clienti</div></div>
+</div>
+
+<h3>Più cercate</h3>
+{% if ricerche_frequenti %}
+<table class="table">
+  <thead><tr><th>Testo cercato</th><th>Volte</th><th>Risultati</th></tr></thead>
+  <tbody>
+  {% for r in ricerche_frequenti %}
+    <tr><td>{{ r.testo }}</td><td>{{ r.volte }}</td><td>{{ r.risultati }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p style="color:var(--ink-soft);">Nessuna ricerca registrata.</p>{% endif %}
+
+<h3>Cercate ma senza risultati</h3>
+<p style="color:var(--ink-soft);font-size:.85rem;">
+  Numeri o parole che i visitatori hanno cercato senza trovare nulla: un
+  segnale di foto mancanti o non ancora lette dall'OCR. Elenco completo,
+  con la possibilità di rimuoverle, nella pagina
+  <a href="/admin/ricerche">Ricerche</a>.
+</p>
+{% if ricerche_vuote %}
+<table class="table">
+  <thead><tr><th>Testo cercato</th><th>Volte</th></tr></thead>
+  <tbody>
+  {% for r in ricerche_vuote %}
+    <tr><td>{{ r.testo }}</td><td>{{ r.volte }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p style="color:var(--ink-soft);">Nessuna ricerca senza risultati.</p>{% endif %}
+{% endblock %}

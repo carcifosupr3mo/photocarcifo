@@ -1,0 +1,1 @@
+"""Router dell'applicazione Photocarcifo."""

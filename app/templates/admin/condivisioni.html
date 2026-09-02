@@ -1,0 +1,57 @@
+{% extends "admin/base.html" %}
+{% set active = 'condivisioni' %}
+{% block title %}Condivisioni — {{ site_name() }}{% endblock %}
+
+{% block content %}
+<h1>Link di condivisione attivi</h1>
+<p style="color:var(--ink-soft); max-width:62ch; margin:.5rem 0 1.5rem;">
+  Elenco dei link diretti generati per fotografie singole o selezioni multiple.
+  Revocare un link è definitivo: chi lo ha ricevuto non potrà più aprirlo.</p>
+
+<h2>Fotografie singole</h2>
+{% if singole %}
+<div class="mgr-grid">
+  {% for s in singole %}
+  <div class="acard" data-riga-singola="{{ s.id }}">
+    <div class="acard-body">
+      <div class="acard-txt">
+        <h3>{{ s.filename }}</h3>
+        <p>{{ s.album }} — dal {{ s.created_at|fmt_date if s.created_at else '' }}</p>
+      </div>
+      <div class="acard-actions">
+        <button class="btn btn-ghost" data-copia-link="{{ s.url }}" type="button">Copia link</button>
+        <button class="btn btn-ghost" data-revoca-singola="{{ s.id }}" type="button">Revoca</button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty"><p>Nessuna fotografia condivisa singolarmente.</p></div>
+{% endif %}
+
+<h2 style="margin-top:2rem;">Selezioni multiple</h2>
+{% if selezioni %}
+<div class="mgr-grid">
+  {% for s in selezioni %}
+  <div class="acard" data-riga-selezione="{{ s.id }}">
+    <div class="acard-body">
+      <div class="acard-txt">
+        <h3>{{ s.conta }} foto</h3>
+        <p>dal {{ s.created_at|fmt_date if s.created_at else '' }}</p>
+      </div>
+      <div class="acard-actions">
+        <button class="btn btn-ghost" data-copia-link="{{ s.url }}" type="button">Copia link</button>
+        <button class="btn btn-ghost" data-revoca-selezione="{{ s.id }}" type="button">Revoca</button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty"><p>Nessuna selezione condivisa.</p></div>
+{% endif %}
+
+<input type="hidden" id="csrf" value="{{ user.csrf }}">
+<script src="{{ asset('/static/js/admin-condivisioni.js') }}" defer></script>
+{% endblock %}
