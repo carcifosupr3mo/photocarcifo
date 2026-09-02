@@ -53,14 +53,18 @@
           ('upload', '/admin/upload', 'Carica foto'),
           ('trash', '/admin/trash', 'Cestino')]),
         ('pubblico', 'Chi guarda il sito', [
+          ('richieste', '/admin/richieste', 'Richieste'),
           ('recensioni', '/admin/recensioni', 'Recensioni'),
           ('ricerche', '/admin/ricerche', 'Ricerche'),
+          ('statistiche', '/admin/statistiche', 'Statistiche'),
           ('preferite', '/admin/preferite', 'Preferite'),
-          ('raduni', '/admin/raduni', 'Raduni')]),
+          ('raduni', '/admin/raduni', 'Raduni'),
+          ('condivisioni', '/admin/condivisioni', 'Condivisioni')]),
         ('server', 'Server', [
           ('twofa', '/admin/2fa', 'Sicurezza'),
           ('logs', '/admin/logs', 'Log')])
       ] %}
+      {% set n_richieste = richieste_nuove() %}
       {% for chiave, titolo, voci in gruppi %}
       {% set qui = voci|map(attribute=0)|select('equalto', active)|list|length > 0 %}
       <details class="menu-gruppo" data-gruppo="{{ chiave }}"{% if qui %} open{% endif %}>
@@ -72,7 +76,7 @@
            verticale che le tiene insieme. #}
         <div class="menu-voci">
           {% for voce, indirizzo, nome in voci %}
-          <a href="{{ indirizzo }}" class="{% if active==voce %}active{% endif %}">{{ nome }}</a>
+          <a href="{{ indirizzo }}" class="{% if active==voce %}active{% endif %}">{{ nome }}{% if voce=='richieste' and n_richieste %} <span class="badge-contatore">{{ n_richieste }}</span>{% endif %}</a>
           {% endfor %}
         </div>
       </details>
