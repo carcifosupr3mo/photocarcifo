@@ -1416,3 +1416,11 @@ Stato al 02/09/2026: 1062 nodi, 1695 archi, 69 community, 106 file dal commit `3
 **Limite noto verificato**: gli import relativi Python (`from ..scanner import scan`) sono sotto-risolti (`imports_from` ha solo 6 archi su tutto il repo). `graphify explain <modulo>.py` mostra bene i simboli *contenuti* e le chiamate *interne* al file, ma non sempre chi lo *importa* da altri file. Per "chi dipende da X" quando `explain`/`path` non bastano, fallback a `grep -rn "import X\|from.*X import" app/` — mirato, non scansione integrale.
 
 ---
+
+## 42. Ponytail — YAGNI/minimalismo, disponibilità (aggiunto 02/09/2026)
+
+Plugin Claude Code (`DietrichGebert/ponytail`), installato a livello utente (non project-scoped) sulla macchina di sviluppo Windows dell'operatore — non sul server. Spinge verso soluzioni minimali (YAGNI → stdlib → nativo → una riga → minimo indispensabile) quando si scrive/modifica codice; **non** è uno strumento di gestione del contesto/token (nome fuorviante rispetto a quell'uso).
+
+**Verificato**: invocabile con `/ponytail`, `/ponytail-review` (review anti-over-engineering di un diff), `/ponytail-audit` (audit dell'intero repo) dalla sessione principale di Claude Code, tramite il tool `Skill`.
+
+**Limite noto verificato**: un subagent lanciato in modalità "fork" isolata (background worker) **non ha accesso al tool `Skill`** in questo ambiente — è un vincolo strutturale del tipo di esecuzione, non una mancata configurazione. Ponytail va quindi invocato dalla sessione principale (o da un subagent con accesso esplicito al tool Skill), non da un fork worker.
