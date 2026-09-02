@@ -187,7 +187,7 @@ Elenco delle route registrate nell'applicazione (estratte da `app/routers/*.py`;
 | GET | `/privacy` | tree.py | Privacy policy |
 | GET | `/contattami` / POST | contattami.py | Modulo di contatto |
 | GET | `/recensioni` / POST | recensioni.py | Recensioni pubbliche |
-| GET | `/radunimoto` / POST | raduni.py | Sezione raduni moto |
+| GET | `/radunimoto` | raduni.py | Pagina pubblica dei raduni, raggiungibile dalla barra di navigazione (voce "RADUNI", chiave `nav.raduni`). Nessuna autenticazione richiesta dal 2026-09-02 (rimosso il precedente gate domanda/risposta con rate-limit). Mostra data/ora/luogo/note/link mappa di ogni raduno e, sotto ciascuno, le card degli album pubblici collegati tramite `raduni_albums` |
 | GET | `/lingua/{codice}` | lingua.py | Cambio lingua |
 | GET | `/index.php`, `/picture.php` | legacy.py | Compatibilità vecchi indirizzi |
 
@@ -231,7 +231,8 @@ Elenco delle route registrate nell'applicazione (estratte da `app/routers/*.py`;
 | GET/POST | `/admin/trash` (prefix) + `/media`, `/node/{id}`, `/restore` | trash.py | Cestino |
 | GET | `/admin/preferite` (prefix) | pref_admin.py | Vista admin dei preferiti |
 | GET/POST | `/admin/preferiti/{node_id}`, `/rimuovi` | preferiti.py | Preferiti per album (admin) |
-| GET/POST | `/admin/raduni`, `/aggiungi`, `/{id}/elimina`, `/impostazioni`, `/sblocca`, `/{id}/mappa` | raduni.py | Gestione raduni |
+| GET/POST | `/admin/raduni`, `/aggiungi`, `/{id}/elimina`, `/{id}/mappa`, `/avviso` | raduni.py | Gestione raduni |
+| POST | `/admin/raduni/{id}/album/collega`, `/admin/raduni/{id}/album/{node_id}/rimuovi` | raduni.py | Collega/scollega un album esistente al raduno (tabella `raduni_albums`; "rimuovi dal raduno" toglie solo l'associazione, l'album e i suoi file non vengono toccati) |
 | GET/POST | `/admin/recensioni`, `/{id}/rifiuta`, `/approva`, `/nascondi`, `/elimina` | recensioni.py | Moderazione recensioni |
 | GET/POST | `/admin/richieste/{id}`, `/stato`, `/elimina` | admin.py | Gestione richieste di contatto |
 
@@ -402,7 +403,9 @@ Colonne principali: `id`, `node_id` (FK, cascade), `kind` (`image`/`video`), `re
 
 **`preferiti`** — foto preferite dai visitatori (senza registrazione). `ospite` (id casuale in cookie), `media_id`, `node_id`, `instagram` (opzionale). `UNIQUE(ospite, media_id)`.
 
-**`raduni`** — eventi della sezione raduni moto. `data`, `ora`, `luogo`, `note`, `mappa`.
+**`raduni`** — eventi della sezione raduni moto. `data`, `ora`, `luogo`, `note`, `mappa` (URL esterno, verificato: link Google Maps tipo `https://goo.gl/maps/...`, non coordinate — la pagina pubblica lo usa come link "apri mappa", non come embed).
+
+**`raduni_albums`** — associazione fra un raduno e gli album fotografici gia' esistenti collegati ad esso (aggiunta 2026-09-02). Colonne: `id`, `raduno_id` (FK -> `raduni.id`, `ON DELETE CASCADE`), `node_id` (FK -> `nodes.id`, `ON DELETE CASCADE`), `sort_order`, `creato`. Vincolo `UNIQUE(raduno_id, node_id)`: non duplica la stessa coppia. Non copia ne' sposta l'album: e' solo un riferimento, l'album resta lo stesso nodo raggiungibile dalla sua categoria originale con lo stesso slug/URL. La pagina pubblica /radunimoto mostra solo gli album collegati che risultano `is_private=0 AND hidden=0` e non scaduti (stessa funzione `scaduto()` centrale di tree.py) — un album privato/nascosto/scaduto puo' essere collegato dal pannello admin ma non compare mai pubblicamente.
 
 **`recensioni`** — recensioni pubbliche. `nome`, `voto`, `testo`, `evento`, `lingua`, `approvata` (moderazione), `ip`.
 
@@ -412,7 +415,7 @@ Colonne principali: `id`, `node_id` (FK, cascade), `kind` (`image`/`video`), `re
 
 **`stats`** — eventi generici (`event`, `ref`).
 
-**`tentativi`** — tentativi falliti di login/raduni per rate limiting condiviso fra i processi worker. `ambito` (`login`|`raduni`), `chiave` (IP), `quando`.
+**`tentativi`** — tentativi falliti di login/2FA per rate limiting condiviso fra i processi worker. `ambito` (`login`|`totp`), `chiave` (IP), `quando`. (Lo scope `raduni` e' stato rimosso il 2026-09-02 insieme al gate domanda/risposta di /radunimoto, ora pubblica senza autenticazione.)
 
 **`ricerche`** — cosa cerca la gente e se lo trova. Chiave primaria `testo` (normalizzato). `numero`, `risultati`, `volte`, `primo_at`, `ultimo_at`. Non registra l'IP di chi cerca.
 
@@ -810,6 +813,10 @@ venv/bin/python -m pytest tests -q
 **Installazione da zero**: documentata in README/`deploy/install.sh`/`INSTALLA.sh` — carica il progetto sul container, esegue `deploy/install.sh` che installa dipendenze, crea utente di servizio, virtualenv, mount SMB/NFS, servizi systemd e Nginx. Non eseguita/testata in questa sessione (il sistema è già in produzione).
 
 **Aggiornamento in produzione**: procedura descritta nel README — non si riavvia mai manualmente il servizio; si usa `script/photocarcifo-applica.sh`, che esegue nell'ordine: controllo sintassi Python, ricerca di codice morto (pyflakes), controllo sintassi JavaScript, tentativo di caricamento dell'app, l'intera suite di test, verifica configurazione Nginx — e solo se tutto passa riavvia e verifica dal vivo che dodici indirizzi rispondano correttamente. Motivazione esplicita: i template Jinja2 si rileggono ad ogni richiesta, il codice Python solo al riavvio — modificare un template prima del codice correlato romperebbe temporaneamente tutte le pagine.
+
+---
+
+**Versionamento**: repository Git locale in `/opt/photocarcifo` (branch `principale`), **nessun remote configurato** (verificato con `git remote -v`, nessun output) — la storia vive solo su questo container. Fino al 2026-09-02 diverse sessioni di sviluppo avevano lasciato circa 90 file modificati/nuovi mai committati (rischio concreto di perdita in caso di `git reset`/`checkout` distruttivi); messi in sicurezza in quella data con backup del working tree in `/opt/backup-photocarcifo-precommit-<timestamp>` seguito da una serie di commit logici per area funzionale (sicurezza/2FA, IndexNow, admin/ricerca-QR-copertine, condivisioni foto, dashboard statistiche, raduni+album, contattami, monitoraggio/Telegram, test, chore/config). Nessun push effettuato (nessun remote). Si raccomanda di continuare a committare regolarmente invece di lasciare accumulare modifiche non versionate.
 
 ---
 
