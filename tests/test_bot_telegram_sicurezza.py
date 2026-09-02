@@ -261,7 +261,7 @@ def test_token_non_hardcoded_nel_sorgente(bot):
 def test_token_non_finisce_in_nessuna_risposta_telegram(bot):
     """Nessun messaggio inviato all'utente autorizzato deve mai contenere
     il token (es. per debug lasciato per errore)."""
-    r = _un_giro(bot, _msg_privato(bot.CHAT, "/stato"))
+    _un_giro(bot, _msg_privato(bot.CHAT, "/stato"))
     for testo in _messaggi_inviati(bot):
         assert bot.TOKEN not in testo
 

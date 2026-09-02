@@ -9,7 +9,6 @@ test fallisce rumorosamente invece di contattare Telegram o il sito vero.
 import importlib.util
 import json
 import sqlite3
-import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -384,7 +383,6 @@ def test_nessuna_chiamata_a_subprocess_run_diversa_da_systemctl(monkeypatch, mod
     da 'systemctl is-active <servizio>' — niente restart, niente script di
     produzione, niente comandi shell arbitrari."""
     chiamate = []
-    originale = modulo.subprocess.run
 
     def sorvegliato(argomenti, **kwargs):
         chiamate.append(argomenti)

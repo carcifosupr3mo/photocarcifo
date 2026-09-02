@@ -7,7 +7,6 @@ urllib.request.urlopen. `esegui()` (che chiamerebbe fail2ban-client
 davvero) e' sempre sostituita: nessun comando di sistema reale parte
 durante i test.
 """
-import time
 
 import pytest
 

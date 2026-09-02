@@ -18,7 +18,7 @@ con un discendente) invece di dati inventati.
 """
 import pytest
 
-from app.database import get_db, sottoalbero_like
+from app.database import get_db
 
 
 def _struttura_privata_reale(conn):
@@ -83,8 +83,6 @@ def test_token_figlio_non_accede_al_parent(client, struttura):
     # qui si verifica che il cookie ottenuto da figlio_a non basti per
     # vedere il contenuto del padre tramite un'eventuale altra via —
     # la verifica diretta e' che _is_unlocked(padre.id) sia falso.
-    from app.routers.tree import _nodi_sbloccati
-    from starlette.requests import Request
     # Verifica indiretta ma concreta: il parent NON e' nella lista
     # sbloccati che il server ha assegnato a questo client.
     unlock_cookie = c.cookies.get("pc_unlock")
