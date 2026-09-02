@@ -42,9 +42,10 @@ SENZA_PREFISSO = (
     "/static/", "/thumb/", "/thumb2x/", "/preview/", "/cover/", "/social/",
     "/download/", "/zip/", "/video/", "/_originals/", "/admin", "/lingua/",
     # I collegamenti riservati consegnati ai clienti devono restare uno e
-    # uno solo: un secondo indirizzo per lo stesso album e' un secondo modo
-    # di ritrovarselo in giro. La lingua dentro l'album segue il cookie.
-    "/p/",
+    # uno solo: un secondo indirizzo per lo stesso album (o per la stessa
+    # foto condivisa) e' un secondo modo di ritrovarselo in giro. La lingua
+    # dentro l'album segue il cookie.
+    "/p/", "/f/",
     "/healthz", "/robots.txt", "/sitemap", "/novita.xml", "/favicon.ico",
 )
 
@@ -163,6 +164,12 @@ TESTI = {
     "nav.recensioni": {
         "it": "Recensioni", "en": "Reviews", "fr": "Avis",
         "de": "Bewertungen", "es": "Opiniones"},
+    "nav.raduni": {
+        "it": "Raduni", "en": "Meet-ups", "fr": "Rassemblements",
+        "de": "Treffen", "es": "Quedadas"},
+    "nav.contattami": {
+        "it": "Contattami", "en": "Contact me", "fr": "Contactez-moi",
+        "de": "Kontaktiere mich", "es": "Contáctame"},
     "nav.accedi": {
         "it": "Accedi", "en": "Sign in", "fr": "Connexion",
         "de": "Anmelden", "es": "Acceder"},
@@ -183,6 +190,9 @@ TESTI = {
     "foot.condizioni": {
         "it": "Condizioni", "en": "Terms", "fr": "Conditions",
         "de": "Bedingungen", "es": "Condiciones"},
+    "foot.email": {
+        "it": "Email", "en": "Email", "fr": "E-mail",
+        "de": "E-Mail", "es": "Correo"},
     "meta.descrizione": {
         "it": "Fotografia dinamica e cinematografica: moto, auto, eventi, sport, ritratti.",
         "en": "Dynamic, cinematic photography: motorbikes, cars, events, sport, portraits.",
@@ -204,9 +214,11 @@ TESTI = {
         "de": "Fotograf — Motorräder, Autos, Events",
         "es": "Fotógrafo — Motos, coches, eventos"},
     "home.saluto": {
-        "it": "Ciao, sono Nathan", "en": "Hi, I'm Nathan",
-        "fr": "Bonjour, je suis Nathan", "de": "Hallo, ich bin Nathan",
-        "es": "Hola, soy Nathan"},
+        "it": "Ciao, sono Photocarcifo. Scatti motorsport, ma anche ritratti e momenti più tranquilli",
+        "en": "Hi, I'm Photocarcifo. Motorsport shots, but also portraits and quieter moments",
+        "fr": "Bonjour, je suis Photocarcifo. Photos motorsport, mais aussi portraits et moments plus calmes",
+        "de": "Hallo, ich bin Photocarcifo. Motorsport-Fotos, aber auch Porträts und ruhigere Momente",
+        "es": "Hola, soy Photocarcifo. Fotos de motorsport, pero también retratos y momentos más tranquilos"},
     "home.lead": {
         "it": "Ho 18 anni e la fotografia è il mio modo di raccontare ciò che mi ispira.",
         "en": "I'm 18, and photography is how I tell the story of what inspires me.",
@@ -243,10 +255,30 @@ TESTI = {
         "fr": "Les plus belles histoires commencent toujours par un simple déclic.",
         "de": "Die besten Geschichten beginnen immer mit einer einzigen Aufnahme.",
         "es": "Las mejores historias siempre empiezan con un simple disparo."},
+    "home.cta.testo": {
+        "it": "Vuoi prenotare uno shooting? Scrivimi:",
+        "en": "Want to book a shoot? Get in touch:",
+        "fr": "Vous voulez réserver une séance ? Écrivez-moi :",
+        "de": "Du möchtest ein Shooting buchen? Schreib mir:",
+        "es": "¿Quieres reservar una sesión? Escríbeme:"},
+    "home.cta.instagram": {
+        "it": "Scrivimi su Instagram", "en": "Message me on Instagram",
+        "fr": "Écrivez-moi sur Instagram", "de": "Schreib mir auf Instagram",
+        "es": "Escríbeme en Instagram"},
+    "home.cta.email": {
+        "it": "Scrivimi via email", "en": "Email me",
+        "fr": "Écrivez-moi par email", "de": "Schreib mir per E-Mail",
+        "es": "Escríbeme por email"},
     "home.vuoto": {
         "it": "Nessun album disponibile.", "en": "No albums available.",
         "fr": "Aucun album disponible.", "de": "Keine Alben verfügbar.",
         "es": "No hay álbumes disponibles."},
+    "home.cerca_placeholder": {
+        "it": "Cerca album, evento o numero foto…",
+        "en": "Search albums, events or photo number…",
+        "fr": "Cherchez un album, un événement ou un numéro de photo…",
+        "de": "Alben, Events oder Fotonummer suchen…",
+        "es": "Busca álbumes, eventos o número de foto…"},
 
     # Ordinamento
     "ord.eti": {
@@ -308,13 +340,33 @@ TESTI = {
         "it": "Scarica tutto", "en": "Download all",
         "fr": "Tout télécharger", "de": "Alle herunterladen",
         "es": "Descargar todo"},
+    "node.download_disattivi": {
+        "it": "Le fotografie sono disponibili per la visualizzazione. I download non sono ancora attivi.",
+        "en": "The photos are available to view. Downloads are not yet enabled.",
+        "fr": "Les photos sont disponibles pour la visualisation. Les téléchargements ne sont pas encore activés.",
+        "de": "Die Fotos können angesehen werden. Downloads sind noch nicht aktiviert.",
+        "es": "Las fotos están disponibles para ver. Las descargas aún no están activadas."},
     "node.seleziona": {
         "it": "Seleziona", "en": "Select", "fr": "Sélectionner",
         "de": "Auswählen", "es": "Seleccionar"},
+    "node.seleziona_aiuto": {
+        "it": "Seleziona più foto", "en": "Select multiple photos",
+        "fr": "Sélectionner plusieurs photos", "de": "Mehrere Fotos auswählen",
+        "es": "Seleccionar varias fotos"},
+    "node.controlli_aiuto": {
+        "it": "❤️ Salva le preferite · ☑ Seleziona più foto",
+        "en": "❤️ Save favourites · ☑ Select multiple photos",
+        "fr": "❤️ Enregistrer les favoris · ☑ Sélectionner plusieurs photos",
+        "de": "❤️ Favoriten speichern · ☑ Mehrere Fotos auswählen",
+        "es": "❤️ Guardar favoritas · ☑ Seleccionar varias fotos"},
     "node.scarica_sel": {
         "it": "Scarica selezione", "en": "Download selection",
         "fr": "Télécharger la sélection", "de": "Auswahl herunterladen",
         "es": "Descargar selección"},
+    "node.condividi_sel": {
+        "it": "Condividi selezione", "en": "Share selection",
+        "fr": "Partager la sélection", "de": "Auswahl teilen",
+        "es": "Compartir selección"},
     "node.cestino": {
         "it": "Sposta nel cestino", "en": "Move to trash",
         "fr": "Mettre à la corbeille", "de": "In den Papierkorb",
@@ -358,6 +410,10 @@ TESTI = {
     "src.btn": {
         "it": "Cerca", "en": "Search", "fr": "Rechercher", "de": "Suchen",
         "es": "Buscar"},
+    "node.tutte": {
+        "it": "Tutte in questa pagina", "en": "All on this page",
+        "fr": "Toutes sur cette page", "de": "Alle auf dieser Seite",
+        "es": "Todas en esta página"},
     "src.placeholder": {
         "it": "Numero di gara, evento, anno…",
         "en": "Race number, event, year…",
@@ -459,6 +515,36 @@ TESTI = {
         "de": "Der Link zu dieser Galerie ist nicht mehr aktiv. Wenn du die Fotos noch brauchst, schreib mir und ich schicke dir einen neuen.",
         "es": "El enlace a esta galería ya no está activo. Si todavía necesitas las fotos, escríbeme y te envío uno nuevo."},
 
+    # Condivisione della singola fotografia
+    "fcond.titolo": {
+        "it": "Una fotografia condivisa", "en": "A shared photograph",
+        "fr": "Une photographie partagée", "de": "Ein geteiltes Foto",
+        "es": "Una fotografía compartida"},
+    "fcond.scarica": {
+        "it": "Scarica questa fotografia", "en": "Download this photograph",
+        "fr": "Télécharger cette photographie", "de": "Dieses Foto herunterladen",
+        "es": "Descargar esta fotografía"},
+    "fcond.non_trovata": {
+        "it": "Link non valido", "en": "Invalid link",
+        "fr": "Lien non valide", "de": "Ungültiger Link",
+        "es": "Enlace no válido"},
+    "fcond.non_trovata_testo": {
+        "it": "Questo collegamento non esiste più, oppure la fotografia non è più raggiungibile. Se ti serve ancora, chiedi un nuovo link.",
+        "en": "This link no longer exists, or the photograph is no longer reachable. If you still need it, ask for a new link.",
+        "fr": "Ce lien n'existe plus, ou la photographie n'est plus accessible. Si vous en avez encore besoin, demandez un nouveau lien.",
+        "de": "Dieser Link existiert nicht mehr, oder das Foto ist nicht mehr erreichbar. Wenn du es noch brauchst, frag nach einem neuen Link.",
+        "es": "Este enlace ya no existe, o la fotografía ya no está disponible. Si todavía la necesitas, pide un enlace nuevo."},
+
+    # Condivisione di una selezione di piu' fotografie insieme
+    "fcondm.titolo": {
+        "it": "Fotografie condivise", "en": "Shared photographs",
+        "fr": "Photographies partagées", "de": "Geteilte Fotos",
+        "es": "Fotografías compartidas"},
+    "fcondm.scarica_tutte": {
+        "it": "Scarica tutte (ZIP)", "en": "Download all (ZIP)",
+        "fr": "Télécharger tout (ZIP)", "de": "Alle herunterladen (ZIP)",
+        "es": "Descargar todo (ZIP)"},
+
     # Pagine di errore
     "err.codice": {
         "it": "Errore {n}", "en": "Error {n}", "fr": "Erreur {n}",
@@ -543,6 +629,10 @@ TESTI = {
         "it": "Apri nelle mappe", "en": "Open in maps",
         "fr": "Ouvrir dans les cartes", "de": "In Karten öffnen",
         "es": "Abrir en mapas"},
+    "rad.foto_raduno": {
+        "it": "Foto del raduno", "en": "Photos from this meet-up",
+        "fr": "Photos du rassemblement", "de": "Fotos vom Treffen",
+        "es": "Fotos de la quedada"},
     "rad.vuoto": {
         "it": "Nessun appuntamento in programma al momento.",
         "en": "Nothing scheduled at the moment.",
@@ -667,6 +757,76 @@ TESTI = {
         "de": "Du hast die Bewertungen für heute schon geschrieben. Versuch es morgen wieder.",
         "es": "Ya has enviado las opiniones de hoy. Inténtalo mañana."},
 
+    # Modulo di contatto
+    "cont.sottotitolo": {
+        "it": "Hai in mente uno shooting o vuoi maggiori informazioni? Inviami una richiesta.",
+        "en": "Thinking about a shoot, or just want more information? Send me a request.",
+        "fr": "Vous pensez à une séance ou souhaitez plus d'informations ? Envoyez-moi une demande.",
+        "de": "Denkst du an ein Shooting oder möchtest du mehr Infos? Schick mir eine Anfrage.",
+        "es": "¿Tienes en mente una sesión o quieres más información? Envíame una solicitud."},
+    "cont.descrizione": {
+        "it": "Scrivimi per uno shooting, un evento o qualsiasi informazione: rispondo il prima possibile.",
+        "en": "Write to me for a shoot, an event or any information: I'll reply as soon as possible.",
+        "fr": "Écrivez-moi pour une séance, un événement ou toute information : je réponds au plus vite.",
+        "de": "Schreib mir für ein Shooting, ein Event oder Infos: ich melde mich so schnell wie möglich.",
+        "es": "Escríbeme para una sesión, un evento o cualquier información: respondo lo antes posible."},
+    "cont.grazie": {
+        "it": "Grazie! Il messaggio è arrivato, ti risponderò appena possibile.",
+        "en": "Thank you! Your message has arrived, I'll reply as soon as I can.",
+        "fr": "Merci ! Le message est bien arrivé, je vous répondrai dès que possible.",
+        "de": "Danke! Die Nachricht ist angekommen, ich melde mich so bald wie möglich.",
+        "es": "¡Gracias! El mensaje ha llegado, te responderé en cuanto pueda."},
+    "cont.err_nome": {
+        "it": "Scrivi nome e cognome.", "en": "Please enter your first and last name.",
+        "fr": "Indiquez votre nom et prénom.", "de": "Bitte gib Vor- und Nachnamen ein.",
+        "es": "Escribe tu nombre y apellido."},
+    "cont.err_email": {
+        "it": "Scrivi un indirizzo email valido.",
+        "en": "Please enter a valid email address.",
+        "fr": "Indiquez une adresse email valide.",
+        "de": "Bitte gib eine gültige E-Mail-Adresse ein.",
+        "es": "Escribe una dirección de correo válida."},
+    "cont.err_motivo": {
+        "it": "Scegli il motivo della richiesta.",
+        "en": "Please choose the reason for your request.",
+        "fr": "Choisissez le motif de la demande.",
+        "de": "Bitte wähle den Grund der Anfrage.",
+        "es": "Elige el motivo de la solicitud."},
+    "cont.err_messaggio": {
+        "it": "Scrivi un messaggio.", "en": "Please write a message.",
+        "fr": "Écrivez un message.", "de": "Bitte schreib eine Nachricht.",
+        "es": "Escribe un mensaje."},
+    "cont.err_troppe": {
+        "it": "Hai già inviato troppe richieste oggi. Riprova domani.",
+        "en": "You've already sent too many requests today. Please try again tomorrow.",
+        "fr": "Vous avez déjà envoyé trop de demandes aujourd'hui. Réessayez demain.",
+        "de": "Du hast heute schon zu viele Anfragen gesendet. Versuch es morgen wieder.",
+        "es": "Ya has enviado demasiadas solicitudes hoy. Inténtalo mañana."},
+    "cont.motivo_moto": {
+        "it": "Shooting moto", "en": "Motorcycle shoot", "fr": "Séance moto",
+        "de": "Motorrad-Shooting", "es": "Sesión de moto"},
+    "cont.motivo_auto": {
+        "it": "Shooting auto", "en": "Car shoot", "fr": "Séance auto",
+        "de": "Auto-Shooting", "es": "Sesión de coche"},
+    "cont.motivo_ritratto": {
+        "it": "Ritratto", "en": "Portrait", "fr": "Portrait",
+        "de": "Porträt", "es": "Retrato"},
+    "cont.motivo_evento": {
+        "it": "Evento", "en": "Event", "fr": "Événement",
+        "de": "Veranstaltung", "es": "Evento"},
+    "cont.motivo_sport": {
+        "it": "Sport", "en": "Sport", "fr": "Sport",
+        "de": "Sport", "es": "Deporte"},
+    "cont.motivo_collaborazione": {
+        "it": "Collaborazione", "en": "Collaboration", "fr": "Collaboration",
+        "de": "Zusammenarbeit", "es": "Colaboración"},
+    "cont.motivo_informazioni": {
+        "it": "Informazioni", "en": "Information", "fr": "Informations",
+        "de": "Informationen", "es": "Información"},
+    "cont.motivo_altro": {
+        "it": "Altro", "en": "Other", "fr": "Autre",
+        "de": "Sonstiges", "es": "Otro"},
+
     # Condizioni d'uso e privacy
     "priv.titolo": {
         "it": "Condizioni d'uso", "en": "Terms of use",
@@ -682,6 +842,17 @@ TESTI = {
         "fr": "Conditions d'utilisation, droit d'auteur et confidentialité",
         "de": "Nutzungsbedingungen, Urheberrecht und Datenschutz",
         "es": "Condiciones de uso, derechos de autor y privacidad"},
+    "priv.descrizione": {
+        "it": "Condizioni d'uso delle fotografie, diritto d'autore e "
+              "trattamento dei dati del sito Photocarcifo.",
+        "en": "Terms of use for the photographs, copyright and how "
+              "Photocarcifo handles personal data.",
+        "fr": "Conditions d'utilisation des photographies, droit d'auteur "
+              "et traitement des données du site Photocarcifo.",
+        "de": "Nutzungsbedingungen der Fotografien, Urheberrecht und "
+              "Datenverarbeitung der Website Photocarcifo.",
+        "es": "Condiciones de uso de las fotografías, derechos de autor y "
+              "tratamiento de datos del sitio Photocarcifo."},
     "priv.aggiornamento": {
         "it": "Ultimo aggiornamento: agosto 2026 — Photocarcifo, Svizzera",
         "en": "Last updated: August 2026 — Photocarcifo, Switzerland",
@@ -868,9 +1039,9 @@ TESTI = {
 
 TESTI.update({
     "js.pref_segna": {
-        "it": "Segna come preferita", "en": "Mark as favourite",
-        "fr": "Ajouter aux favoris", "de": "Als Favorit markieren",
-        "es": "Marcar como favorita"},
+        "it": "Aggiungi ai preferiti", "en": "Add to favourites",
+        "fr": "Ajouter aux favoris", "de": "Zu Favoriten hinzufügen",
+        "es": "Añadir a favoritas"},
     "js.pref_scarica": {
         "it": "Scarica preferite ({n})", "en": "Download favourites ({n})",
         "fr": "Télécharger les favoris ({n})",
@@ -881,6 +1052,10 @@ TESTI.update({
         "fr": "Télécharger la sélection ({n})",
         "de": "Auswahl herunterladen ({n})",
         "es": "Descargar selección ({n})"},
+    "js.sel_condividi": {
+        "it": "Condividi selezione ({n})", "en": "Share selection ({n})",
+        "fr": "Partager la sélection ({n})", "de": "Auswahl teilen ({n})",
+        "es": "Compartir selección ({n})"},
     "js.sel_rimuovi_n": {
         "it": "Rimuovi ({n})", "en": "Remove ({n})", "fr": "Supprimer ({n})",
         "de": "Entfernen ({n})", "es": "Eliminar ({n})"},
@@ -961,6 +1136,88 @@ TESTI.update({
         "it": "Scarica originale", "en": "Download original",
         "fr": "Télécharger l'original", "de": "Original herunterladen",
         "es": "Descargar original"},
+    "js.condividi_foto": {
+        "it": "Condividi questa foto", "en": "Share this photo",
+        "fr": "Partager cette photo", "de": "Dieses Foto teilen",
+        "es": "Compartir esta foto"},
+    "js.condividi_fatto": {
+        "it": "Link copiato", "en": "Link copied",
+        "fr": "Lien copié", "de": "Link kopiert",
+        "es": "Enlace copiado"},
+    "js.condividi_ko": {
+        "it": "Non riesco a creare il link.", "en": "Can't create the link.",
+        "fr": "Impossible de créer le lien.", "de": "Der Link kann nicht erstellt werden.",
+        "es": "No puedo crear el enlace."},
+    "js.condividi_link": {
+        "it": "Link di condivisione", "en": "Sharing link",
+        "fr": "Lien de partage", "de": "Freigabelink",
+        "es": "Enlace para compartir"},
+    "js.condividi_titolo": {
+        "it": "Condividi", "en": "Share",
+        "fr": "Partager", "de": "Teilen",
+        "es": "Compartir"},
+    "js.condividi_copia": {
+        "it": "Copia link", "en": "Copy link",
+        "fr": "Copier le lien", "de": "Link kopieren",
+        "es": "Copiar enlace"},
+    "js.condividi_whatsapp": {
+        "it": "WhatsApp", "en": "WhatsApp",
+        "fr": "WhatsApp", "de": "WhatsApp",
+        "es": "WhatsApp"},
+    "js.condividi_telegram": {
+        "it": "Telegram", "en": "Telegram",
+        "fr": "Telegram", "de": "Telegram",
+        "es": "Telegram"},
+    "js.condividi_email": {
+        "it": "Email", "en": "Email",
+        "fr": "E-mail", "de": "E-Mail",
+        "es": "Correo"},
+    "js.zip_preparo": {
+        "it": "Preparazione dell'archivio in corso…",
+        "en": "Preparing the archive…",
+        "fr": "Preparation de l'archive…",
+        "de": "Archiv wird vorbereitet…",
+        "es": "Preparando el archivo…"},
+    "js.zip_pronto": {
+        "it": "Scaricamento avviato.", "en": "Download started.",
+        "fr": "Telechargement lance.", "de": "Download gestartet.",
+        "es": "Descarga iniciada."},
+    "js.zip_in_corso": {
+        "it": "Questo archivio e' gia' in preparazione: aspetta che finisca.",
+        "en": "This archive is already being prepared: wait for it to finish.",
+        "fr": "Cette archive est deja en preparation : attendez qu'elle se termine.",
+        "de": "Dieses Archiv wird bereits vorbereitet: bitte warten.",
+        "es": "Este archivo ya se esta preparando: espera a que termine."},
+    "js.copertina_metti": {
+        "it": "Metti in copertina", "en": "Set as cover",
+        "fr": "Definir comme couverture", "de": "Als Titelbild setzen",
+        "es": "Poner de portada"},
+    "js.copertina_fatta": {
+        "it": "Copertina aggiornata", "en": "Cover updated",
+        "fr": "Couverture mise a jour", "de": "Titelbild aktualisiert",
+        "es": "Portada actualizada"},
+    "js.copertina_ko": {
+        "it": "Non e' stato possibile cambiare la copertina.",
+        "en": "The cover could not be changed.",
+        "fr": "Impossible de changer la couverture.",
+        "de": "Das Titelbild konnte nicht geandert werden.",
+        "es": "No se ha podido cambiar la portada."},
+    "js.condividi_altro": {
+        "it": "Condividi…", "en": "Share…",
+        "fr": "Partager…", "de": "Teilen…",
+        "es": "Compartir…"},
+    "js.condividi_chiudi": {
+        "it": "Chiudi pannello di condivisione", "en": "Close sharing panel",
+        "fr": "Fermer le panneau de partage", "de": "Freigabebereich schliessen",
+        "es": "Cerrar el panel para compartir"},
+    "js.condividi_conta": {
+        "it": "{n} fotografie condivise", "en": "{n} photos shared",
+        "fr": "{n} photos partagées", "de": "{n} Fotos geteilt",
+        "es": "{n} fotos compartidas"},
+    "js.condividi_anteprima": {
+        "it": "Anteprima della foto", "en": "Photo preview",
+        "fr": "Aperçu de la photo", "de": "Fotovorschau",
+        "es": "Vista previa de la foto"},
     "js.cookie_aria": {
         "it": "Condizioni d'uso", "en": "Terms of use",
         "fr": "Conditions d'utilisation", "de": "Nutzungsbedingungen",

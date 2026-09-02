@@ -110,6 +110,15 @@ CREATE TABLE IF NOT EXISTS raduni (
     mappa  TEXT
 );
 
+CREATE TABLE IF NOT EXISTS raduni_albums (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    raduno_id  INTEGER NOT NULL REFERENCES raduni(id) ON DELETE CASCADE,
+    node_id    INTEGER NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    creato     TEXT,
+    UNIQUE(raduno_id, node_id)
+);
+
 CREATE TABLE IF NOT EXISTS recensioni (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     nome         TEXT    NOT NULL,
@@ -179,6 +188,50 @@ CREATE TABLE IF NOT EXISTS ricerche (
     ultimo_at  TEXT    NOT NULL
 );
 
+-- Aperture e download di ogni album, pubblico o privato. Come per
+-- "ricerche", nessun indirizzo IP ne' altro identificativo personale: solo
+-- quale nodo, quando, quale evento. Serve a rispondere a "il cliente ha
+-- gia' aperto la sua galleria?" senza scambiarsi messaggi per saperlo.
+CREATE TABLE IF NOT EXISTS node_stats (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    node_id   INTEGER NOT NULL,
+    ts        TEXT NOT NULL,
+    event     TEXT NOT NULL   -- 'open' | 'download' | 'zip'
+);
+
+-- Condivisione di piu' fotografie insieme con un solo link (selezione
+-- multipla), riusando la stessa logica di accesso della condivisione
+-- singola (media.share_token) ma per un elenco di identificativi invece
+-- che per una sola riga. Non scade, come il link della singola foto.
+-- media_ids: elenco di ID separati da virgola, gia' filtrati per
+-- accessibilita' al momento della creazione (vedi _can_access).
+CREATE TABLE IF NOT EXISTS condivisioni (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    token      TEXT    UNIQUE NOT NULL,
+    media_ids  TEXT    NOT NULL,
+    created_at TEXT    NOT NULL
+);
+
+-- Richieste di contatto lasciate dal modulo pubblico "/contattami".
+-- Lo stato e' testo libero, non un CHECK SQL, come "recensioni.approvata"
+-- e "media.ocr_stato": i valori ammessi (documentati in contattami.py) sono
+-- 'Nuova' | 'Letta' | 'In lavorazione' | 'Chiusa' | 'Archiviata'.
+CREATE TABLE IF NOT EXISTS richieste_contatto (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome         TEXT    NOT NULL,
+    cognome      TEXT    NOT NULL,
+    email        TEXT    NOT NULL,
+    telefono     TEXT    NOT NULL DEFAULT '',
+    motivo       TEXT    NOT NULL,
+    messaggio    TEXT    NOT NULL,
+    data_evento  TEXT    NOT NULL DEFAULT '',
+    luogo        TEXT    NOT NULL DEFAULT '',
+    lingua       TEXT    NOT NULL DEFAULT 'it',
+    creato_at    TEXT    NOT NULL,
+    stato        TEXT    NOT NULL DEFAULT 'Nuova',
+    ip           TEXT    NOT NULL DEFAULT ''
+);
+
 """
 
 # Colonne aggiunte dopo la prima versione. Sui database gia' esistenti il
@@ -202,6 +255,10 @@ MIGRAZIONI: list[tuple[str, str, str]] = [
     # si sganciano in un colpo tutti i telefoni e i computer che
     # restavano collegati: e' il "esci da tutti i dispositivi".
     ("users", "fidati_dal", "REAL NOT NULL DEFAULT 0"),
+    # Condivisione della singola fotografia: un token come quello degli
+    # album privati, ma per un solo file.
+    ("media", "share_token", "TEXT"),
+    ("media", "share_created_at", "TEXT"),
 ]
 
 # Gli indici stanno a parte perche' vanno creati DOPO le migrazioni: alcuni
@@ -219,10 +276,16 @@ CREATE INDEX IF NOT EXISTS idx_numeri_media  ON media_numeri(media_id);
 CREATE INDEX IF NOT EXISTS idx_pref_node     ON preferiti(node_id);
 CREATE INDEX IF NOT EXISTS idx_pref_ospite   ON preferiti(ospite, node_id);
 CREATE INDEX IF NOT EXISTS idx_raduni_data   ON raduni(data);
+CREATE INDEX IF NOT EXISTS idx_raduni_albums_raduno ON raduni_albums(raduno_id);
+CREATE INDEX IF NOT EXISTS idx_raduni_albums_node   ON raduni_albums(node_id);
 CREATE INDEX IF NOT EXISTS idx_nodes_data    ON nodes(data_foto);
 CREATE INDEX IF NOT EXISTS idx_rec_pub      ON recensioni(approvata, creato_at);
 CREATE INDEX IF NOT EXISTS idx_ricerche_vuote ON ricerche(risultati, volte);
 CREATE INDEX IF NOT EXISTS idx_tentativi     ON tentativi(ambito, chiave, quando);
+CREATE INDEX IF NOT EXISTS idx_node_stats_node ON node_stats(node_id, event);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_media_share ON media(share_token);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_condivisioni_token ON condivisioni(token);
+CREATE INDEX IF NOT EXISTS idx_richieste_stato ON richieste_contatto(stato, creato_at);
 """
 
 
@@ -350,6 +413,35 @@ def svuota_stat() -> int:
         with get_db() as conn:
             conn.executemany(
                 "INSERT INTO stats(ts, event, ref) VALUES(?,?,?)", righe)
+        return len(righe)
+    except Exception:
+        return 0
+
+
+# --- Statistiche per singolo album (aperture, download) ---
+# Stesso meccanismo bufferizzato di record_stat_bufferizzato/svuota_stat,
+# ma su node_stats: una coda a parte perche' le due tabelle hanno colonne
+# diverse, non perche' il modo di funzionare cambi.
+_coda_node_stat = []
+
+
+def record_node_stat(node_id: int, event: str) -> None:
+    from datetime import datetime, timezone
+    _coda_node_stat.append(
+        (node_id, datetime.now(timezone.utc).isoformat(), event))
+    if len(_coda_node_stat) >= _MAX_CODA:
+        svuota_node_stat()
+
+
+def svuota_node_stat() -> int:
+    if not _coda_node_stat:
+        return 0
+    righe = list(_coda_node_stat)
+    _coda_node_stat.clear()
+    try:
+        with get_db() as conn:
+            conn.executemany(
+                "INSERT INTO node_stats(node_id, ts, event) VALUES(?,?,?)", righe)
         return len(righe)
     except Exception:
         return 0

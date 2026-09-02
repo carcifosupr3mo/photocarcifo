@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block title %}{{ t('rad.titolo') }} — {{ site_name() }}{% endblock %}
-{% block head_extra %}<meta name="robots" content="noindex, nofollow, noarchive">{% endblock %}
 {% block content %}
 <section class="hero"><div class="container">
   <h1>{{ t('rad.titolo') }}</h1>
@@ -31,6 +30,21 @@
           {{ t('rad.mappa') }}
         </a>
         {% endif %}
+
+        {% if r.album %}
+        <h4 class="rad-foto-tit">{{ t('rad.foto_raduno') }}</h4>
+        <div class="album-grid rad-album-grid">
+          {% for a in r.album %}
+          <a class="album-card" href="/n/{{ a.slug }}">
+            <div class="thumb">{% if a.cover %}<img decoding="async" loading="lazy" data-src="/thumb/{{ a.cover }}" data-srcset="/thumb/{{ a.cover }} 640w, /thumb2x/{{ a.cover }} 1280w" sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 400px" alt="{{ a.title }}">{% endif %}</div>
+            <div class="meta">
+              <h3>{{ a.title }}</h3>
+              <div class="sub"><span>{{ a.total_media }} {{ t('com.foto') }}</span></div>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+        {% endif %}
       </div>
     </div>
     {% endfor %}
@@ -48,7 +62,23 @@
         <span class="rad-giorno">{{ r.data[8:10] }}</span>
         <span class="rad-mese">{{ r.data[5:7] }}/{{ r.data[0:4] }}</span>
       </div>
-      <div class="rad-info"><h3>{{ r.luogo }}</h3></div>
+      <div class="rad-info">
+        <h3>{{ r.luogo }}</h3>
+        {% if r.album %}
+        <h4 class="rad-foto-tit">{{ t('rad.foto_raduno') }}</h4>
+        <div class="album-grid rad-album-grid">
+          {% for a in r.album %}
+          <a class="album-card" href="/n/{{ a.slug }}">
+            <div class="thumb">{% if a.cover %}<img decoding="async" loading="lazy" data-src="/thumb/{{ a.cover }}" data-srcset="/thumb/{{ a.cover }} 640w, /thumb2x/{{ a.cover }} 1280w" sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 400px" alt="{{ a.title }}">{% endif %}</div>
+            <div class="meta">
+              <h3>{{ a.title }}</h3>
+              <div class="sub"><span>{{ a.total_media }} {{ t('com.foto') }}</span></div>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
     </div>
     {% endfor %}
   </div>

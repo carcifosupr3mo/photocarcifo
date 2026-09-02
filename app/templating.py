@@ -28,6 +28,18 @@ templates.env.globals["site_name"]=lambda:get_settings().site_name
 templates.env.globals["site_url"]=lambda:get_settings().site_url
 templates.env.globals["now_year"]=lambda:datetime.now().year
 
+def _richieste_nuove():
+    """Quante richieste di contatto sono ancora da guardare.
+
+    Import differito per evitare un giro di dipendenze circolare fra questo
+    modulo e database.py (che a sua volta non importa templating)."""
+    from .database import get_db
+    with get_db() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) c FROM richieste_contatto WHERE stato='Nuova'").fetchone()["c"]
+
+templates.env.globals["richieste_nuove"]=_richieste_nuove
+
 
 # --- Lingua della pagina ---------------------------------------------------
 # t("chiave") restituisce il testo nella lingua scelta dal visitatore. La
@@ -126,7 +138,7 @@ def _asset(percorso: str) -> str:
     """
     from pathlib import Path
     base = Path(__file__).parent
-    reale = base / percorso.lstrip("/").replace("static/", "static/", 1)
+    reale = base / percorso.lstrip("/")
     try:
         return f"{percorso}?v={int(reale.stat().st_mtime)}"
     except OSError:

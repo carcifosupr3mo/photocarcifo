@@ -36,8 +36,15 @@
 
   <h2 class="bio-h2">{{ t('bio.dicono_tit') }}</h2>
   <p class="bio-testo">{{ t('bio.dicono_txt') }}</p>
+  {#
+    Chi legge la biografia sta valutando se scrivere per uno shooting: era
+    l'unica pagina rivolta a un potenziale cliente senza un modo diretto di
+    farlo, un salto in piu' (tornare al menu, cercare "Contattami") che qui
+    non ha motivo di esserci.
+  #}
   <p class="bio-azioni">
-    <a class="btn btn-accent" href="/recensioni">{{ t('nav.recensioni') }}</a>
+    <a class="btn btn-accent" href="/contattami">{{ t('nav.contattami') }}</a>
+    <a class="btn btn-ghost" href="/recensioni">{{ t('nav.recensioni') }}</a>
     <a class="btn btn-ghost" href="/">{{ t('bio.vai_gallerie') }}</a>
   </p>
 </div></section>

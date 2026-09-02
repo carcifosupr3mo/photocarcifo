@@ -107,20 +107,110 @@ h3{font-size:clamp(.95rem,2vw,1.15rem);}
 body.selecting .photo{cursor:pointer;}
 @media (hover:none){.sel-box{opacity:1;}}
 
+/* Condivisione pubblica dalla griglia: a differenza di .sel-box, sempre
+   visibile (niente opacity:0 legata all'hover) perche' su touch non c'e'
+   hover, e nell'angolo opposto per non sovrapporsi al bottone selezione. */
+.share-box{position:absolute;bottom:10px;right:10px;width:28px;height:28px;z-index:5;border:none;border-radius:50%;background:rgba(0,0,0,.38);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;box-shadow:0 1px 6px rgba(0,0,0,.35);padding:0;}
+.share-box::before{content:"";width:14px;height:14px;background:#fff;-webkit-mask:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2'%3E%3Ccircle cx='18' cy='5' r='3'/%3E%3Ccircle cx='6' cy='12' r='3'/%3E%3Ccircle cx='18' cy='19' r='3'/%3E%3Cline x1='8.6' y1='10.6' x2='15.4' y2='6.4'/%3E%3Cline x1='8.6' y1='13.4' x2='15.4' y2='17.6'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2'%3E%3Ccircle cx='18' cy='5' r='3'/%3E%3Ccircle cx='6' cy='12' r='3'/%3E%3Ccircle cx='18' cy='19' r='3'/%3E%3Cline x1='8.6' y1='10.6' x2='15.4' y2='6.4'/%3E%3Cline x1='8.6' y1='13.4' x2='15.4' y2='17.6'/%3E%3C/svg%3E") center/contain no-repeat;}
+.share-box:hover{background:var(--accent);}
+.share-box:hover::before{background:var(--bg-dark);}
+
 .dl-toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:var(--sp2) 0;position:sticky;top:var(--header-h);z-index:30;background:rgba(255,255,255,.95);padding:.6rem 0;backdrop-filter:blur(6px);}
 .dl-toolbar .btn{flex:1 1 auto;justify-content:center;min-width:130px;}
+.dl-disattivi{margin:0;font-size:.85rem;color:var(--ink-soft);}
+
+/* Riga sempre visibile (non solo al passaggio del mouse) che spiega la
+   differenza fra cuore e casella: su telefono non c'e' hover, quindi la
+   spiegazione deve stare gia' scritta. Volutamente minima, una sola riga
+   compatta: e' una guida contestuale, non un avviso di sistema. */
+.toolbar-aiuto{margin:.2rem 0 0;font-size:.78rem;line-height:1.4;color:var(--ink-soft);}
 
 /* ---------- Lightbox ---------- */
 .lightbox{position:fixed;inset:0;z-index:100;background:rgba(10,10,12,.97);display:none;align-items:center;justify-content:center;opacity:0;transition:opacity .3s var(--ease);padding:1rem;}
 .lightbox.open{display:flex;opacity:1;}
-.lightbox img,.lightbox .lb-video{max-width:94vw;max-height:80vh;object-fit:contain;border-radius:var(--radius);}
-.lightbox .lb-video{background:#000;width:100%;}
+.lightbox img,.lightbox .lb-video{max-width:min(94vw,1600px);max-height:80vh;object-fit:contain;border-radius:var(--radius);}
+.lightbox .lb-video{background:#000;}
 .lightbox .lb-close,.lightbox .lb-nav{position:absolute;color:#fff;background:rgba(0,0,0,.35);border:none;cursor:pointer;font-size:1.8rem;line-height:1;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background .2s,color .2s;}
 .lightbox .lb-close:hover,.lightbox .lb-nav:hover{background:var(--accent);color:var(--bg-dark);}
 .lightbox .lb-close{top:14px;right:14px;}
 .lightbox .lb-nav.prev{left:10px;top:50%;transform:translateY(-50%);}
 .lightbox .lb-nav.next{right:10px;top:50%;transform:translateY(-50%);}
-.lightbox .lb-actions{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);}
+.lightbox .lb-actions{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:.6rem;}
+.lightbox .btn-ghost{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.6);}
+.lightbox .btn-ghost:hover{background:var(--accent);border-color:var(--accent);color:var(--bg-dark);}
+
+/* --- Bottone piccolo di condivisione, accanto al contatore --- */
+.lb-share-top{display:none;}
+/* Soglia allineata a quella del pannello di condivisione (761px, dove
+   finisce il bottom-sheet da telefono): a 900px un tablet in verticale
+   (768-899px, es. iPad ritratto) restava senza il bottone mentro lo
+   stesso device ruotato in orizzontale (>=900px) lo mostrava - stesso
+   dispositivo, comportamento incoerente. Con la soglia piu' bassa il
+   bottone compare in modo coerente su tutta la fascia tablet. */
+@media (min-width:761px){
+  .lb-share-top{display:inline-flex;position:static;color:#fff;background:rgba(0,0,0,.35);border:none;cursor:pointer;font-size:1.05rem;line-height:1;width:34px;height:34px;border-radius:50%;align-items:center;justify-content:center;transition:background .2s,color .2s;}
+  .lb-share-top:hover{background:var(--accent);color:var(--bg-dark);}
+}
+
+/* --- Pannello di condivisione: anteprima, link, social --- */
+/* fixed e non absolute: il pannello si centra sempre sullo schermo
+   visibile, non sul genitore, cosi' resta al centro anche a pagina
+   scorsa o quando lo apre un bottone in fondo a un album lungo. */
+.share-panel{position:fixed;inset:0;z-index:110;background:rgba(10,10,12,.7);display:none;align-items:center;justify-content:center;padding:1rem;}
+.share-panel.open{display:flex;}
+.share-panel-card{background:var(--bg-dark);color:#fff;border-radius:var(--radius);box-shadow:0 16px 40px rgba(10,12,20,.4);width:100%;max-width:420px;max-height:88vh;overflow:auto;padding:1.1rem;}
+.share-panel-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.8rem;}
+.share-panel-head strong{font-size:1rem;}
+.share-panel-close{background:rgba(255,255,255,.08);color:#fff;border:none;cursor:pointer;font-size:1.3rem;line-height:1;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background .2s,color .2s;flex-shrink:0;}
+.share-panel-close:hover{background:var(--accent);color:var(--bg-dark);}
+.share-panel-preview{display:flex;align-items:center;gap:.7rem;margin-bottom:.9rem;}
+.share-panel-preview img{width:56px;height:56px;object-fit:cover;border-radius:var(--radius);background:rgba(255,255,255,.08);flex-shrink:0;}
+.share-panel-preview span{font-size:.85rem;color:rgba(255,255,255,.75);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.share-panel-link{display:flex;gap:.5rem;margin-bottom:.9rem;}
+.share-panel-link input{flex:1 1 auto;min-width:0;padding:.6rem .8rem;font-size:.85rem;border:1px solid rgba(255,255,255,.25);border-radius:var(--radius);background:rgba(255,255,255,.06);color:#fff;}
+/* Il campo e' di sola lettura ma resta raggiungibile da tastiera: senza
+   uno stato di fuoco visibile, su fondo scuro non si capisce dove si e'. */
+.share-panel-link input:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(212,255,46,.25);}
+.share-panel-social{display:flex;flex-wrap:wrap;gap:.6rem;}
+/* Mentre il server prepara il collegamento il bottone resta muto: questo
+   lo mostra occupato, cosi' non si preme due volte credendo di aver
+   sbagliato mira. Vale per ogni bottone che apre la condivisione. */
+.btn.in-attesa{opacity:.6;cursor:progress;}
+.share-box.in-attesa{opacity:.6;cursor:progress;}
+
+/* --- Comandi sulla fotografia: misura da dito --- */
+/* 28 e 36 px bastano al mouse ma non al pollice: le raccomandazioni di
+   accessibilita' chiedono circa 44 px. Si allargano soltanto dove il
+   puntatore non e' fine (telefono e tablet), quindi su desktop non
+   cambia nulla. L'area cresce senza spostare l'icona: il riquadro si
+   allarga, il segno dentro resta della stessa misura. */
+@media (hover:none),(pointer:coarse){
+  .share-panel-close{width:44px;height:44px;}
+  .sel-box{width:44px;height:44px;top:6px;right:6px;}
+  /* Il segno di spunta e' piazzato a mano sui 28 px del riquadro piccolo:
+     allargando il riquadro va ricentrato, altrimenti resta in un angolo. */
+  .photo.selected .sel-box::after{left:17px;top:12px;}
+  .share-box{width:44px;height:44px;bottom:6px;right:6px;}
+  .share-box::before{width:18px;height:18px;}
+  .cuore{width:44px;height:44px;}
+}
+
+.share-panel .btn-ghost{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.6);}
+.share-panel .btn-ghost:hover{background:var(--accent);border-color:var(--accent);color:var(--bg-dark);}
+
+/* Su telefono il pannello si apre come foglio dal basso: stessa animazione
+   gia' usata dal menu delle card (sheetUp), niente di nuovo da inventare. */
+@media (max-width:760px){
+  .share-panel{align-items:flex-end;padding:0;background:rgba(10,12,20,.45);}
+  .share-panel-card{
+    max-width:none;max-height:80vh;
+    border-radius:16px 16px 0 0;
+    padding:.9rem 1rem calc(1rem + env(safe-area-inset-bottom,0px));
+    box-shadow:0 -10px 40px rgba(10,12,20,.28);
+    animation:sheetUp .22s var(--ease);
+  }
+}
+@media (prefers-reduced-motion:reduce){.share-panel-card{animation:none;}}
 
 /* ---------- Bottoni ---------- */
 .btn{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:.7rem 1.2rem;border-radius:var(--radius);border:2px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer;transition:all .2s var(--ease);min-height:44px;}
@@ -145,12 +235,34 @@ body.selecting .photo{cursor:pointer;}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
 
+/* ---------- Modulo di contatto ---------- */
+.cont-sottotitolo{color:var(--ink-soft);max-width:52ch;margin-top:.6rem;line-height:1.6;}
+.cont-honeypot{position:absolute;left:-9999px;}
+.cont-form{display:grid;grid-template-columns:1fr;gap:var(--sp2);max-width:460px;margin:0 auto;}
+.cont-form label{display:block;font-size:.82rem;margin-bottom:6px;color:var(--ink-soft);}
+.cont-form input,.cont-form select,.cont-form textarea{width:100%;padding:.75rem .9rem;font-size:16px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;color:var(--ink);font-family:var(--font-body);min-height:44px;}
+.cont-form input:focus,.cont-form select:focus,.cont-form textarea:focus{outline:none;border-color:var(--ink);}
+.cont-form textarea{min-height:9rem;resize:vertical;}
+.cont-form button{min-height:44px;margin-top:.4rem;}
+@media(min-width:700px){
+  .cont-form{max-width:560px;}
+}
+
 /* ---------- Admin ---------- */
-.mgr-head{margin-bottom:var(--sp2);}
+.mgr-head{margin-bottom:var(--sp2);display:flex;flex-wrap:wrap;gap:.6rem 1.2rem;align-items:flex-end;justify-content:space-between;}
 .mgr-crumbs{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-top:.4rem;}
 .mgr-crumbs .current{color:var(--ink);font-weight:600;}
 .mgr-crumbs .sep{opacity:.4;}
+.mgr-sel-head{font-size:.8rem;color:var(--ink-soft);}
+.mgr-sel-all{display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;}
+.mgr-search{margin-bottom:var(--sp2);}
+.mgr-search input{width:100%;max-width:420px;padding:.6rem .8rem;font-size:.85rem;border:1px solid var(--line);border-radius:var(--radius);background:#fff;}
+.bulk-toolbar{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-bottom:var(--sp2);padding:.6rem .8rem;background:var(--bg-soft);border:1px solid var(--line);border-radius:var(--radius);}
+.bulk-toolbar .btn{padding:.5rem .9rem;font-size:.72rem;min-height:auto;}
+.bulk-count{font-size:.78rem;color:var(--ink-soft);margin-right:.4rem;}
 .mgr-grid{display:grid;gap:clamp(.75rem,2.5vw,1.25rem);grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));}
+.acard-sel-wrap{position:absolute;top:8px;right:8px;z-index:4;width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.38);border:2px solid rgba(255,255,255,.92);border-radius:6px;cursor:pointer;}
+.acard-sel{width:16px;height:16px;margin:0;cursor:pointer;}
 .acard{background:#fff;border:1px solid var(--line);border-radius:var(--radius);transition:box-shadow .25s,transform .25s;}
 .acard:hover{box-shadow:0 8px 26px rgba(0,0,0,.09);transform:translateY(-2px);}
 .acard-cover{position:relative;aspect-ratio:4/3;background:var(--bg-soft);overflow:hidden;cursor:pointer;border-radius:var(--radius) var(--radius) 0 0;}
@@ -179,6 +291,10 @@ body.selecting .photo{cursor:pointer;}
 .det-block input{flex:1 1 160px;padding:.6rem .8rem;border:1px solid var(--line);border-radius:var(--radius);font-size:16px;}
 #d-link{font-family:ui-monospace,monospace;font-size:.78rem;width:100%;margin-bottom:.5rem;}
 .tree-hint,.tree-path{color:var(--ink-soft);font-size:.85rem;}
+.cover-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:.5rem;}
+.cover-pick-item{padding:0;border:2px solid transparent;border-radius:var(--radius);overflow:hidden;aspect-ratio:1/1;cursor:pointer;background:var(--bg-soft);}
+.cover-pick-item img{width:100%;height:100%;object-fit:cover;display:block;}
+.cover-pick-item.sel{border-color:var(--accent,#c33);}
 .stat-grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));margin:1rem 0 2rem;}
 .stat-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem;}
 .stat-card .num{font-family:var(--font-display);font-size:1.8rem;line-height:1;}
@@ -216,6 +332,16 @@ body.selecting .photo{cursor:pointer;}
 @media (min-width:1280px){
   .photo-grid{columns:4;}
 }
+@media (min-width:1920px){
+  /* Su desktop ultrawide la sola griglia foto/album puo' respirare oltre
+     i 1440px del container standard: testo, form e admin restano invariati. */
+  .container:has(> .photo-grid),.container:has(> .cat-grid){max-width:1800px;}
+  .photo-grid{columns:5;}
+}
+@media (min-width:2560px){
+  .container:has(> .photo-grid),.container:has(> .cat-grid){max-width:2200px;}
+  .photo-grid{columns:6;}
+}
 @media (max-width:860px){
   .admin-shell{grid-template-columns:1fr;}
   .admin-sidebar{flex-direction:row;align-items:center;gap:.5rem;padding:.7rem 1rem;overflow-x:auto;position:sticky;top:0;z-index:70;}
@@ -228,7 +354,11 @@ body.selecting .photo{cursor:pointer;}
 @media (max-width:520px){
   .site-footer .container{flex-direction:column;text-align:center;}
   .dl-toolbar .btn{width:100%;}
-  .lightbox .lb-nav{width:42px;height:42px;font-size:1.5rem;}
+  /* 52 e non 42: piu' sotto (sempre per il telefono) le frecce sono
+     portate a 52 px, ma questa regola e' piu' specifica e vinceva
+     comunque, lasciandole a 42 — sotto la misura buona per un dito.
+     Allineata al valore voluto, cosi' le due regole dicono lo stesso. */
+  .lightbox .lb-nav{width:52px;height:52px;font-size:1.5rem;}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important;}}
 
@@ -270,13 +400,13 @@ body{background:var(--bg);color:var(--ink);}
 .badge-hidden{background:var(--ink-soft);color:#fff;border-radius:999px;padding:4px 10px;}
 
 /* ---------- Presentazione home (editoriale) ---------- */
-.intro-hero{padding:clamp(3rem,10vw,7rem) 0 clamp(2rem,6vw,4rem);border-bottom:1px solid var(--line);
+.intro-hero{padding:clamp(1.5rem,4vw,2.8rem) 0 clamp(1.2rem,3vw,2rem);border-bottom:1px solid var(--line);
   background:linear-gradient(180deg,var(--bg-soft) 0%,var(--bg) 100%);}
 .intro-hero .eyebrow{color:var(--accent);}
 .intro-hero h1{
-  font-size:clamp(2.6rem,9vw,6rem);
-  letter-spacing:-.045em;line-height:.94;max-width:12ch;
-  margin:.6rem 0 clamp(2rem,5vw,3rem);
+  font-size:clamp(1.4rem,3.6vw,2.1rem);
+  font-weight:600;letter-spacing:-.01em;line-height:1.3;max-width:38ch;
+  margin:.6rem 0 clamp(1.2rem,3vw,1.8rem);
 }
 .intro-hero h1 .dot{color:var(--accent);}
 .intro-copy{max-width:none;display:grid;gap:clamp(1rem,3vw,2.5rem);grid-template-columns:1fr;}
@@ -292,6 +422,12 @@ body{background:var(--bg);color:var(--ink);}
   font-family:var(--font-display);font-size:clamp(1.2rem,3.4vw,1.9rem);
   letter-spacing:-.025em;color:var(--ink);max-width:26ch;
 }
+.cta-contatto{
+  grid-column:1/-1;margin-top:clamp(1rem,3vw,1.6rem);
+  font-size:clamp(.98rem,2.2vw,1.05rem);color:var(--ink-soft);
+  display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;
+}
+.cta-contatto-link{display:flex;flex-wrap:wrap;gap:.6rem;}
 @media (min-width:900px){
   .intro-copy{grid-template-columns:1fr 1fr;}
   .intro-copy .lead{grid-column:1/-1;max-width:30ch;}
@@ -686,23 +822,27 @@ body.selecting .btn-danger{display:inline-flex;}
 }
 
 /* --- Visualizzatore: contatore e selezione fra pagine --- */
-.lb-count{position:absolute;top:1rem;left:1rem;color:rgba(255,255,255,.75);
-  font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;z-index:5;}
+.lb-topbar{position:absolute;top:1rem;left:1rem;z-index:5;display:flex;align-items:center;gap:.6rem;}
+.lb-count{color:rgba(255,255,255,.9);
+  font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;}
 #selEcho{display:none;font-size:.78rem;color:var(--accent);font-weight:600;
   letter-spacing:.04em;width:100%;margin-top:.3rem;}
 @media (max-width:620px){
   .lb-nav{width:52px;height:52px;}
-  .lb-count{font-size:.7rem;top:.7rem;left:.7rem;}
+  .lb-topbar{top:.7rem;left:.7rem;}
+  .lb-count{font-size:.7rem;}
 }
 
 /* --- Visualizzatore: contatore e selezione fra pagine --- */
-.lb-count{position:absolute;top:1rem;left:1rem;color:rgba(255,255,255,.75);
-  font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;z-index:5;}
+.lb-topbar{position:absolute;top:1rem;left:1rem;z-index:5;display:flex;align-items:center;gap:.6rem;}
+.lb-count{color:rgba(255,255,255,.9);
+  font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;}
 #selEcho{display:none;font-size:.78rem;color:var(--accent);font-weight:600;
   letter-spacing:.04em;width:100%;margin-top:.3rem;}
 @media (max-width:620px){
   .lb-nav{width:52px;height:52px;}
-  .lb-count{font-size:.7rem;top:.7rem;left:.7rem;}
+  .lb-topbar{top:.7rem;left:.7rem;}
+  .lb-count{font-size:.7rem;}
 }
 
 /* --- Spazio riservato alle copertine: evita il salto della pagina --- */
@@ -913,6 +1053,28 @@ body.selecting .cuore{display:none;}
 /* annulla la proporzione fissa imposta in precedenza */
 .photo{aspect-ratio:auto;}
 
+/* Richiamo alla ricerca per numero, sopra i comandi dell'album: si deve
+   notare senza gridare, percio' usa il verde del sito su fondo tenue. */
+/* La fotografia in copertina, vista da chi amministra: un segno discreto
+   nell'angolo, cosi' si riconosce a colpo d'occhio quale sta in vetrina
+   senza aprire nulla. Il visitatore non lo vede: l'attributo lo scrive il
+   modello solo per chi e' entrato. */
+.photo[data-copertina]::after{content:"★";position:absolute;top:8px;left:8px;
+  z-index:4;width:26px;height:26px;display:flex;align-items:center;
+  justify-content:center;border-radius:50%;background:var(--accent);
+  color:var(--bg-dark);font-size:.85rem;line-height:1;
+  box-shadow:0 1px 6px rgba(0,0,0,.35);pointer-events:none;}
+
+/* Avviso di attesa: resta finche' il lavoro non e' partito, percio' porta
+   un segno che gira — fermo, sembrerebbe un messaggio dimenticato li'.
+   Chi ha chiesto meno animazioni non lo vede girare, ma lo vede. */
+.avviso-attesa p::before{content:"";display:inline-block;width:.85em;
+  height:.85em;margin-right:.5em;vertical-align:-.1em;border-radius:50%;
+  border:2px solid currentColor;border-top-color:transparent;
+  animation:giro .8s linear infinite;}
+@keyframes giro{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion:reduce){.avviso-attesa p::before{animation:none;}}
+
 .vista-bar{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;
   margin:1.2rem 0 1rem;}
 .vista-scelte{display:flex;gap:.2rem;background:var(--bg-soft);
@@ -943,6 +1105,8 @@ body.selecting .cuore{display:none;}
 @media (min-width:700px){.photo-grid.vista-naturale{columns:3;}}
 @media (min-width:1100px){.photo-grid.vista-naturale{columns:4;}}
 @media (min-width:1600px){.photo-grid.vista-naturale{columns:5;}}
+@media (min-width:1920px){.photo-grid.vista-naturale{columns:6;}}
+@media (min-width:2560px){.photo-grid.vista-naturale{columns:7;}}
 
 /* elenco: una fotografia per riga, intera */
 .photo-grid.vista-lista{display:flex;flex-direction:column;
@@ -971,6 +1135,8 @@ body.selecting .cuore{display:none;}
 @media (min-width:700px){.photo-grid.vista-griglia{columns:3;}}
 @media (min-width:1100px){.photo-grid.vista-griglia{columns:4;}}
 @media (min-width:1600px){.photo-grid.vista-griglia{columns:5;}}
+@media (min-width:1920px){.photo-grid.vista-griglia{columns:6;}}
+@media (min-width:2560px){.photo-grid.vista-griglia{columns:7;}}
 
 .photo-grid.vista-grande{display:flex;flex-direction:column;
   gap:clamp(1rem,3vw,2rem);columns:auto;}
@@ -1024,7 +1190,7 @@ h2.card-titolo{font-family:var(--font-display);font-size:1rem;
 .rad-tit{font-size:clamp(1.1rem,2.5vw,1.4rem);margin:0 0 1rem;}
 .rad-tit-sec{margin-top:clamp(2rem,5vw,3rem);color:var(--ink-soft);}
 .rad-lista{display:flex;flex-direction:column;gap:.7rem;}
-.rad-voce{display:flex;align-items:center;gap:1rem;
+.rad-voce{display:flex;align-items:flex-start;gap:1rem;
   border:1px solid var(--line);border-radius:var(--radius);
   padding:.9rem 1.1rem;background:#fff;}
 .rad-data{flex:0 0 auto;text-align:center;min-width:3.2rem;
@@ -1049,6 +1215,33 @@ h2.card-titolo{font-family:var(--font-display);font-size:1rem;
   .rad-voce{flex-wrap:wrap;}
   .rad-x{width:100%;justify-content:center;margin-top:.5rem;}
 }
+
+/* --- Album collegati (pagina pubblica /radunimoto) --- */
+.rad-foto-tit{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-soft);margin:1.1rem 0 .6rem;}
+.rad-album-grid{margin-top:0;grid-template-columns:repeat(auto-fill,minmax(min(100%,180px),1fr));
+  gap:.7rem;}
+
+/* --- Album collegati (pannello admin) --- */
+.rad-album{margin-top:.9rem;padding-top:.7rem;border-top:1px dashed var(--line);}
+.rad-album-tit{font-size:.76rem;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-soft);margin:0 0 .5rem;}
+.rad-album-lista{list-style:none;margin:0 0 .6rem;padding:0;display:flex;
+  flex-direction:column;gap:.4rem;}
+.rad-album-lista li{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;
+  font-size:.85rem;}
+.rad-album-lista .sub{color:var(--ink-soft);font-size:.76rem;}
+.btn-sm{font-size:.7rem;padding:.35rem .6rem;}
+.rad-album-aggiungi{position:relative;}
+.rad-album-cerca{width:100%;padding:.5rem .7rem;border:1px solid var(--line);
+  border-radius:8px;font-size:.85rem;}
+.rad-album-cerca:focus{outline:none;border-color:var(--accent);}
+.rad-album-risultati{position:absolute;left:0;right:0;top:calc(100% + 4px);
+  z-index:5;background:#fff;border:1px solid var(--line);border-radius:8px;
+  box-shadow:0 6px 18px rgba(0,0,0,.1);max-height:220px;overflow-y:auto;}
+.rad-album-voce{display:block;width:100%;text-align:left;padding:.5rem .7rem;
+  border:none;background:none;font-size:.82rem;cursor:pointer;}
+.rad-album-voce:hover{background:var(--bg-soft);}
 
 /* --- Collegamento alle mappe --- */
 .rad-mappa{display:inline-flex;align-items:center;gap:.35rem;
@@ -1431,11 +1624,17 @@ body.menu-fermo{overflow:hidden;}
    la pagina nasconde quello che sborda di lato: le ultime colonne, tasti
    compresi, finivano fuori e non si raggiungevano piu'.
 
-   Sotto i 700 punti la tabella si scompone: ogni riga diventa una scheda e
-   ogni cella una riga con il nome della colonna a sinistra e il valore a
+   Sotto gli 860 punti la tabella si scompone: ogni riga diventa una scheda
+   e ogni cella una riga con il nome della colonna a sinistra e il valore a
    destra. Il nome arriva dall'attributo data-eti scritto nel modello, cosi'
-   non serve ripeterlo cinquanta volte nella pagina. */
-@media (max-width:700px){
+   non serve ripeterlo cinquanta volte nella pagina.
+
+   860 e non 700: a 768 e 820 punti (il tavoletta tenuta in verticale) la
+   soglia vecchia non scattava e la tabella restava distesa, con le ultime
+   colonne che uscivano dallo schermo. E' la stessa misura a cui il menu
+   dell'amministrazione passa alla sua forma stretta, cosi' le due cose
+   cambiano insieme invece che a due larghezze diverse. */
+@media (max-width:860px){
   .tabella-schede{background:none;border-radius:0;overflow:visible;}
   .tabella-schede thead{position:absolute;width:1px;height:1px;overflow:hidden;
     clip-path:inset(50%);white-space:nowrap;}
@@ -1495,6 +1694,27 @@ body.menu-fermo{overflow:hidden;}
 .menu-gruppo > .menu-voci::before{content:"";position:absolute;
   left:.95rem;top:.15rem;bottom:.15rem;width:1px;background:var(--line);}
 .menu-gruppo > .menu-voci > a{padding-left:.7rem;}
+.badge-contatore{display:inline-flex;align-items:center;justify-content:center;
+  min-width:1.3rem;height:1.3rem;padding:0 .3rem;border-radius:999px;
+  background:var(--accent);color:var(--bg-dark);font-size:.68rem;font-weight:700;
+  line-height:1;vertical-align:middle;}
+.riga-nuova{box-shadow:inset 3px 0 0 var(--accent);background:rgba(43,75,255,.05);}
+
+/* Chip dei filtri di stato (richieste di contatto, e riusabile altrove). */
+.chip{display:inline-flex;align-items:center;padding:.4rem .85rem;border-radius:999px;
+  border:1px solid var(--line);background:var(--bg);color:var(--ink-soft);
+  font-size:.75rem;font-weight:600;letter-spacing:.02em;white-space:nowrap;
+  transition:all .15s var(--ease);}
+.chip:hover{border-color:var(--ink);color:var(--ink);}
+.chip-attivo{background:var(--ink);border-color:var(--ink);color:#fff;}
+.richieste-filtri input[type="search"],
+.richieste-filtri select{padding:.6rem .8rem;border:2px solid var(--line);
+  border-radius:var(--radius);font-size:.85rem;min-height:44px;}
+@media (max-width:520px){
+  .richieste-filtri .chip-riga{gap:.4rem;}
+  .richieste-filtri > div:last-child{flex-direction:column;align-items:stretch;}
+  .richieste-filtri > div:last-child > *{width:100%;}
+}
 
 /* Chiuso a mano ma con dentro la pagina aperta: si vede lo stesso. */
 .menu-gruppo:not([open]):has(a.active) > summary{color:var(--accent);}

@@ -104,6 +104,7 @@
                    "Event photography", "Portrait photography"],
     "founder": { "@type": "Person", "name": "Nathan",
                  "jobTitle": "Photographer" },
+    "email": "info@photocarcifo.ch",
     "sameAs": [
       "https://instagram.com/photocarcifo",
       "https://tiktok.com/@photocarcifo",
@@ -136,13 +137,10 @@
           voci per esteso si aprono da li'.
         #}
         <a class="voce-testo" href="/novita">{{ t('nav.novita') }}</a>
+        <a class="voce-testo" href="/radunimoto">{{ t('nav.raduni') }}</a>
         <a class="voce-testo" href="/chi-sono">{{ t('nav.chi_sono') }}</a>
-        <a class="voce-testo" href="/search">{{ t('nav.cerca') }}</a>
+        <a class="voce-testo" href="/contattami">{{ t('nav.contattami') }}</a>
         <a class="voce-testo" href="/recensioni">{{ t('nav.recensioni') }}</a>
-        <a class="solo-stretto lente" href="/search"
-           aria-label="{{ t('nav.cerca') }}" title="{{ t('nav.cerca') }}">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.6"/><path d="M15.4 15.4 21 21"/></svg>
-        </a>
         {% if is_admin %}<a href="/admin" class="nav-admin voce-testo">{{ t('nav.dashboard') }}</a>
         {% else %}<a href="/admin/login" class="nav-admin voce-testo" id="navAccedi">{{ t('nav.accedi') }}</a>{% endif %}
         {#
@@ -203,9 +201,14 @@
           <span>{{ t('nav.novita') }}</span>
           <svg class="poi" viewBox="0 0 8 12" aria-hidden="true"><path d="M1.5 1 6.5 6l-5 5"/></svg>
         </a>
-        <a href="/search">
-          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.6"/><path d="M15.4 15.4 21 21"/></svg>
-          <span>{{ t('nav.cerca') }}</span>
+        <a href="/radunimoto">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.4 6.2h15.2v13.2H4.4z"/><path d="M7.4 3.2v3.2M16.6 3.2v3.2M4.4 10.4h15.2"/><path d="M8 14h2M11 14h2M14 14h2M8 17h2M11 17h2"/></svg>
+          <span>{{ t('nav.raduni') }}</span>
+          <svg class="poi" viewBox="0 0 8 12" aria-hidden="true"><path d="M1.5 1 6.5 6l-5 5"/></svg>
+        </a>
+        <a href="/contattami">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.8" y="5.2" width="18.4" height="13.6" rx="3"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>
+          <span>{{ t('nav.contattami') }}</span>
           <svg class="poi" viewBox="0 0 8 12" aria-hidden="true"><path d="M1.5 1 6.5 6l-5 5"/></svg>
         </a>
         <a href="/recensioni">
@@ -256,6 +259,9 @@
         <a href="https://youtube.com/@photocarcifo" target="_blank" rel="noopener me" aria-label="YouTube" title="YouTube">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.8" y="5.2" width="18.4" height="13.6" rx="4.2"/><path d="M10.4 9.3v5.4l4.6-2.7z" fill="currentColor" stroke="none"/></svg>
         </a>
+        <a href="mailto:info@photocarcifo.ch" aria-label="{{ t('foot.email') }}" title="{{ t('foot.email') }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.8" y="5.2" width="18.4" height="13.6" rx="3"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>
+        </a>
       </nav>
       <div class="foot-copy"><a href="/privacy" class="foot-priv">{{ t('foot.condizioni') }}</a> · &copy; {{ now_year() }} {{ site_name() }}</div>
     </div>
@@ -285,5 +291,6 @@
   <script src="{{ asset('/static/js/menu.js') }}" defer></script>
   <script src="{{ asset('/static/js/ospite-nav.js') }}" defer></script>
   <script src="{{ asset('/static/js/cookie-avviso.js') }}" defer></script>
+  <script src="{{ asset('/static/js/moduli-invio.js') }}" defer></script>
 </body>
 </html>

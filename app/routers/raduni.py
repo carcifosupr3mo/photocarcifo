@@ -1,31 +1,22 @@
-"""Calendario riservato dei raduni.
+"""Calendario pubblico dei raduni.
 
-Pagina non collegata dal sito e non indicizzabile: vi si accede solo
-conoscendo la risposta alla domanda impostata. Chi sbaglia troppe volte
-viene bloccato per un periodo che raddoppia ogni volta, cosi' tentare a
-caso diventa inutile.
+Pagina pubblica, raggiungibile dalla barra di navigazione e indicizzabile:
+mostra gli appuntamenti e, sotto ciascuno, gli album fotografici collegati
+(quelli gia' pubblici nel resto del sito: la pagina non aggiunge un
+secondo modo per vedere cio' che e' privato o nascosto).
 """
-import time
 from datetime import datetime
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Request, Form, Depends, HTTPException, status
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-from itsdangerous import URLSafeTimedSerializer, BadSignature
+from fastapi import APIRouter, Request, Form, Depends, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse
 
-from ..config import get_settings
 from ..database import get_db, get_setting, set_setting, log_event
-from ..deps import (client_ip, get_current_user, require_admin_user,
-                    require_admin_api)
-from ..security import hash_password, verify_password, verify_csrf, RateLimiter
+from ..deps import get_current_user, require_admin_user, require_admin_api
+from ..security import verify_csrf
 from ..templating import templates
 
 router = APIRouter()
-
-COOKIE = "pc_raduni"
-DURATA = 60 * 60 * 12
-MAX_TENTATIVI = 5
-BASE_ATTESA = 60
 
 # Servizi di mappe accettati per il collegamento al luogo.
 DOMINI_MAPPE = (
@@ -53,121 +44,6 @@ def mappa_valida(url: str) -> bool:
         host = host[4:]
     return any(host == d or host.endswith("." + d) for d in DOMINI_MAPPE)
 
-# Il conteggio dei tentativi sta nel database, non nella memoria del
-# processo: con piu' processi in parallelo ognuno terrebbe il proprio, e
-# chi prova a indovinare la risposta avrebbe cinque tentativi per processo
-# invece di cinque in tutto. Vedi security.RateLimiter.
-_conteggio = RateLimiter("raduni", max_attempts=MAX_TENTATIVI,
-                         window_seconds=6 * 3600)
-
-
-def _indirizzo(request: Request) -> str:
-    """Indirizzo di chi sta provando a entrare.
-
-    Si usa lo stesso metodo del login (X-Real-IP, che Nginx riempie da solo
-    con l'indirizzo vero della connessione). NON si guarda
-    X-Forwarded-For: Nginx si limita ad accodarvi l'indirizzo reale, quindi
-    la prima voce e' scritta dal visitatore. Prendendo quella, bastava
-    cambiarla a ogni tentativo per non venire mai bloccati e provare la
-    risposta all'infinito.
-    """
-    return client_ip(request)
-
-
-def _attesa_per(quanti: int) -> int:
-    """Quanto deve aspettare chi ha sbagliato tante volte.
-
-    I primi errori non costano niente: capita di ricordare male. Dal quinto
-    in poi l'attesa raddoppia ogni volta — un minuto, due, quattro — fino a
-    un'ora. Chi prova a indovinare si ferma da solo dopo pochi giri, chi ha
-    solo sbagliato aspetta un minuto e riprova.
-    """
-    if quanti < MAX_TENTATIVI:
-        return 0
-    return int(min(BASE_ATTESA * (2 ** (quanti - MAX_TENTATIVI)), 3600))
-
-
-def _bloccato(ip: str) -> int:
-    """Secondi che mancano prima di poter riprovare, 0 se si puo' subito."""
-    from ..database import get_db
-    try:
-        with get_db() as conn:
-            riga = conn.execute(
-                "SELECT COUNT(*) AS quanti, MAX(quando) AS ultimo "
-                "FROM tentativi WHERE ambito='raduni' AND chiave=? "
-                "AND quando > ?",
-                (ip, time.time() - 6 * 3600)).fetchone()
-    except Exception:
-        return 0
-    quanti = riga["quanti"] or 0
-    if quanti < MAX_TENTATIVI:
-        return 0
-    passati = time.time() - (riga["ultimo"] or 0)
-    return max(0, int(_attesa_per(quanti) - passati))
-
-
-def _segna_errore(ip: str) -> int:
-    """Registra l'errore e restituisce quanto si deve aspettare adesso."""
-    _conteggio.hit(ip)
-    return _bloccato(ip)
-
-
-def _azzera(ip: str) -> None:
-    _conteggio.reset(ip)
-
-
-def _quanti_bloccati() -> int:
-    """Quanti indirizzi stanno aspettando adesso. Si mostra nel pannello."""
-    from ..database import get_db
-    try:
-        with get_db() as conn:
-            righe = conn.execute(
-                "SELECT chiave FROM tentativi WHERE ambito='raduni' "
-                "AND quando > ? GROUP BY chiave HAVING COUNT(*) >= ?",
-                (time.time() - 6 * 3600, MAX_TENTATIVI)).fetchall()
-    except Exception:
-        return 0
-    return sum(1 for r in righe if _bloccato(r["chiave"]))
-
-
-def _svuota_tentativi() -> int:
-    """Toglie il blocco a tutti. Restituisce quanti erano.
-
-    Serve al pannello: quando si cambia la risposta, chi era rimasto fuori
-    con quella vecchia non deve continuare ad aspettare per una domanda
-    che non esiste piu'."""
-    from ..database import get_db
-    try:
-        with get_db() as conn:
-            quanti = conn.execute(
-                "SELECT COUNT(DISTINCT chiave) c FROM tentativi "
-                "WHERE ambito='raduni'").fetchone()["c"]
-            conn.execute("DELETE FROM tentativi WHERE ambito='raduni'")
-            return quanti
-    except Exception:
-        return 0
-
-
-def _serializer():
-    return URLSafeTimedSerializer(get_settings().secret_key, salt="raduni")
-
-
-def _ha_accesso(request: Request) -> bool:
-    u = get_current_user(request)
-    if u and u.get("is_admin"):
-        return True
-    token = request.cookies.get(COOKIE)
-    if not token:
-        return False
-    try:
-        return _serializer().loads(token, max_age=DURATA).get("ok") is True
-    except (BadSignature, Exception):
-        return False
-
-
-def _domanda() -> str:
-    return get_setting("raduni_domanda", "Dove si trova il prossimo raduno?")
-
 
 def _avviso() -> str:
     return get_setting(
@@ -194,91 +70,58 @@ def _passati():
     return [dict(r) for r in righe]
 
 
+def _album_pubblici(raduno_id: int) -> list:
+    """Album collegati a un raduno, filtrati con le stesse regole di
+    visibilita' pubblica usate nel resto del sito (tree.py): niente
+    privati, niente nascosti, niente scaduti. Collegare un album a un
+    raduno non gli cambia la visibilita'."""
+    from .tree import scaduto
+    with get_db() as conn:
+        righe = conn.execute(
+            "SELECT n.id, n.slug, n.title, n.cover_media_id, n.total_media, "
+            "n.expires_at "
+            "FROM raduni_albums ra JOIN nodes n ON n.id = ra.node_id "
+            "WHERE ra.raduno_id=? AND n.is_private=0 AND n.hidden=0 "
+            "ORDER BY ra.sort_order, n.title", (raduno_id,)).fetchall()
+        righe = [dict(r) for r in righe if not scaduto(r["expires_at"])]
+        ids = [r["id"] for r in righe]
+        copertine = {}
+        if ids:
+            segnaposto = ",".join("?" * len(ids))
+            for r in conn.execute(
+                f"SELECT id, rel_path FROM media WHERE id IN "
+                f"(SELECT cover_media_id FROM nodes WHERE id IN ({segnaposto}))",
+                ids):
+                copertine[r["id"]] = r["rel_path"]
+        for r in righe:
+            r["cover"] = copertine.get(r["cover_media_id"])
+        return righe
+
+
+def _album_admin(raduno_id: int) -> list:
+    """Come sopra ma senza filtro di visibilita': serve al pannello, dove
+    un admin deve poter vedere anche un album privato o nascosto gia'
+    collegato (e capire che al pubblico non comparira')."""
+    with get_db() as conn:
+        righe = conn.execute(
+            "SELECT n.id, n.slug, n.title, n.total_media, n.is_private, n.hidden "
+            "FROM raduni_albums ra JOIN nodes n ON n.id = ra.node_id "
+            "WHERE ra.raduno_id=? ORDER BY ra.sort_order, n.title",
+            (raduno_id,)).fetchall()
+        return [dict(r) for r in righe]
+
+
 @router.get("/radunimoto", response_class=HTMLResponse)
 def pagina(request: Request):
-    if not _ha_accesso(request):
-        return templates.TemplateResponse(request, "public/raduni_accesso.html", {"domanda": _domanda(),
-            "errore": None, "attesa": _bloccato(_indirizzo(request))})
+    prossimi = _prossimi()
+    passati = _passati()
+    for r in prossimi:
+        r["album"] = _album_pubblici(r["id"])
+    for r in passati:
+        r["album"] = _album_pubblici(r["id"])
     return templates.TemplateResponse(request, "public/raduni.html", {"avviso": _avviso(),
-        "prossimi": _prossimi(), "passati": _passati(),
+        "prossimi": prossimi, "passati": passati,
         "is_admin": bool((get_current_user(request) or {}).get("is_admin"))})
-
-
-@router.post("/radunimoto", response_class=HTMLResponse)
-def accedi(request: Request, risposta: str = Form(...)):
-    ip = _indirizzo(request)
-
-    attesa = _bloccato(ip)
-    if attesa:
-        return templates.TemplateResponse(request, "public/raduni_accesso.html", {"domanda": _domanda(),
-            "errore": f"Troppi tentativi. Riprova fra {attesa} secondi.",
-            "attesa": attesa}, status_code=status.HTTP_429_TOO_MANY_REQUESTS)
-
-    salvata = get_setting("raduni_risposta_hash", "")
-    corretta = bool(salvata) and verify_password(risposta.strip().lower(), salvata)
-
-    if not corretta:
-        nuova = _segna_errore(ip)
-        log_event("WARNING", "raduni", f"Risposta errata da {ip}")
-        messaggio = ("Risposta non corretta." if not nuova
-                     else f"Troppi tentativi. Riprova fra {nuova} secondi.")
-        return templates.TemplateResponse(request, "public/raduni_accesso.html", {"domanda": _domanda(),
-            "errore": messaggio, "attesa": nuova},
-            status_code=status.HTTP_401_UNAUTHORIZED)
-
-    _azzera(ip)
-    log_event("INFO", "raduni", f"Accesso riuscito da {ip}")
-    risposta_http = RedirectResponse(url="/radunimoto",
-                                     status_code=status.HTTP_303_SEE_OTHER)
-    risposta_http.set_cookie(COOKIE, _serializer().dumps({"ok": True}),
-                             max_age=DURATA, httponly=True,
-                             samesite="lax", secure=True, path="/")
-    return risposta_http
-
-
-def _maschera(ip: str) -> str:
-    """Mostra solo la parte iniziale dell'indirizzo.
-
-    Serve a capire quante persone diverse accedono senza conservare in
-    chiaro un dato che identifica qualcuno."""
-    parti = ip.split(".")
-    if len(parti) == 4:
-        return f"{parti[0]}.{parti[1]}.x.x"
-    return ip[:10] + "…" if len(ip) > 10 else ip
-
-
-def _statistiche():
-    """Chi ha aperto il calendario, in forma aggregata."""
-    estrai = "replace(message, 'Accesso riuscito da ', '')"
-    with get_db() as conn:
-        def uno(q):
-            r = conn.execute(q).fetchone()
-            return r[0] if r else 0
-
-        totali = uno("SELECT COUNT(*) FROM logs WHERE category='raduni' "
-                     "AND message LIKE 'Accesso riuscito%'")
-        persone = uno(f"SELECT COUNT(DISTINCT {estrai}) FROM logs "
-                      "WHERE category='raduni' AND message LIKE 'Accesso riuscito%'")
-        settimana = uno(f"SELECT COUNT(DISTINCT {estrai}) FROM logs "
-                        "WHERE category='raduni' AND message LIKE 'Accesso riuscito%' "
-                        "AND ts > datetime('now','-7 days')")
-        oggi = uno("SELECT COUNT(*) FROM logs WHERE category='raduni' "
-                   "AND message LIKE 'Accesso riuscito%' "
-                   "AND ts > datetime('now','-1 day')")
-        falliti = uno("SELECT COUNT(*) FROM logs WHERE category='raduni' "
-                      "AND message LIKE 'Risposta errata%' "
-                      "AND ts > datetime('now','-30 days')")
-
-        righe = conn.execute(
-            f"SELECT {estrai} AS chi, COUNT(*) AS quante, MAX(ts) AS ultimo "
-            "FROM logs WHERE category='raduni' AND message LIKE 'Accesso riuscito%' "
-            "GROUP BY chi ORDER BY ultimo DESC LIMIT 25").fetchall()
-
-    elenco = [{"chi": _maschera(r["chi"]), "quante": r["quante"],
-               "ultimo": (r["ultimo"] or "")[:16].replace("T", " ")}
-              for r in righe]
-    return {"totali": totali, "persone": persone, "settimana": settimana,
-            "oggi": oggi, "falliti": falliti, "elenco": elenco}
 
 
 @router.get("/admin/raduni", response_class=HTMLResponse)
@@ -287,11 +130,20 @@ def admin_pagina(request: Request, user: dict = Depends(require_admin_user)):
         righe = conn.execute(
             "SELECT id, data, ora, luogo, note, mappa FROM raduni "
             "ORDER BY data DESC").fetchall()
-    return templates.TemplateResponse(request, "admin/raduni.html", {"user": user, "raduni": [dict(r) for r in righe],
-        "domanda": _domanda(), "avviso": _avviso(),
-        "risposta_impostata": bool(get_setting("raduni_risposta_hash", "")),
-        "bloccati": _quanti_bloccati(),
-        "stat": _statistiche()})
+    raduni = [dict(r) for r in righe]
+    for r in raduni:
+        r["album"] = _album_admin(r["id"])
+    return templates.TemplateResponse(request, "admin/raduni.html", {"user": user, "raduni": raduni,
+        "avviso": _avviso()})
+
+
+@router.post("/admin/raduni/avviso")
+def salva_avviso(csrf_token: str = Form(...), avviso: str = Form(""),
+                 user: dict = Depends(require_admin_api)):
+    if not verify_csrf(user.get("csrf", ""), csrf_token):
+        raise HTTPException(status_code=403, detail="Sessione non valida")
+    set_setting("raduni_avviso", avviso.strip()[:1500])
+    return JSONResponse({"ok": True})
 
 
 @router.post("/admin/raduni/aggiungi")
@@ -326,38 +178,10 @@ def elimina(raduno_id: int, csrf_token: str = Form(...),
     if not verify_csrf(user.get("csrf", ""), csrf_token):
         raise HTTPException(status_code=403, detail="Sessione non valida")
     with get_db() as conn:
+        # Le associazioni in raduni_albums hanno FK ON DELETE CASCADE:
+        # spariscono con il raduno, gli album (nodes) restano intatti.
         conn.execute("DELETE FROM raduni WHERE id=?", (raduno_id,))
     return JSONResponse({"ok": True})
-
-
-@router.post("/admin/raduni/impostazioni")
-def impostazioni(csrf_token: str = Form(...), domanda: str = Form(""),
-                 risposta: str = Form(""), avviso: str = Form(""),
-                 user: dict = Depends(require_admin_api)):
-    """Cambia domanda, risposta e testo dell'avviso."""
-    if not verify_csrf(user.get("csrf", ""), csrf_token):
-        raise HTTPException(status_code=403, detail="Sessione non valida")
-    if domanda.strip():
-        set_setting("raduni_domanda", domanda.strip()[:300])
-    if avviso.strip():
-        set_setting("raduni_avviso", avviso.strip()[:1500])
-    cambiata = False
-    if risposta.strip():
-        set_setting("raduni_risposta_hash",
-                    hash_password(risposta.strip().lower()))
-        _svuota_tentativi()
-        cambiata = True
-        log_event("INFO", "raduni", "Risposta di accesso aggiornata")
-    return JSONResponse({"ok": True, "risposta_cambiata": cambiata})
-
-
-@router.post("/admin/raduni/sblocca")
-def sblocca(csrf_token: str = Form(...),
-            user: dict = Depends(require_admin_api)):
-    if not verify_csrf(user.get("csrf", ""), csrf_token):
-        raise HTTPException(status_code=403, detail="Sessione non valida")
-    quanti = _svuota_tentativi()
-    return JSONResponse({"ok": True, "sbloccati": quanti})
 
 
 @router.post("/admin/raduni/{raduno_id}/mappa")
@@ -375,4 +199,41 @@ def modifica_mappa(raduno_id: int, csrf_token: str = Form(...),
     with get_db() as conn:
         conn.execute("UPDATE raduni SET mappa=? WHERE id=?",
                      (mappa.strip()[:500] or None, raduno_id))
+    return JSONResponse({"ok": True})
+
+
+@router.post("/admin/raduni/{raduno_id}/album/collega")
+def collega_album(raduno_id: int, csrf_token: str = Form(...),
+                  node_id: int = Form(...),
+                  user: dict = Depends(require_admin_api)):
+    """Collega un album esistente al raduno. Non tocca il nodo: nessuna
+    copia, nessuno spostamento, nessun cambio di categoria/slug/URL."""
+    if not verify_csrf(user.get("csrf", ""), csrf_token):
+        raise HTTPException(status_code=403, detail="Sessione non valida")
+    with get_db() as conn:
+        esiste = conn.execute("SELECT id FROM nodes WHERE id=?", (node_id,)).fetchone()
+        if not esiste:
+            raise HTTPException(status_code=404, detail="Album non trovato")
+        ordine = conn.execute(
+            "SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM raduni_albums "
+            "WHERE raduno_id=?", (raduno_id,)).fetchone()["n"]
+        conn.execute(
+            "INSERT OR IGNORE INTO raduni_albums(raduno_id, node_id, sort_order, creato) "
+            "VALUES(?,?,?,datetime('now'))", (raduno_id, node_id, ordine))
+    log_event("INFO", "raduni", f"Album {node_id} collegato al raduno {raduno_id}")
+    return JSONResponse({"ok": True})
+
+
+@router.post("/admin/raduni/{raduno_id}/album/{node_id}/rimuovi")
+def scollega_album(raduno_id: int, node_id: int, csrf_token: str = Form(...),
+                   user: dict = Depends(require_admin_api)):
+    """Rimuove SOLO l'associazione raduno-album: l'album (nodo, foto,
+    file sul NAS) non viene toccato in alcun modo, resta esattamente dove
+    e' sempre stato, raggiungibile dalla sua categoria come prima."""
+    if not verify_csrf(user.get("csrf", ""), csrf_token):
+        raise HTTPException(status_code=403, detail="Sessione non valida")
+    with get_db() as conn:
+        conn.execute("DELETE FROM raduni_albums WHERE raduno_id=? AND node_id=?",
+                     (raduno_id, node_id))
+    log_event("INFO", "raduni", f"Album {node_id} rimosso dal raduno {raduno_id}")
     return JSONResponse({"ok": True})

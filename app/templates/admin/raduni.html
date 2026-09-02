@@ -4,27 +4,18 @@
 {% block content %}
 <h1>Calendario raduni</h1>
 <p style="color:var(--ink-soft);margin:.4rem 0 1.6rem;">
-  Pagina riservata su <code>/radunimoto</code>, non collegata dal sito e non
-  indicizzabile.
-  {% if not risposta_impostata %}<br><strong style="color:var(--accent-2);">
-  Nessuna risposta impostata: al momento non vi accede nessuno.</strong>{% endif %}
-  {% if bloccati %}<br>{{ bloccati }} indirizzi attualmente bloccati.{% endif %}
+  Pagina pubblica su <code>/radunimoto</code>, raggiungibile dal menu del sito.
+  Ogni appuntamento puo' avere album fotografici collegati: compaiono
+  pubblicamente solo quelli gia' visibili nel resto del sito (non privati,
+  non nascosti, non scaduti).
 </p>
 
-<h2>Accesso</h2>
+<h2>Avvertenza mostrata in pagina</h2>
 <div class="det-block">
-  <label for="r-domanda">Domanda mostrata</label>
-  <input type="text" id="r-domanda" value="{{ domanda }}">
-  <label for="r-risposta" style="margin-top:.8rem;">Nuova risposta</label>
-  <input type="text" id="r-risposta" placeholder="lascia vuoto per non cambiarla"
-         autocomplete="off">
-  <p class="up-hint">Maiuscole e spazi ai lati non contano. Cambiandola,
-    chi era entrato prima resta dentro fino a scadenza.</p>
-  <label for="r-avviso" style="margin-top:.8rem;">Testo dell'avvertenza</label>
+  <label for="r-avviso">Testo dell'avvertenza</label>
   <textarea id="r-avviso" rows="4">{{ avviso }}</textarea>
   <div class="det-row" style="margin-top:.8rem;">
-    <button class="btn btn-accent" id="r-salva" type="button">Salva</button>
-    <button class="btn btn-ghost" id="r-sblocca" type="button">Sblocca tentativi</button>
+    <button class="btn btn-accent" id="r-salva-avviso" type="button">Salva</button>
     <a class="btn btn-ghost" href="/radunimoto" target="_blank">Apri la pagina</a>
   </div>
   <span class="copia-eco" id="r-eco"></span>
@@ -73,6 +64,36 @@
       </div>
       {% if r.mappa %}<a class="rad-mappa" href="{{ r.mappa }}" target="_blank"
         rel="noopener nofollow">Apri nelle mappe</a>{% endif %}
+
+      {#
+        Album collegati: solo un legame nella tabella raduni_albums, mai
+        una copia. "Rimuovi dal raduno" toglie solo questo legame — l'album,
+        le foto e i file sul NAS restano dove sono sempre stati.
+      #}
+      <div class="rad-album" data-raduno-album="{{ r.id }}">
+        <p class="rad-album-tit">Album collegati ({{ r.album|length }})</p>
+        {% if r.album %}
+        <ul class="rad-album-lista">
+          {% for a in r.album %}
+          <li>
+            <a href="/n/{{ a.slug }}" target="_blank">{{ a.title }}</a>
+            {% if a.is_private %}<span class="badge-private">privato</span>{% endif %}
+            {% if a.hidden %}<span class="badge-private">nascosto</span>{% endif %}
+            <span class="sub">{{ a.total_media }} foto</span>
+            <button class="btn btn-ghost btn-sm" type="button"
+                    data-rimuovi-album="{{ r.id }}" data-node="{{ a.id }}">
+              Rimuovi dal raduno
+            </button>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        <div class="rad-album-aggiungi">
+          <input type="text" class="rad-album-cerca" data-cerca-album="{{ r.id }}"
+                 placeholder="Cerca album per nome…" autocomplete="off">
+          <div class="rad-album-risultati" data-risultati-album="{{ r.id }}" hidden></div>
+        </div>
+      </div>
     </div>
     <button class="btn btn-ghost rad-x" data-elimina="{{ r.id }}" type="button">Elimina</button>
   </div>
@@ -80,45 +101,6 @@
 </div>
 {% else %}
 <div class="empty"><p>Nessun appuntamento inserito.</p></div>
-{% endif %}
-
-<h2 style="margin-top:2.5rem;">Chi ha aperto il calendario</h2>
-
-<div class="stat-accessi">
-  <div class="stat-card"><div class="num">{{ stat.persone }}</div>
-    <div class="lbl">Persone diverse</div></div>
-  <div class="stat-card"><div class="num">{{ stat.settimana }}</div>
-    <div class="lbl">Ultimi 7 giorni</div></div>
-  <div class="stat-card"><div class="num">{{ stat.oggi }}</div>
-    <div class="lbl">Ultime 24 ore</div></div>
-  <div class="stat-card"><div class="num">{{ stat.totali }}</div>
-    <div class="lbl">Accessi totali</div></div>
-</div>
-
-{% if stat.falliti %}
-<p class="acc-falliti">{{ stat.falliti }} tentativi con risposta sbagliata
-  negli ultimi 30 giorni.</p>
-{% endif %}
-
-{% if stat.elenco %}
-{# tabella-schede: sotto i 700 punti le righe diventano schede. Tre colonne
-   con dentro un indirizzo di rete non ci stanno su un telefono, e la pagina
-   taglia via quello che sborda. #}
-<table class="table tab-accessi tabella-schede">
-  <thead><tr><th>Da dove</th><th>Volte</th><th>Ultimo accesso</th></tr></thead>
-  <tbody>
-    {% for a in stat.elenco %}
-    <tr><td data-eti="Da dove">{{ a.chi }}</td>
-        <td data-eti="Volte">{{ a.quante }}</td>
-        <td data-eti="Ultimo accesso">{{ a.ultimo }}</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
-<p class="up-hint">Gli indirizzi sono mostrati solo in parte: bastano a
-  distinguere le persone senza conservarne uno completo.
-  I registri vengono ripuliti dopo 60 giorni.</p>
-{% else %}
-<div class="empty"><p>Nessuno ha ancora aperto il calendario.</p></div>
 {% endif %}
 
 <input type="hidden" id="csrf" value="{{ user.csrf }}">

@@ -6,7 +6,7 @@
   <div class="acc-box">
     <h1>{{ t('rad.acc_titolo') }}</h1>
     <p class="acc-int">{{ t('rad.acc_int') }}</p>
-    <form method="post" action="/radunimoto" class="acc-form">
+    <form method="post" action="/radunimoto" class="acc-form" data-invio-unico>
       <label for="risposta">{{ domanda }}</label>
       <input type="text" id="risposta" name="risposta" autocomplete="off"
              autocapitalize="off" spellcheck="false" required

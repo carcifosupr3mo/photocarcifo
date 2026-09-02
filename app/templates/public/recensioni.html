@@ -46,7 +46,7 @@
 
   <div class="rec-modulo">
     <h2>{{ t('rec.scrivi') }}</h2>
-    <form method="post" action="/recensioni" class="form">
+    <form method="post" action="/recensioni" class="form" data-invio-unico>
       <div class="field">
         <label for="recNome">{{ t('rec.nome') }}</label>
         <input type="text" id="recNome" name="nome" maxlength="60" required
