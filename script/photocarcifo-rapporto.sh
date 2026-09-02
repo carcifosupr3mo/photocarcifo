@@ -1,12 +1,28 @@
 #!/usr/bin/env bash
 # Rapporto settimanale: cosa e' cambiato, come sta il sito, mappa in PDF.
+#
+# Passato da email a Telegram il 31/08/2026, richiesto esplicitamente per
+# uniformare il canale — prima era l'unico avviso del sito ancora via
+# email (msmtp), tutto il resto (ban, errori, sentinella, monitor) usa
+# gia' lo stesso bot amministrativo. Stessa configurazione condivisa di
+# tutti gli altri script bash del progetto (photocarcifo-sentinella.sh,
+# photocarcifo-errori.sh): un "source" diretto di
+# /etc/photocarcifo-telegram.conf, niente file nuovo.
 set -uo pipefail
 APP=/opt/photocarcifo
 STATO="$APP/.stato-settimanale"
-DEST=nathan.pollini.198@gmail.com
+CONFIG=/etc/photocarcifo-telegram.conf
 OGGI=$(date '+%d/%m/%Y')
 CORPO=/tmp/rapporto.txt
 PDF="$APP/MAPPA/Photocarcifo-Mappa.pdf"
+
+[ -r "$CONFIG" ] || { echo "Telegram non configurato ($CONFIG assente), rapporto non inviato" >&2; exit 0; }
+# shellcheck source=/dev/null
+. "$CONFIG"
+if [ -z "${TELEGRAM_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT:-}" ]; then
+    echo "Telegram non configurato (token/chat mancanti), rapporto non inviato" >&2
+    exit 0
+fi
 
 mkdir -p "$STATO"
 
@@ -59,9 +75,6 @@ MODIFICATO=0
 echo "$CAMBI" | grep -q "Nessuna modifica" || MODIFICATO=1
 
 q(){ sqlite3 "$APP/data/photocarcifo.db" "$1" 2>/dev/null; }
-FOTO=$(q "SELECT COUNT(*) FROM media;")
-ALBUM=$(q "SELECT COUNT(*) FROM nodes;")
-PRIV=$(q "SELECT COUNT(*) FROM nodes WHERE is_private=1;")
 VISITE=$(q "SELECT COUNT(*) FROM stats WHERE event='view_node' AND ts > datetime('now','-7 days');")
 DOWN=$(q "SELECT COUNT(*) FROM stats WHERE event IN ('download','zip_node','zip_select') AND ts > datetime('now','-7 days');")
 PREF=$(q "SELECT COUNT(*) FROM preferiti;")
@@ -71,94 +84,98 @@ SCADUTI=$(q "SELECT COUNT(*) FROM nodes WHERE expires_at IS NOT NULL AND expires
 INSCAD=$(q "SELECT COUNT(*) FROM nodes WHERE expires_at IS NOT NULL AND expires_at BETWEEN datetime('now') AND datetime('now','+14 days');")
 TOPALBUM=$(q "SELECT n.title || '  (' || COUNT(*) || ')' FROM stats s JOIN nodes n ON n.slug=s.ref WHERE s.event='view_node' AND s.ts > datetime('now','-7 days') GROUP BY s.ref ORDER BY COUNT(*) DESC LIMIT 5;")
 
+# Solo cio' che serve per decidere se mostrare un'attenzione (vedi sotto):
+# lo stato del sito e la risposta HTTP non compaiono piu' nel messaggio
+# (li segnalano gia' sentinella/monitor se cambia qualcosa), ma CODICE
+# resta per marcare il titolo se il sito risultasse giu' proprio ora.
 LIBERO=$(df -h / | awk 'NR==2{print $4}')
-USATO=$(df -h / | awk 'NR==2{print $5}')
-MINI=$(find "$APP/data/cache/thumbnails" -name '*.jpg' 2>/dev/null | wc -l)
-SITO=$(systemctl is-active photocarcifo)
 CODICE=$(curl -sk -o /dev/null -m 15 -w '%{http_code}' https://photocarcifo.ch/ 2>/dev/null)
 CERT=$(certbot certificates 2>/dev/null | grep -oP 'VALID: \K[0-9]+ days' | head -1)
-COPIE=$(ls -1 "$APP/backup/aggiornamenti"/prima-aggiornamento-*.tar.gz 2>/dev/null | grep -vc extra)
 CESTINO=$(find /mnt/magazzino-rw/_CESTINO -type f 2>/dev/null | wc -l)
 
+# Formato rivisto il 31/08/2026: il rapporto via email aveva senso in
+# colonne allineate (font monospace), su Telegram con testo semplice
+# diventava una parete di numeri tecnici senza gerarchia. Qui si tiene
+# solo cio' che serve leggere al volo su un messaggio: i numeri della
+# settimana, gli album piu' visti, e un'attenzione SOLO quando c'e'
+# davvero qualcosa da guardare (certificato quasi scaduto, poco spazio,
+# link scaduti) — il resto (stato/HTTP, miniature pronte, copie di
+# backup, comandi da terminale) non ha senso in un messaggio del
+# telefono: se il sito fosse giu' lo si saprebbe gia' dagli altri
+# avvisi (sentinella/monitor), non serve ripeterlo qui ogni settimana.
 {
-echo "PHOTOCARCIFO - rapporto settimanale del $OGGI"
-echo "==============================================="
+echo "📊 Photocarcifo — $OGGI"
 echo ""
-echo "COME STA IL SITO"
-echo "   stato               $SITO"
-echo "   risposta            $CODICE"
-echo "   spazio libero       $LIBERO  (usato $USATO)"
-echo "   certificato scade   ${CERT:-da verificare}"
-echo "   copie disponibili   $COPIE"
-echo ""
-echo "ARCHIVIO"
-echo "   fotografie          $FOTO"
-echo "   album               $ALBUM  (di cui riservati $PRIV)"
-echo "   miniature pronte    $MINI"
-echo ""
-echo "QUESTA SETTIMANA"
-echo "   album aperti        $VISITE"
-echo "   scaricamenti        $DOWN"
-echo "   nuovi preferiti     $PREFSETT"
-echo "   preferiti totali    $PREF  da $CLIENTI clienti"
-echo ""
+echo "👀 Questa settimana"
+echo "   $VISITE album aperti · $DOWN scaricamenti"
+if [ "${PREFSETT:-0}" -gt 0 ]; then
+  echo "   $PREFSETT nuovi preferiti (totale $PREF da $CLIENTI clienti)"
+fi
 if [ -n "$TOPALBUM" ]; then
-  echo "ALBUM PIU' VISTI"
+  echo ""
+  echo "🏆 Più visti"
   echo "$TOPALBUM" | sed 's/^/   /'
-  echo ""
 fi
-if [ "${INSCAD:-0}" -gt 0 ] || [ "${SCADUTI:-0}" -gt 0 ]; then
-  echo "COLLEGAMENTI RISERVATI"
-  [ "${INSCAD:-0}" -gt 0 ] && echo "   $INSCAD in scadenza entro due settimane"
-  [ "${SCADUTI:-0}" -gt 0 ] && echo "   $SCADUTI gia' scaduti"
-  echo ""
+
+ATTENZIONI=""
+if [ -n "${CERT:-}" ] && [ "$CERT" -lt 20 ] 2>/dev/null; then
+  ATTENZIONI="${ATTENZIONI}   🔒 certificato SSL scade fra $CERT giorni — verificare il rinnovo automatico\n"
 fi
-[ "${CESTINO:-0}" -gt 0 ] && { echo "CESTINO"; echo "   $CESTINO file in attesa"; echo ""; }
-echo "MODIFICHE AL PROGRAMMA"
-echo "$CAMBI" | sed 's/^/   /'
-echo ""
-echo "==============================================="
-echo "In allegato la mappa aggiornata del sito."
-echo ""
-echo "Comandi utili:"
-echo "   photocarcifo-diagnosi.sh   verifica che tutto funzioni"
-echo "   mappacerca PAROLA          trova un file"
-echo "   tail -50 /var/log/photocarcifo-notte.log"
+LIBERO_PERC=$(df / | awk 'NR==2{gsub("%","",$5); print $5}')
+if [ "${LIBERO_PERC:-0}" -ge 85 ]; then
+  ATTENZIONI="${ATTENZIONI}   💾 disco al ${LIBERO_PERC}% (${LIBERO} liberi)\n"
+fi
+if [ "${SCADUTI:-0}" -gt 0 ]; then
+  ATTENZIONI="${ATTENZIONI}   🔗 $SCADUTI collegamento/i riservato/i già scaduto/i\n"
+fi
+if [ "${INSCAD:-0}" -gt 0 ]; then
+  ATTENZIONI="${ATTENZIONI}   🔗 $INSCAD collegamento/i riservato/i in scadenza entro due settimane\n"
+fi
+if [ "${CESTINO:-0}" -gt 20 ]; then
+  ATTENZIONI="${ATTENZIONI}   🗑️ $CESTINO file in attesa nel cestino\n"
+fi
+if [ "$MODIFICATO" = "1" ]; then
+  ATTENZIONI="${ATTENZIONI}   🛠️ modifiche al codice questa settimana (vedi photocarcifo-diagnosi.sh)\n"
+fi
+if [ -n "$ATTENZIONI" ]; then
+  echo ""
+  echo "⚠️ Da guardare"
+  printf '%b' "$ATTENZIONI"
+fi
 } > "$CORPO"
 
 /usr/local/bin/photocarcifo-mappa.sh >/dev/null 2>&1
 "$APP/venv/bin/python" /usr/local/bin/photocarcifo-mappa-pdf.py >/dev/null 2>&1
 
-OGGETTO="Photocarcifo - rapporto del $OGGI"
-[ "$MODIFICATO" = "1" ] && OGGETTO="$OGGETTO (modifiche al programma)"
-[ "$CODICE" != "200" ] && OGGETTO="ATTENZIONE - $OGGETTO"
+TITOLO="📊 Photocarcifo - rapporto del $OGGI"
+[ "$MODIFICATO" = "1" ] && TITOLO="$TITOLO (modifiche al programma)"
+[ "$CODICE" != "200" ] && TITOLO="⚠️ ATTENZIONE - $TITOLO"
+
+# Un messaggio Telegram supera i 4096 caratteri raramente con questo
+# rapporto, ma "modifiche al programma" con molti file puo' avvicinarcisi:
+# si taglia con un avviso invece di far fallire l'invio in silenzio (vedi
+# lo stesso problema, gia' capitato per davvero, in ban-alert.py).
+LIMITE_TELEGRAM=3900
+TESTO="$TITOLO"$'\n\n'"$(cat "$CORPO")"
+if [ "${#TESTO}" -gt "$LIMITE_TELEGRAM" ]; then
+    TESTO="${TESTO:0:$LIMITE_TELEGRAM}"$'\n\n[…troncato, il rapporto completo era piu lungo del limite di Telegram]'
+fi
+
+RISPOSTA=$(curl -s -m 20 --data-urlencode "chat_id=${TELEGRAM_CHAT}" \
+    --data-urlencode "text=${TESTO}" \
+    "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage")
+echo "$RISPOSTA" | grep -q '"ok":true' && echo "Rapporto inviato su Telegram." \
+    || echo "ATTENZIONE: invio del rapporto su Telegram fallito: $RISPOSTA" >&2
 
 if [ -f "$PDF" ]; then
-    python3 - "$DEST" "$OGGETTO" "$CORPO" "$PDF" << 'PYEOF'
-import sys, subprocess
-from email.message import EmailMessage
-
-dest, oggetto, corpo, allegato = sys.argv[1:5]
-m = EmailMessage()
-m["To"] = dest
-m["From"] = dest
-m["Subject"] = oggetto
-m.set_content(open(corpo, encoding="utf-8").read())
-with open(allegato, "rb") as f:
-    m.add_attachment(f.read(), maintype="application", subtype="pdf",
-                     filename="Photocarcifo-Mappa.pdf")
-subprocess.run(["msmtp", dest], input=m.as_bytes(), check=False)
-PYEOF
-    echo "Rapporto inviato con la mappa allegata."
+    RISPOSTA_PDF=$(curl -s -m 60 -F "chat_id=${TELEGRAM_CHAT}" \
+        -F "document=@${PDF};filename=Photocarcifo-Mappa.pdf" \
+        -F "caption=Mappa aggiornata del sito" \
+        "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendDocument")
+    echo "$RISPOSTA_PDF" | grep -q '"ok":true' && echo "Mappa inviata come documento." \
+        || echo "ATTENZIONE: invio della mappa su Telegram fallito: $RISPOSTA_PDF" >&2
 else
-    msmtp "$DEST" << EOF2
-Subject: $OGGETTO
-To: $DEST
-From: $DEST
-
-$(cat "$CORPO")
-EOF2
-    echo "Rapporto inviato senza allegato."
+    echo "Mappa PDF non trovata ($PDF), rapporto inviato senza."
 fi
 
 cp "$STATO/attuale.txt" "$STATO/precedente.txt"

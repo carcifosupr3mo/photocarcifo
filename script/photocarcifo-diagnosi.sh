@@ -109,12 +109,14 @@ riga "miniature in cache" "$(find data/cache/thumbnails -name '*.jpg' 2>/dev/nul
 riga "servizi" "$(systemctl is-active photocarcifo) / $(systemctl is-active nginx)"
 # Gli automatismi crescono nel tempo: invece di un numero scritto a mano,
 # che invecchia e fa sembrare guasto cio' che e' solo nuovo, si elencano
-# quelli attesi per nome e si dice quale manca.
-ATTESI="covers errori notte numeri pregen rapporto scan sentinella"
+# quelli attesi per nome e si dice quale manca — anche il totale si conta
+# dalla lista stessa (era "di 8" scritto a mano fino al 31/08/2026,
+# quando l'aggiunta di "mensile" lo avrebbe reso sbagliato).
+ATTESI="covers errori mensile notte numeri pregen rapporto scan sentinella"
 MANCANTI=""
 for a in $ATTESI; do
   systemctl is-enabled "photocarcifo-$a.timer" >/dev/null 2>&1 || MANCANTI="$MANCANTI $a"
 done
-riga "automatismi attivi" "$(systemctl list-units --type=timer --no-legend 'photocarcifo*' 2>/dev/null | grep -c photocarcifo) di 8${MANCANTI:+  MANCANO:$MANCANTI}"
+riga "automatismi attivi" "$(systemctl list-units --type=timer --no-legend 'photocarcifo*' 2>/dev/null | grep -c photocarcifo) di $(echo $ATTESI | wc -w)${MANCANTI:+  MANCANO:$MANCANTI}"
 echo ""
 echo "=========== FINE ==========="

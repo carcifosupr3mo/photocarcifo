@@ -9,9 +9,51 @@ User=photocarcifo
 Group=photocarcifo
 WorkingDirectory=/opt/photocarcifo
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/opt/photocarcifo/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
+
+# Quattro processi invece di uno.
+#
+# Con un processo solo, una richiesta che si mette a lavorare — generare
+# un'anteprima a schermo intero costa 680 millisecondi — occupa l'unica
+# corsia disponibile, e chi arriva nel frattempo aspetta il suo turno. Sul
+# sito di un fotografo succede proprio nei momenti peggiori: una galleria
+# condivisa su Instagram porta decine di persone insieme.
+#
+# Quattro e non diciassette (i nuclei della macchina): il lavoro pesante
+# vero, la preparazione notturna delle miniature, gira gia' per conto suo
+# con dodici processi all'una di notte. Lasciandone quattro al sito la
+# somma non satura la macchina, e ogni processo tiene in memoria la sua
+# copia dell'applicazione (243 MB a vuoto, di piu' mentre lavora
+# un'immagine).
+#
+# Prima di alzarli e' stato spostato nel database tutto cio' che stava
+# nella memoria del singolo processo: il conteggio dei tentativi di
+# accesso (senza, il limite si sarebbe moltiplicato per quattro) e
+# l'avanzamento della lettura dei numeri (senza, il pannello avrebbe
+# mostrato "nessun lavoro in corso" a seconda di quale processo rispondeva).
+#
+# --forwarded-allow-ips=127.0.0.1: solo nginx, che sta sulla stessa
+# macchina. Con l'asterisco l'applicazione uvicorn si fiderebbe
+# dell'indirizzo dichiarato da chiunque riuscisse a parlarle direttamente.
+# Il controllo che conta davvero e' comunque anche nel codice applicativo
+# (app/deps.py:client_ip — verifica che request.client.host sia nginx
+# stesso prima di fidarsi di X-Real-IP): questo flag e' la prima barriera,
+# non l'unica.
+#
+# Questi valori vivevano fino al 01/09/2026 in un drop-in separato
+# (photocarcifo.service.d/processi.conf) applicato a mano in produzione e
+# mai versionato: chi avesse reinstallato da questo repository sarebbe
+# ripartito con un solo processo e senza il controllo sull'header
+# inoltrato. Uniti qui in un file solo, cosi' non c'e' un secondo posto
+# da tenere sincronizzato a mano.
+ExecStart=/opt/photocarcifo/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 4 --proxy-headers --forwarded-allow-ips=127.0.0.1
 Restart=on-failure
 RestartSec=5
+
+# Se la memoria cresce oltre il previsto, prima si rallenta (High) e solo
+# molto piu' su si interviene (Max): meglio un riavvio del sito che una
+# macchina che comincia a scambiare su disco e trascina giu' tutto il resto.
+MemoryHigh=3G
+MemoryMax=4G
 
 # Hardening
 NoNewPrivileges=true

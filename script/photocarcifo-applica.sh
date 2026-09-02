@@ -70,6 +70,46 @@ passo "La configurazione di nginx"
 nginx -t > /dev/null 2>&1 || { nginx -t 2>&1 | sed 's/^/    /'; ko "configurazione non valida"; }
 ok "configurazione valida"
 
+passo "I permessi di .env"
+# Il 01/09/2026 un salvataggio di .env lo ha lasciato di proprieta' di root
+# invece che di photocarcifo: il servizio (che gira come utente
+# photocarcifo, vedi deploy/photocarcifo.service) non riusciva piu' a
+# leggerlo, e il sito e' rimasto giu' (502) dal riavvio successivo finche'
+# qualcuno non se n'e' accorto da journalctl. Controllo qui, PRIMA del
+# riavvio: se serve una correzione la si fa subito (chown/chmod, la stessa
+# operazione fatta a mano quel giorno — coerente con questo script, che
+# gia' gira con i privilegi per riavviare il servizio), cosi' un domani lo
+# stesso errore non arriva mai a diventare un sito giu'. Il contenuto del
+# file non viene mai stampato, solo owner e permessi.
+if [ -f .env ]; then
+    proprietario_attuale=$(stat -c '%U:%G' .env)
+    permessi_attuali=$(stat -c '%a' .env)
+    disallineato=0
+    [ "$proprietario_attuale" != "photocarcifo:photocarcifo" ] || [ "$permessi_attuali" != "600" ] && disallineato=1
+    if [ "$disallineato" = 1 ]; then
+        if [ "$SOLO_PROVA" = 1 ]; then
+            # --prova non deve toccare nulla, nemmeno questo: solo
+            # segnalare cosa correggerebbe il deploy vero.
+            ko ".env e' $proprietario_attuale $permessi_attuali (atteso photocarcifo:photocarcifo 600) — il deploy vero lo correggerebbe qui"
+        fi
+        printf '  ! .env e'"'"' %s %s (atteso photocarcifo:photocarcifo 600), corretto\n' \
+               "$proprietario_attuale" "$permessi_attuali"
+        chown photocarcifo:photocarcifo .env 2>/tmp/env-perm.out \
+            && chmod 600 .env 2>>/tmp/env-perm.out \
+            || { sed 's/^/    /' /tmp/env-perm.out; ko "correzione permessi .env fallita"; }
+    fi
+    # Non ci si fida solo di aver appena impostato i bit giusti: si
+    # verifica che l'utente del servizio legga DAVVERO il file, con lo
+    # stesso controllo che ha fermato il riavvio quel giorno (vedi sopra).
+    # In --prova questo punto si raggiunge solo se era gia' tutto a posto.
+    if ! su photocarcifo -s /bin/sh -c 'test -r .env' 2>/dev/null; then
+        ko ".env non leggibile dall'utente photocarcifo anche dopo la correzione"
+    fi
+    ok "photocarcifo:photocarcifo 600, leggibile dal servizio"
+else
+    ok ".env assente, niente da controllare"
+fi
+
 if [ "$SOLO_PROVA" = 1 ]; then
     printf '\nSolo prova: tutto a posto, niente e" stato riavviato.\n'
     exit 0

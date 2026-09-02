@@ -27,3 +27,15 @@ backup/
 *.parziale
 .cache/
 style-pubblico.min.css
+
+# Graphify: knowledge graph rigenerabile in pochi secondi con
+# graphify update --no-description --no-label (vedi PROJECT_KNOWLEDGE.md §41)
+.graphify/
+
+# Stato runtime, non codice
+data/numeri.stato
+data/zip-lock/
+.claude/
+
+# Backup temporanei creati durante sviluppo assistito
+*.bak-*
