@@ -85,16 +85,19 @@ def _album_pubblici(raduno_id: int) -> list:
             "ORDER BY ra.sort_order, n.title", (raduno_id,)).fetchall()
         righe = [dict(r) for r in righe if not scaduto(r["expires_at"])]
         ids = [r["id"] for r in righe]
-        copertine = {}
+        # Si verifica che il media di copertina esista ancora (non basta
+        # avercelo scritto in nodes: potrebbe essere stato rimosso), ma il
+        # template vuole l'id del media per /thumb/{id}, non il percorso.
+        esistenti = set()
         if ids:
             segnaposto = ",".join("?" * len(ids))
             for r in conn.execute(
-                f"SELECT id, rel_path FROM media WHERE id IN "
+                f"SELECT id FROM media WHERE id IN "
                 f"(SELECT cover_media_id FROM nodes WHERE id IN ({segnaposto}))",
                 ids):
-                copertine[r["id"]] = r["rel_path"]
+                esistenti.add(r["id"])
         for r in righe:
-            r["cover"] = copertine.get(r["cover_media_id"])
+            r["cover"] = r["cover_media_id"] if r["cover_media_id"] in esistenti else None
         return righe
 
 
