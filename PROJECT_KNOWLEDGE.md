@@ -407,6 +407,8 @@ Colonne principali: `id`, `node_id` (FK, cascade), `kind` (`image`/`video`), `re
 
 **`raduni_albums`** — associazione fra un raduno e gli album fotografici gia' esistenti collegati ad esso (aggiunta 2026-09-02). Colonne: `id`, `raduno_id` (FK -> `raduni.id`, `ON DELETE CASCADE`), `node_id` (FK -> `nodes.id`, `ON DELETE CASCADE`), `sort_order`, `creato`. Vincolo `UNIQUE(raduno_id, node_id)`: non duplica la stessa coppia. Non copia ne' sposta l'album: e' solo un riferimento, l'album resta lo stesso nodo raggiungibile dalla sua categoria originale con lo stesso slug/URL. La pagina pubblica /radunimoto mostra solo gli album collegati che risultano `is_private=0 AND hidden=0` e non scaduti (stessa funzione `scaduto()` centrale di tree.py) — un album privato/nascosto/scaduto puo' essere collegato dal pannello admin ma non compare mai pubblicamente.
 
+**Due bug reali corretti il 2026-09-02, dopo il rilascio iniziale**: (1) la card album sotto un raduno mostrava un titolo enorme sovrapposto — non era CSS rotto ma la cache in-memory `_cache_stile` di `templating.py`, che rigenera `style-pubblico.min.css` solo quando cambia l'hash del sorgente e non si invalida da sola: bastava un riavvio del servizio dopo la modifica al CSS, mai eseguito. (2) la copertina dell'album non si caricava (404 reale su `/thumb/...`): `_album_pubblici()` in `raduni.py` verificava che il media di copertina esistesse ancora, ma nella mappa di verifica usava `rel_path` invece di `id` come valore di `cover` — il template genera `/thumb/{{ a.cover }}` aspettandosi un id numerico, come ovunque altrove nel sito. Fix in `app/routers/raduni.py`, verificato con screenshot reali (Playwright, 4 viewport) e `curl` sull'URL della copertina (200, image/jpeg).
+
 **`recensioni`** — recensioni pubbliche. `nome`, `voto`, `testo`, `evento`, `lingua`, `approvata` (moderazione), `ip`.
 
 **`settings`** — coppie chiave/valore generiche.
@@ -1001,6 +1003,13 @@ Solo problemi **realmente dimostrabili** da codice, commit history o log — non
 | 4 | Il conteggio dei tentativi di login era tenuto in memoria di processo: con più worker il limite reale veniva moltiplicato per il numero di processi | Media (indebolimento del rate limiting) | `app/security.py` | Rate limiting meno efficace del previsto | Commenti in `security.py`, `RateLimiter` |
 | 5 | Il rilevamento del formato immagine migliore (WebP/AVIF/JPEG) non usava il formato nella chiave di cache Nginx: il primo browser a passare decideva il formato per tutti | Media (immagini vuote/errate per alcuni browser) | Nginx | Esperienza utente degradata su Safari/browser che non leggono WebP | `config/nginx/photocarcifo.conf`, commenti su `$formato_immagine` |
 | 6 | Sul telefono le gallerie caricavano un peso circa triplo del necessario | Media (performance mobile) | Frontend | Tempi di caricamento più lunghi su mobile | commit `f4d4302` |
+
+**Due problemi trovati e corretti lo stesso giorno del rilascio (2026-09-02)**, non ancora "storici" ma già chiusi nel codice attuale:
+
+| # | Problema | Severità | Componente | Impatto | File |
+|---|---|---|---|---|---|
+| 7 | Cache in-memory del CSS pubblico (`_cache_stile`) non si invalidava dopo una modifica al sorgente senza riavvio del processo: un fix CSS per le card raduni restava invisibile in produzione | Media (bug visivo in produzione, nessun impatto dati) | `app/templating.py` (`_parte_pubblica`) | Layout rotto (titolo sovrapposto) visibile ai visitatori fino al riavvio manuale | `app/templating.py`, `app/routers/raduni.py` |
+| 8 | URL di copertina delle card album sotto i raduni generato con `rel_path` invece di `id` del media: 404 reale, copertina mai mostrata | Media (bug visivo, nessuna esposizione di dati privati) | `app/routers/raduni.py` (`_album_pubblici`) | Card raduni senza immagine di copertina | `app/routers/raduni.py` |
 
 **Nessun problema attualmente aperto e non risolto è stato individuato** nei file letti in questa sessione (526 test passano, `nginx -t` valido, applicazione importabile senza errori). Questo non costituisce una garanzia di assenza di bug non coperti da test o non ancora scoperti — solo l'assenza di evidenza di problemi noti aperti nei materiali analizzati.
 
