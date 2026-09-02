@@ -32,6 +32,30 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
+  function impostaScadenza(url, select) {
+    var fd = new FormData();
+    fd.append("csrf_token", csrf);
+    fd.append("giorni", select.value);
+    select.disabled = true;
+    fetch(url, { method: "POST", body: fd })
+      .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
+      .then(function () { PC.avviso("Scadenza aggiornata."); })
+      .catch(function () { PC.avviso("Aggiornamento non riuscito."); })
+      .finally(function () { select.disabled = false; });
+  }
+
+  document.querySelectorAll("[data-scadenza-singola]").forEach(function (sel) {
+    sel.addEventListener("change", function () {
+      impostaScadenza("/admin/tree/media/" + sel.getAttribute("data-scadenza-singola") + "/share/scadenza", sel);
+    });
+  });
+
+  document.querySelectorAll("[data-scadenza-selezione]").forEach(function (sel) {
+    sel.addEventListener("change", function () {
+      impostaScadenza("/admin/tree/condivisioni/" + sel.getAttribute("data-scadenza-selezione") + "/scadenza", sel);
+    });
+  });
+
   document.querySelectorAll("[data-copia-link]").forEach(function (b) {
     b.addEventListener("click", function () {
       var url = b.getAttribute("data-copia-link");

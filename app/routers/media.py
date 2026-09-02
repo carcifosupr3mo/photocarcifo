@@ -544,10 +544,13 @@ def _get_media_by_share(token: str):
     with get_db() as conn:
         row = conn.execute(
             "SELECT m.id, m.rel_path, m.filename, m.mtime, m.kind, m.node_id, "
-            "n.downloads_enabled, n.is_private, n.hidden, n.expires_at, n.id AS nid "
+            "n.downloads_enabled, n.is_private, n.hidden, n.expires_at, n.id AS nid, "
+            "m.share_expires_at "
             "FROM media m JOIN nodes n ON n.id=m.node_id "
             "WHERE m.share_token=? LIMIT 1",
             (token,)).fetchone()
+    if row and scaduto(row["share_expires_at"]):
+        return None
     return row
 
 
@@ -655,8 +658,10 @@ def _get_selezione_by_share(token: str):
     generato, e in quel caso il link deve smettere di funzionare."""
     with get_db() as conn:
         riga = conn.execute(
-            "SELECT media_ids FROM condivisioni WHERE token=?", (token,)).fetchone()
+            "SELECT media_ids, expires_at FROM condivisioni WHERE token=?", (token,)).fetchone()
         if not riga:
+            return None
+        if scaduto(riga["expires_at"]):
             return None
         id_list = _ids_da_elenco(riga["media_ids"], tetto=2000)
         if not id_list:

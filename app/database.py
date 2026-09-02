@@ -259,6 +259,12 @@ MIGRAZIONI: list[tuple[str, str, str]] = [
     # album privati, ma per un solo file.
     ("media", "share_token", "TEXT"),
     ("media", "share_created_at", "TEXT"),
+    # Scadenza opzionale dei link di condivisione (foto singola e
+    # selezione multipla): NULL = mai scaduto, stesso comportamento di
+    # prima di questa colonna. Impostabile dal pannello, stesso pattern
+    # di nodes.expires_at per gli album privati.
+    ("media", "share_expires_at", "TEXT"),
+    ("condivisioni", "expires_at", "TEXT"),
 ]
 
 # Gli indici stanno a parte perche' vanno creati DOPO le migrazioni: alcuni

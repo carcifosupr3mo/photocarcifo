@@ -523,3 +523,35 @@ def imposta_scadenza(node_id: int, csrf_token: str = Form(...),
     log_event("INFO", "share",
               f"Scadenza link nodo {node_id}: " + (valore[:10] if valore else "illimitata"))
     return JSONResponse({"ok": True, "expires_at": valore})
+
+
+@router.post("/media/{media_id}/share/scadenza")
+def imposta_scadenza_foto(media_id: int, csrf_token: str = Form(...),
+                          giorni: str = Form("0"),
+                          user: dict = Depends(require_admin_api)):
+    """Imposta o toglie la scadenza del link di condivisione di una
+    fotografia singola. Stesso pattern di imposta_scadenza per gli album:
+    NULL/stringa vuota = nessuna scadenza, comportamento di sempre."""
+    _check_csrf(user, csrf_token)
+    from .tree import calcola_scadenza
+    valore = calcola_scadenza(giorni)
+    with get_db() as conn:
+        conn.execute("UPDATE media SET share_expires_at=? WHERE id=?", (valore, media_id))
+    log_event("INFO", "share",
+              f"Scadenza link foto {media_id}: " + (valore[:10] if valore else "illimitata"))
+    return JSONResponse({"ok": True, "expires_at": valore})
+
+
+@router.post("/condivisioni/{condivisione_id}/scadenza")
+def imposta_scadenza_selezione(condivisione_id: int, csrf_token: str = Form(...),
+                               giorni: str = Form("0"),
+                               user: dict = Depends(require_admin_api)):
+    """Come sopra, per il link di una selezione multipla."""
+    _check_csrf(user, csrf_token)
+    from .tree import calcola_scadenza
+    valore = calcola_scadenza(giorni)
+    with get_db() as conn:
+        conn.execute("UPDATE condivisioni SET expires_at=? WHERE id=?", (valore, condivisione_id))
+    log_event("INFO", "share",
+              f"Scadenza link selezione {condivisione_id}: " + (valore[:10] if valore else "illimitata"))
+    return JSONResponse({"ok": True, "expires_at": valore})

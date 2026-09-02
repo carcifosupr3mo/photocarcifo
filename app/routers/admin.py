@@ -397,21 +397,27 @@ def condivisioni_page(request: Request, user: dict = Depends(require_admin_user)
     (media.share_token) e selezione multipla (tabella condivisioni)."""
     settings = get_settings()
     base = settings.site_url.rstrip("/")
+    from .tree import scaduto, giorni_rimasti
     with get_db() as conn:
         singole = conn.execute(
-            "SELECT m.id, m.filename, m.share_token, m.share_created_at, n.title AS album "
+            "SELECT m.id, m.filename, m.share_token, m.share_created_at, "
+            "m.share_expires_at, n.title AS album "
             "FROM media m JOIN nodes n ON n.id = m.node_id "
             "WHERE m.share_token IS NOT NULL "
             "ORDER BY m.share_created_at DESC").fetchall()
         selezioni = conn.execute(
-            "SELECT id, token, media_ids, created_at FROM condivisioni "
+            "SELECT id, token, media_ids, created_at, expires_at FROM condivisioni "
             "ORDER BY created_at DESC").fetchall()
     singole_out = [{"id": r["id"], "filename": r["filename"], "album": r["album"],
                     "created_at": r["share_created_at"],
+                    "expires_at": r["share_expires_at"], "scaduto": scaduto(r["share_expires_at"]),
+                    "giorni_rimasti": giorni_rimasti(r["share_expires_at"]),
                     "url": f"{base}/f/{r['share_token']}"} for r in singole]
     selezioni_out = [{"id": r["id"],
                       "conta": len(r["media_ids"].split(",")) if r["media_ids"] else 0,
                       "created_at": r["created_at"],
+                      "expires_at": r["expires_at"], "scaduto": scaduto(r["expires_at"]),
+                      "giorni_rimasti": giorni_rimasti(r["expires_at"]),
                       "url": f"{base}/fs/{r['token']}"} for r in selezioni]
     return templates.TemplateResponse(request, "admin/condivisioni.html", {
         "user": user, "singole": singole_out, "selezioni": selezioni_out})

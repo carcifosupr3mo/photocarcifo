@@ -16,10 +16,17 @@
     <div class="acard-body">
       <div class="acard-txt">
         <h3>{{ s.filename }}</h3>
-        <p>{{ s.album }} — dal {{ s.created_at|fmt_date if s.created_at else '' }}</p>
+        <p>{{ s.album }} — dal {{ s.created_at|fmt_date if s.created_at else '' }}
+          {% if s.expires_at %}· scade il {{ s.expires_at|fmt_date }}{% if s.scaduto %} (scaduto){% endif %}{% endif %}</p>
       </div>
       <div class="acard-actions">
         <button class="btn btn-ghost" data-copia-link="{{ s.url }}" type="button">Copia link</button>
+        <select class="form" data-scadenza-singola="{{ s.id }}" style="padding:.4rem .6rem;">
+          <option value="0"{% if s.giorni_rimasti is none %} selected{% endif %}>Nessuna scadenza</option>
+          <option value="7"{% if s.giorni_rimasti is not none and s.giorni_rimasti <= 7 %} selected{% endif %}>7 giorni</option>
+          <option value="30"{% if s.giorni_rimasti is not none and 7 < s.giorni_rimasti <= 30 %} selected{% endif %}>30 giorni</option>
+          <option value="90"{% if s.giorni_rimasti is not none and s.giorni_rimasti > 30 %} selected{% endif %}>90 giorni</option>
+        </select>
         <button class="btn btn-ghost" data-revoca-singola="{{ s.id }}" type="button">Revoca</button>
       </div>
     </div>
@@ -38,10 +45,17 @@
     <div class="acard-body">
       <div class="acard-txt">
         <h3>{{ s.conta }} foto</h3>
-        <p>dal {{ s.created_at|fmt_date if s.created_at else '' }}</p>
+        <p>dal {{ s.created_at|fmt_date if s.created_at else '' }}
+          {% if s.expires_at %}· scade il {{ s.expires_at|fmt_date }}{% if s.scaduto %} (scaduto){% endif %}{% endif %}</p>
       </div>
       <div class="acard-actions">
         <button class="btn btn-ghost" data-copia-link="{{ s.url }}" type="button">Copia link</button>
+        <select class="form" data-scadenza-selezione="{{ s.id }}" style="padding:.4rem .6rem;">
+          <option value="0"{% if s.giorni_rimasti is none %} selected{% endif %}>Nessuna scadenza</option>
+          <option value="7"{% if s.giorni_rimasti is not none and s.giorni_rimasti <= 7 %} selected{% endif %}>7 giorni</option>
+          <option value="30"{% if s.giorni_rimasti is not none and 7 < s.giorni_rimasti <= 30 %} selected{% endif %}>30 giorni</option>
+          <option value="90"{% if s.giorni_rimasti is not none and s.giorni_rimasti > 30 %} selected{% endif %}>90 giorni</option>
+        </select>
         <button class="btn btn-ghost" data-revoca-selezione="{{ s.id }}" type="button">Revoca</button>
       </div>
     </div>
