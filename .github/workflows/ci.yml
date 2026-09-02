@@ -13,6 +13,18 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      # Configurazione minima per far partire l'app in ambiente CI:
+      # nessun valore reale, nessuna infrastruttura coinvolta. A livello
+      # di job, cosi' vale anche per lo step che importa app.main (che
+      # a sua volta legge Settings() al modulo di caricamento) e non solo
+      # per quello che lancia pytest.
+      SECRET_KEY: "ci-test-key-not-for-production-0000000000000000"
+      PHOTO_ROOT: "/tmp/ci-photo-root"
+      DATA_DIR: "/tmp/ci-data"
+      ADMIN_USERNAME: "admin"
+      ADMIN_PASSWORD: "ci-test-password"
+      SITE_URL: "http://localhost:8000"
     steps:
       - uses: actions/checkout@v4
 
@@ -26,6 +38,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Prepara le cartelle dati per lo smoke test e i test
+        run: mkdir -p "$PHOTO_ROOT" "$DATA_DIR"
+
       - name: Controllo sintassi e import inutilizzati (pyflakes)
         run: python -m pyflakes app tests
 
@@ -33,17 +48,7 @@ jobs:
         run: python -c "from app.main import app"
 
       - name: Test
-        env:
-          # Configurazione minima per far partire l'app in ambiente CI:
-          # nessun valore reale, nessuna infrastruttura coinvolta.
-          SECRET_KEY: "ci-test-key-not-for-production-0000000000000000"
-          PHOTO_ROOT: "/tmp/ci-photo-root"
-          DATA_DIR: "/tmp/ci-data"
-          ADMIN_USERNAME: "admin"
-          ADMIN_PASSWORD: "ci-test-password"
-          SITE_URL: "http://localhost:8000"
         run: |
-          mkdir -p /tmp/ci-photo-root /tmp/ci-data
           # In produzione la suite gira contro il database reale, in sola
           # lettura (vedi tests/conftest.py e README). In CI il database e'
           # vuoto: una decina di test che presuppongono foto/album gia'
