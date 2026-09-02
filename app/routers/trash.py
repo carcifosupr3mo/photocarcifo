@@ -11,12 +11,14 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Request, Form, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Request, Form, Depends, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from ..config import get_settings
 from ..database import (get_db, log_event, ricalcola_date_album,
                         sottoalbero_like)
 from ..deps import require_admin_user, require_admin_api
+from ..indexnow import notify_indexnow
 from ..security import verify_csrf
 from ..templating import templates
 
@@ -129,8 +131,8 @@ def trash_media(request: Request, csrf_token: str = Form(...),
 
 
 @router.post("/node/{node_id}")
-def trash_node(request: Request, node_id: int, csrf_token: str = Form(...),
-               user: dict = Depends(require_admin_api)):
+def trash_node(request: Request, node_id: int, background: BackgroundTasks,
+               csrf_token: str = Form(...), user: dict = Depends(require_admin_api)):
     """Sposta nel cestino un intero album con tutto il suo contenuto."""
     _check_csrf(user, csrf_token)
     if not _rw_ready():
@@ -150,6 +152,15 @@ def trash_node(request: Request, node_id: int, csrf_token: str = Form(...),
         # ESCAPE obbligatorio: senza, il "_" nei nomi delle cartelle e' un
         # jolly e questa cancellazione porterebbe via anche album estranei.
         like = sottoalbero_like(rel)
+        # Slug degli album pubblici che stanno per sparire, letti PRIMA
+        # della DELETE qui sotto: IndexNow va avvisato che quelle pagine
+        # non esistono piu', cosi' Bing le ricontrolla e le toglie dai
+        # risultati invece di scoprirlo da solo al prossimo giro, magari
+        # tra settimane.
+        pubblici = conn.execute(
+            "SELECT slug FROM nodes WHERE (rel_path=? OR rel_path LIKE ? ESCAPE '\\') "
+            "AND is_private=0 AND hidden=0 AND total_media>0",
+            (rel, like)).fetchall()
         conn.execute(
             "DELETE FROM media WHERE node_id IN "
             "(SELECT id FROM nodes WHERE rel_path=? OR rel_path LIKE ? ESCAPE '\\')",
@@ -157,6 +168,11 @@ def trash_node(request: Request, node_id: int, csrf_token: str = Form(...),
         conn.execute("DELETE FROM nodes WHERE rel_path=? OR rel_path LIKE ? ESCAPE '\\'",
                      (rel, like))
         _ricalcola_conteggi(conn)
+
+    if pubblici:
+        base = get_settings().site_url.rstrip("/")
+        urls = [f"{base}/n/{r['slug']}" for r in pubblici]
+        background.add_task(notify_indexnow, urls)
 
     log_event("INFO", "trash", f"Album '{node['title']}' nel cestino (lotto {lotto})")
     return JSONResponse({"ok": True, "lotto": lotto})

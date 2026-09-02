@@ -15,7 +15,8 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature
 from .. import lingue, numeri
 from ..config import get_settings
 from ..database import (get_db, log_event, registra_ricerca,
-                        record_stat_bufferizzato, sottoalbero_like)
+                        record_node_stat, record_stat_bufferizzato,
+                        sottoalbero_like)
 from ..security import verify_password
 from ..deps import get_current_user
 from ..templating import templates
@@ -186,7 +187,15 @@ def _cover(conn, node):
     di un millisecondo.
     """
     if node["cover_media_id"]:
-        return node["cover_media_id"]
+        # Si controlla che la fotografia scelta a mano esista ancora: se e'
+        # stata cancellata o spostata nel cestino, il riferimento resta nel
+        # database e la vetrina mostrerebbe un riquadro rotto. In quel caso
+        # si torna alla copertina automatica, come se non fosse mai stata
+        # scelta: meglio una foto diversa che nessuna foto.
+        viva = conn.execute("SELECT 1 FROM media WHERE id=?",
+                            (node["cover_media_id"],)).fetchone()
+        if viva:
+            return node["cover_media_id"]
     # kind ASC: 'image' viene prima di 'video', cosi' si preferisce una
     # fotografia a un fotogramma di filmato. Era gia' cosi' prima.
     riga = conn.execute(
@@ -218,6 +227,61 @@ def _categorie_consentite(conn, sbloccati):
     return [r["parent_id"] for r in righe]
 
 
+def _cover_molteplici(conn, nodes):
+    """Copertine di piu' nodi in blocco, invece di una query a nodo.
+
+    Stessi tre passi di _cover(), ma fatti una volta sola su tutti i nodi
+    invece che uno alla volta: su una pagina con decine di cartelle era il
+    principale N+1 della navigazione.
+    """
+    risultato = {}
+    da_cercare_diretta = []
+    # Le copertine scelte a mano si controllano tutte insieme, con una sola
+    # domanda al database invece di una per album: quelle che puntano a una
+    # fotografia non piu' esistente (cancellata, o finita nel cestino)
+    # ricadono nella scelta automatica come se non fossero mai state fatte.
+    scelte = [n["cover_media_id"] for n in nodes if n["cover_media_id"]]
+    vive = set()
+    if scelte:
+        segnaposto = ",".join("?" * len(scelte))
+        vive = {r["id"] for r in conn.execute(
+            f"SELECT id FROM media WHERE id IN ({segnaposto})", scelte)}
+    for n in nodes:
+        if n["cover_media_id"] and n["cover_media_id"] in vive:
+            risultato[n["id"]] = n["cover_media_id"]
+        else:
+            da_cercare_diretta.append(n)
+
+    if da_cercare_diretta:
+        ids = [n["id"] for n in da_cercare_diretta]
+        segnaposto = ",".join("?" * len(ids))
+        righe = conn.execute(
+            f"SELECT node_id, id FROM media WHERE node_id IN ({segnaposto}) "
+            f"ORDER BY kind ASC, sort_order, filename", ids).fetchall()
+        trovate = {}
+        for r in righe:
+            trovate.setdefault(r["node_id"], r["id"])
+        rimasti = []
+        for n in da_cercare_diretta:
+            if n["id"] in trovate:
+                risultato[n["id"]] = trovate[n["id"]]
+            else:
+                rimasti.append(n)
+    else:
+        rimasti = []
+
+    # Il terzo passo, quello caro con LIKE, resta per nodo: riguarda solo
+    # le cartelle-contenitore (poche per pagina), non merita un'unione.
+    for n in rimasti:
+        row = conn.execute(
+            "SELECT m.id FROM media m JOIN nodes n2 ON n2.id=m.node_id "
+            "WHERE n2.rel_path=? OR n2.rel_path LIKE ? ESCAPE '\\' "
+            "ORDER BY m.kind ASC, m.sort_order, m.filename LIMIT 1",
+            (n["rel_path"], sottoalbero_like(n["rel_path"]))).fetchone()
+        risultato[n["id"]] = row["id"] if row else None
+    return risultato
+
+
 def _child_nodes(conn, parent_id, show_private=False, sbloccati=None,
                  ordine=ORDINE_PREDEFINITO):
     """Sottocartelle visibili al visitatore.
@@ -244,10 +308,11 @@ def _child_nodes(conn, parent_id, show_private=False, sbloccati=None,
     criterio = ORDINI_ALBUM.get(ordine, ORDINI_ALBUM[ORDINE_PREDEFINITO])
     q += f" ORDER BY {criterio}, title COLLATE NOCASE"
     rows = conn.execute(q, tuple(parametri)).fetchall()
+    copertine = _cover_molteplici(conn, rows)
     out = []
     for r in rows:
         d = dict(r)
-        d["cover"] = _cover(conn, r)
+        d["cover"] = copertine.get(r["id"])
         out.append(d)
     return out
 
@@ -265,20 +330,59 @@ def _node_media(conn, node_id, offset=0, limit=PAGE_SIZE):
     return [dict(r) for r in rows]
 
 
-def _breadcrumb(conn, node):
+def _breadcrumb(conn, node, admin=False, permessi=None):
+    """Percorso dalla radice fino a questo nodo.
+
+    Prima risaliva ai genitori con una query sequenziale per livello
+    (SELECT ... WHERE id=? ripetuta finche' non si arrivava alla radice).
+    Con una CTE ricorsiva si risale l'intera catena in una sola query;
+    l'ordine si sistema poi in Python.
+
+    Fino al 26/08/2026 ogni antenato riservato veniva restituito con
+    titolo e access_token cosi' com'erano nel database, e il template li
+    mostrava sempre come link cliccabile — indipendentemente dal fatto
+    che il visitatore avesse il DIRITTO di vedere quell'antenato. Risultato
+    concreto: aprendo l'album "Giada" con un link diretto, il breadcrumb
+    mostrava comunque il nome vero e un link funzionante verso "Shooting
+    privati" (il genitore, con un proprio access_token distinto), e
+    cliccandolo si otteneva un nuovo lasciapassare per l'intero ramo —
+    non un problema di CSS, un secondo link valido esposto dove non
+    doveva starci.
+
+    Ora ogni riga porta anche `sbloccato`: vero se il visitatore ha
+    diritto di vedere quell'antenato per davvero (admin, o l'id e' fra i
+    permessi calcolati per QUESTA richiesta — la stessa lista gia' usata
+    per filtrare figli/ricerca, non una nuova logica). Il template non fa
+    piu' nessuna scelta di sicurezza da solo: si limita a leggere questo
+    campo. Un antenato riservato non sbloccato mostra SOLO l'etichetta
+    neutra passata dal chiamante (mai il titolo vero, mai un link),
+    esattamente come una cartella-contenitore senza nome proprio.
+    """
+    righe = conn.execute(
+        "WITH RECURSIVE catena(id, parent_id, slug, title, is_private, access_token) AS ("
+        "  SELECT id, parent_id, slug, title, is_private, access_token FROM nodes WHERE id=?"
+        "  UNION ALL"
+        "  SELECT n.id, n.parent_id, n.slug, n.title, n.is_private, n.access_token"
+        "  FROM nodes n JOIN catena c ON n.id = c.parent_id"
+        ") SELECT id, slug, title, is_private, access_token FROM catena",
+        (node["id"],)).fetchall()
+    permessi_set = {int(x) for x in (permessi or [])}
     chain = []
-    cur = node
-    while cur:
-        chain.append({"slug": cur["slug"], "title": cur["title"],
-                      "is_private": cur["is_private"], "access_token": cur["access_token"]})
-        if cur["parent_id"] is None:
-            break
-        cur = conn.execute("SELECT * FROM nodes WHERE id=?", (cur["parent_id"],)).fetchone()
+    for r in righe:
+        sbloccato = bool(admin) or not r["is_private"] or r["id"] in permessi_set
+        chain.append({
+            "slug": r["slug"],
+            "title": r["title"] if sbloccato else None,
+            "is_private": r["is_private"],
+            "access_token": r["access_token"] if sbloccato else None,
+            "sbloccato": sbloccato,
+        })
     return list(reversed(chain))
 
 
 @router.get("/", response_class=HTMLResponse)
-def home(request: Request, ordine: str = Query(ORDINE_PREDEFINITO)):
+def home(request: Request, ordine: str = Query(ORDINE_PREDEFINITO),
+         q: str = Query("", max_length=100), page: int = Query(1, ge=1)):
     admin = _is_admin(request)
     if ordine not in ORDINI_ALBUM:
         ordine = ORDINE_PREDEFINITO
@@ -290,8 +394,23 @@ def home(request: Request, ordine: str = Query(ORDINE_PREDEFINITO)):
     # Prima si passavano anche due valori presi dalle impostazioni, che pero'
     # il modello non guardava piu': erano rimasti li' a far credere che
     # scrivendo qualcosa nel pannello la home cambiasse.
-    return templates.TemplateResponse(request, "public/home.html", {"categories": categories, "is_admin": admin,
-        "ordine": ordine})
+    contesto = {"categories": categories, "is_admin": admin, "ordine": ordine}
+    # Se arriva una ricerca (?q=...), la home mostra gli stessi risultati che
+    # dava il vecchio indirizzo "/search", ora un semplice redirect qui.
+    # Senza "q" il contesto resta quello di sempre: nessuna ricerca attiva.
+    q = q.strip()
+    if q:
+        risultato = _esegui_ricerca(request, q, page, admin)
+        contesto.update({
+            "risultati_ricerca": risultato["results"],
+            "foto_ricerca": risultato["foto"],
+            "numero_ricerca": risultato["numero"],
+            "totale_ricerca": risultato["totale"],
+            "page_ricerca": risultato["page"],
+            "pagine_ricerca": risultato["pagine"],
+            "q": risultato["query"],
+        })
+    return templates.TemplateResponse(request, "public/home.html", contesto)
 
 
 def _foto_anteprima(conn, node, media, children):
@@ -325,21 +444,50 @@ def _foto_anteprima(conn, node, media, children):
         return random.choice(copertine) if copertine else None
     # Qualche tentativo: una cartella potrebbe contenere solo altre cartelle.
     # Si guardano le fotografie di quella cartella soltanto, non di tutto
-    # cio' che contiene: una lettura diretta sull'indice, immediata.
-    for candidata in random.sample(list(righe), min(6, len(righe))):
+    # cio' che contiene: una lettura diretta sull'indice, immediata. Le
+    # candidate senza copertina propria si controllano in una sola query
+    # con IN(...) invece che una per candidata.
+    candidate = random.sample(list(righe), min(6, len(righe)))
+    da_cercare = []
+    for candidata in candidate:
         if candidata["cover_media_id"]:
             return candidata["cover_media_id"]
-        riga = conn.execute(
-            "SELECT id FROM media WHERE node_id=? AND kind='image' "
-            "ORDER BY sort_order, filename LIMIT 1",
-            (candidata["id"],)).fetchone()
-        if riga:
-            return riga["id"]
+        da_cercare.append(candidata["id"])
+    if da_cercare:
+        segnaposto = ",".join("?" * len(da_cercare))
+        trovate = {}
+        for r in conn.execute(
+                f"SELECT node_id, id FROM media WHERE node_id IN ({segnaposto}) "
+                f"AND kind='image' ORDER BY sort_order, filename", da_cercare).fetchall():
+            trovate.setdefault(r["node_id"], r["id"])
+        for node_id in da_cercare:
+            if node_id in trovate:
+                return trovate[node_id]
     return None
+
+
+def _e_apertura_vera(request, page: int) -> bool:
+    """Vero se questa e' una vera apertura dell'album e non solo un
+    cambio di pagina o di ordinamento all'interno dello stesso album.
+
+    Sfoglia la pagina 2, o cambia l'ordinamento con la stessa richiesta
+    GET su questo stesso indirizzo: il referer, in quel caso, e' la stessa
+    pagina con solo la query string diversa. Si conta come apertura solo
+    la prima pagina raggiunta da un referer diverso da questo stesso
+    percorso (o senza referer, come un link incollato o un preferito).
+    """
+    if page != 1:
+        return False
+    provenienza = request.headers.get("referer", "")
+    if not provenienza:
+        return True
+    return request.url.path not in provenienza
 
 
 def _render_node(request, node, admin, via_token, page=1, ordine=ORDINE_PREDEFINITO,
                  gia_permessi=None):
+    if not admin and _e_apertura_vera(request, page):
+        record_node_stat(node["id"], "open")
     with get_db() as conn:
         # gia_permessi: album che questo visitatore ha diritto di vedere
         # adesso, anche se il lasciapassare non e' ancora nel suo browser.
@@ -354,7 +502,7 @@ def _render_node(request, node, admin, via_token, page=1, ordine=ORDINE_PREDEFIN
         pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
         page = min(max(1, page), pages)
         media = _node_media(conn, node["id"], offset=(page - 1) * PAGE_SIZE)
-        crumbs = _breadcrumb(conn, node)
+        crumbs = _breadcrumb(conn, node, admin=admin, permessi=permessi)
         og_media = _foto_anteprima(conn, node, media, children)
     record_stat_bufferizzato("view_node", node["slug"])
     return templates.TemplateResponse(request, "public/node.html", {"node": dict(node), "children": children,
@@ -459,17 +607,81 @@ def private_unlock(request: Request, token: str, password: str = Form(...)):
 FOTO_PER_PAGINA = 120
 
 
-def _cerca_cartelle(conn, request, q: str, admin: bool) -> list:
-    """Album e cartelle il cui nome contiene quello che si e' scritto."""
-    # I jolly di LIKE vanno neutralizzati: senza, cercare "%" o "_"
-    # restituirebbe l'intero archivio.
-    fuga = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    like = f"%{fuga}%"
+def _parole_ricerca(q: str) -> list:
+    """Divide la query in parole significative, senza doppioni e senza
+    frammenti vuoti (spazi multipli, tabulazioni...). "raduno manno" e
+    "manno   raduno" producono la stessa lista, in ordine di prima
+    comparsa (l'ordine qui non conta per il match, solo per stabilita')."""
+    viste = []
+    for pezzo in q.split():
+        p = pezzo.strip()
+        if p and p not in viste:
+            viste.append(p)
+    return viste
+
+
+def _cerca_cartelle(conn, request, q: str, admin: bool, includi_hidden: bool = False) -> list:
+    """Album e cartelle che contengono TUTTE le parole della query.
+
+    Fino al 26/08/2026 la ricerca cercava la query intera come UNA sola
+    frase (LIKE '%raduno manno%'): "raduno manno" non trovava "Raduno Zona
+    Industriale Manno" perche' le due parole, nel titolo vero, non stanno
+    una attaccata all'altra. Ora ogni parola e' una condizione AND
+    indipendente (LIKE '%raduno%' AND LIKE '%manno%'), verificata sugli
+    stessi tre campi di prima: ordine delle parole e distanza fra loro nel
+    titolo non contano piu', solo che ci siano tutte.
+
+    includi_hidden: normalmente le cartelle nascoste (hidden=1) restano
+    fuori dalla ricerca, anche per l'amministratore, come nel resto della
+    navigazione pubblica. Il pannello admin ha bisogno di ritrovarle
+    comunque (sono gestibili solo da li'): passa True solo dal chiamante
+    admin-aware, mai dalla ricerca pubblica.
+    """
+    parole = _parole_ricerca(q)
+    if not parole:
+        return []
+    # I jolly di LIKE vanno neutralizzati parola per parola: senza, cercare
+    # "%" o "_" restituirebbe l'intero archivio.
+    def fuggi(parola):
+        return parola.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+    condizioni = []
+    parametri = []
+    for parola in parole:
+        like = f"%{fuggi(parola)}%"
+        condizioni.append(
+            "(title LIKE ? ESCAPE '\\' OR name LIKE ? ESCAPE '\\' "
+            "OR rel_path LIKE ? ESCAPE '\\')")
+        parametri += [like, like, like]
+    dove_parole = " AND ".join(condizioni)
+
+    # Per il ranking (frase esatta / nome esatto) serve anche la query
+    # intera cosi' come scritta, non le parole separate.
+    frase = f"%{fuggi(q.strip())}%"
+
+    # parent_path si calcola qui in SQL invece che rifacendo rel_path.split
+    # in Python per ogni riga: la parte prima dell'ultima "/" (o stringa
+    # vuota se non c'e' nessuna "/"), con gli underscore gia' sostituiti da
+    # spazi — sostituzione valida sull'intera stringa perche' "/" non e'
+    # toccato dal REPLACE.
     base = ("SELECT id, slug, title, rel_path, depth, cover_media_id, "
-            "is_private, access_token, total_media FROM nodes "
-            "WHERE (title LIKE ? ESCAPE '\\' OR name LIKE ? ESCAPE '\\' "
-            "OR rel_path LIKE ? ESCAPE '\\') AND hidden=0")
-    parametri = [like, like, like]
+            "is_private, hidden, access_token, total_media, "
+            "REPLACE(CASE WHEN instr(rel_path, '/') > 0 "
+            "  THEN substr(rel_path, 1, length(rel_path) - length(name) - 1) "
+            "  ELSE '' END, '_', ' ') AS parent_path_raw, "
+            # Rango: 0 = nome identico alla query, 1 = la frase intera
+            # compare nel titolo, 2 = tutte le parole compaiono nel solo
+            # titolo (anche sparse), 3 = le parole sono sparse fra
+            # titolo/percorso (il caso base, garantito dal WHERE).
+            "CASE WHEN lower(title) = lower(?) THEN 0 "
+            "  WHEN title LIKE ? ESCAPE '\\' THEN 1 "
+            "  WHEN " + " AND ".join(
+                "title LIKE ? ESCAPE '\\'" for _ in parole) + " THEN 2 "
+            "  ELSE 3 END AS rango "
+            "FROM nodes "
+            f"WHERE {dove_parole}" + ("" if includi_hidden else " AND hidden=0"))
+    parametri_rango = [q.strip(), frase] + [f"%{fuggi(p)}%" for p in parole]
+    parametri = parametri_rango + parametri
     if not admin:
         consentiti = [int(x) for x in _nodi_sbloccati(request)]
         if consentiti:
@@ -478,13 +690,15 @@ def _cerca_cartelle(conn, request, q: str, admin: bool) -> list:
             parametri += consentiti
         else:
             base += " AND is_private=0"
-    base += " ORDER BY depth, sort_order, title LIMIT 300"
+    base += " ORDER BY rango, depth, sort_order, title LIMIT 300"
+    righe = conn.execute(base, parametri).fetchall()
+    copertine = _cover_molteplici(conn, righe)
     trovati = []
-    for r in conn.execute(base, parametri).fetchall():
+    for r in righe:
         d = dict(r)
-        d["cover"] = _cover(conn, r)
-        parts = r["rel_path"].split("/")[:-1]
-        d["parent_path"] = " / ".join(p.replace("_", " ") for p in parts)
+        d.pop("rango", None)
+        d["cover"] = copertine.get(r["id"])
+        d["parent_path"] = d.pop("parent_path_raw").replace("/", " / ")
         trovati.append(d)
     return trovati
 
@@ -511,9 +725,7 @@ def _annota_ricerca(request, q, numero, risultati, admin):
     registra_ricerca(q, numero, risultati)
 
 
-@router.get("/search", response_class=HTMLResponse)
-def search(request: Request, q: str = Query("", max_length=100),
-           page: int = Query(1, ge=1)):
+def _esegui_ricerca(request, q: str, page: int, admin: bool) -> dict:
     """Una sola ricerca per fotografie e cartelle.
 
     Chi scrive il proprio numero di tabella trova le proprie foto; chi
@@ -521,8 +733,10 @@ def search(request: Request, q: str = Query("", max_length=100),
     anche quando si scrive un numero si cercano lo stesso le cartelle, cosi'
     chi cerca "2026" trova gli album di quell'anno invece di ricevere un
     "nessuna fotografia" che sembra un guasto.
+
+    Condivisa fra l'indirizzo storico "/search" (ora un redirect) e la home,
+    che puo' mostrare gli stessi risultati senza cambiare pagina.
     """
-    admin = _is_admin(request)
     q = q.strip()
     numero = numeri.leggi_query(q) if q else None
     foto, totale, pagine, results = [], 0, 1, []
@@ -541,10 +755,25 @@ def search(request: Request, q: str = Query("", max_length=100),
             results = _cerca_cartelle(conn, request, q, admin)
         _annota_ricerca(request, q, numero, totale + len(results), admin)
 
-    return templates.TemplateResponse(request, "public/search.html", {"results": results, "foto": foto,
+    return {"results": results, "foto": foto,
         "numero": numero if foto or not results else None,
         "totale": totale, "page": page if foto else 1,
-        "pagine": pagine, "query": q, "is_admin": admin})
+        "pagine": pagine, "query": q, "is_admin": admin}
+
+
+@router.get("/search", response_class=HTMLResponse)
+def search(request: Request, q: str = Query("", max_length=100),
+           page: int = Query(1, ge=1)):
+    """Indirizzo storico della ricerca: ora rimanda alla home, che sa fare
+    la stessa cosa senza una pagina a parte."""
+    from urllib.parse import urlencode
+    parametri = {}
+    if q:
+        parametri["q"] = q
+    if page != 1:
+        parametri["page"] = page
+    destinazione = "/" + (f"?{urlencode(parametri)}" if parametri else "")
+    return RedirectResponse(url=destinazione, status_code=status.HTTP_302_FOUND)
 
 
 # Quante gallerie mostrare fra le novita'. Trenta e' circa una stagione di
@@ -570,10 +799,11 @@ def _ultime_gallerie(conn, quante=NOVITA):
         "FROM nodes WHERE is_private=0 AND hidden=0 AND total_media>0 "
         "  AND direct_media>0 AND data_foto IS NOT NULL "
         "ORDER BY data_foto DESC LIMIT ?", (quante,)).fetchall()
+    copertine = _cover_molteplici(conn, righe)
     fuori = []
     for r in righe:
         d = dict(r)
-        d["cover"] = _cover(conn, r)
+        d["cover"] = copertine.get(r["id"])
         parti = r["rel_path"].split("/")[:-1]
         d["dove"] = " / ".join(p.replace("_", " ") for p in parti)
         d["quando"] = (datetime.fromtimestamp(r["data_foto"], timezone.utc)

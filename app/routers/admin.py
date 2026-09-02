@@ -1,5 +1,6 @@
 """Dashboard amministratore - versione base compatibile col modello ad albero."""
 import shutil
+import subprocess
 
 from fastapi import APIRouter, Request, Form, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -14,6 +15,22 @@ from ..thumbnails import clear_cache
 from ..templating import templates
 
 router = APIRouter(prefix="/admin")
+
+# Script che fa scansione + miniature + numeri in un colpo solo: per chi ha
+# appena caricato foto nuove sul Synology e non vuole aspettare i timer
+# (scansione ogni 10 minuti, numeri ogni 9, miniature solo di notte).
+_SCRIPT_AGGIUNTA_FOTO = "/opt/photocarcifo/script/photocarcifo-aggiunta-foto.sh"
+
+
+def _aggiunta_foto_in_corso() -> bool:
+    """Vero se lo script e' gia' in esecuzione, per non farne partire due insieme."""
+    try:
+        return subprocess.run(
+            ["pgrep", "-f", _SCRIPT_AGGIUNTA_FOTO],
+            capture_output=True, timeout=5,
+        ).returncode == 0
+    except Exception:
+        return False
 
 
 def _check_csrf(user, tok):
@@ -56,7 +73,8 @@ def dashboard(request: Request, user: dict = Depends(require_admin_user)):
         "numeri": conta_numeri,
         "ocr_motore": ocr.motore_installato(),
         "ocr_processi": ocr.processi_consigliati(),
-        "ocr_lavoro": ocr.stato_lavoro()})
+        "ocr_lavoro": ocr.stato_lavoro(),
+        "aggiunta_foto_in_corso": _aggiunta_foto_in_corso()})
 
 
 # ---------------- Numeri di gara ----------------
@@ -172,6 +190,29 @@ def do_clear_cache(request: Request, csrf_token: str = Form(...),
     return RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
 
 
+@router.post("/maintenance/aggiunta-foto")
+def do_aggiunta_foto(request: Request, csrf_token: str = Form(...),
+                     user: dict = Depends(require_admin_api)):
+    """Scansione + miniature + numeri in un colpo solo, per il materiale
+    appena caricato sul Synology.
+
+    Gira in un processo staccato, non nel worker web: le miniature da sole
+    possono richiedere minuti e la richiesta HTTP non deve restare appesa
+    ad aspettarle. Lo stesso script e' lanciabile anche da terminale.
+    """
+    _check_csrf(user, csrf_token)
+    if _aggiunta_foto_in_corso():
+        log_event("INFO", "admin", "Aggiunta foto: gia' in corso, richiesta ignorata")
+        return RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+    subprocess.Popen(
+        [_SCRIPT_AGGIUNTA_FOTO],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    log_event("INFO", "admin", "Aggiunta foto avviata dal pannello")
+    return RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+
+
 # La pagina Impostazioni e' stata rimossa il 17/08/2026.
 #
 # Aveva dieci campi (titolo della home, testi di presentazione, descrizione
@@ -214,7 +255,7 @@ def ricerche_page(request: Request, mostra: str = "vuote",
 @router.post("/ricerche/dimentica")
 def ricerche_dimentica(request: Request, testo: str = Form(...),
                        mostra: str = Form("vuote"),
-                       csrf_token: str = Form(""),
+                       csrf_token: str = Form(...),
                        user: dict = Depends(require_admin_user)):
     """Toglie una riga dal registro.
 
@@ -229,7 +270,7 @@ def ricerche_dimentica(request: Request, testo: str = Form(...),
 
 
 @router.post("/ricerche/svuota")
-def ricerche_svuota(request: Request, csrf_token: str = Form(""),
+def ricerche_svuota(request: Request, csrf_token: str = Form(...),
                     user: dict = Depends(require_admin_user)):
     _check_csrf(user, csrf_token)
     with get_db() as conn:
@@ -244,3 +285,133 @@ def logs_page(request: Request, user: dict = Depends(require_admin_user)):
     with get_db() as conn:
         rows = conn.execute("SELECT ts,level,category,message FROM logs ORDER BY id DESC LIMIT 200").fetchall()
     return templates.TemplateResponse(request, "admin/logs.html", {"user": user, "logs": [dict(r) for r in rows]})
+
+
+# ---------------- Richieste di contatto ----------------
+
+# Stati ammessi, stesso elenco documentato in database.py e in contattami.py.
+_STATI_RICHIESTA = ("Nuova", "Letta", "In lavorazione", "Chiusa", "Archiviata")
+
+
+_ORDINI_RICHIESTA = {"recenti": "DESC", "vecchi": "ASC"}
+
+
+@router.get("/richieste", response_class=HTMLResponse)
+def richieste_page(request: Request, user: dict = Depends(require_admin_user),
+                   stato: str = "", q: str = "", ordine: str = "recenti"):
+    """Elenco delle richieste arrivate dal modulo pubblico /contattami,
+    con filtro per stato, ricerca semplice e ordinamento per data.
+
+    Whitelist esplicita per stato e ordine: nessuno dei due entra mai nella
+    query se non e' uno dei valori ammessi, cosi' l'input dell'utente non
+    puo' toccare il testo SQL."""
+    stato = stato if stato in _STATI_RICHIESTA else ""
+    verso = _ORDINI_RICHIESTA.get(ordine, _ORDINI_RICHIESTA["recenti"])
+    ordine = ordine if ordine in _ORDINI_RICHIESTA else "recenti"
+    q = q.strip()
+
+    condizioni = []
+    parametri = []
+    if stato:
+        condizioni.append("stato=?")
+        parametri.append(stato)
+    if q:
+        condizioni.append(
+            "(nome LIKE ? ESCAPE '\\' OR cognome LIKE ? ESCAPE '\\' OR "
+            "email LIKE ? ESCAPE '\\' OR motivo LIKE ? ESCAPE '\\')")
+        simile = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        parametri.extend([simile, simile, simile, simile])
+    dove = (" WHERE " + " AND ".join(condizioni)) if condizioni else ""
+
+    with get_db() as conn:
+        righe = conn.execute(
+            "SELECT id, nome, cognome, motivo, creato_at, stato "
+            "FROM richieste_contatto" + dove +
+            f" ORDER BY creato_at {verso}", parametri).fetchall()
+        # Conteggi per stato, per i chip dei filtri: sempre sul totale
+        # (senza il filtro di stato) cosi' i numeri restano stabili mentre
+        # si passa da un chip all'altro; la ricerca testuale invece li
+        # restringe, e' comoda per capire "quante Nuove restano" quando si
+        # sta cercando qualcosa di preciso.
+        dove_conteggi = (" WHERE " + " AND ".join(condizioni[1:] if stato else condizioni)) \
+            if (condizioni[1:] if stato else condizioni) else ""
+        parametri_conteggi = parametri[1:] if stato else parametri
+        conteggi_righe = conn.execute(
+            "SELECT stato, COUNT(*) c FROM richieste_contatto" + dove_conteggi +
+            " GROUP BY stato", parametri_conteggi).fetchall()
+    conteggi = {r["stato"]: r["c"] for r in conteggi_righe}
+    return templates.TemplateResponse(request, "admin/richieste.html", {
+        "user": user, "richieste": [dict(r) for r in righe],
+        "stati": _STATI_RICHIESTA, "conteggi": conteggi,
+        "filtro_stato": stato, "filtro_q": q, "filtro_ordine": ordine,
+        "totale": sum(conteggi.values())})
+
+
+@router.get("/richieste/{richiesta_id}", response_class=HTMLResponse)
+def richiesta_dettaglio(request: Request, richiesta_id: int,
+                        user: dict = Depends(require_admin_user)):
+    with get_db() as conn:
+        riga = conn.execute(
+            "SELECT * FROM richieste_contatto WHERE id=?", (richiesta_id,)).fetchone()
+    if not riga:
+        raise HTTPException(status_code=404, detail="Richiesta non trovata")
+    return templates.TemplateResponse(request, "admin/richiesta_dettaglio.html", {
+        "user": user, "r": dict(riga), "stati": _STATI_RICHIESTA})
+
+
+@router.post("/richieste/{richiesta_id}/stato")
+def richiesta_cambia_stato(request: Request, richiesta_id: int,
+                           csrf_token: str = Form(...), stato: str = Form(...),
+                           user: dict = Depends(require_admin_api)):
+    _check_csrf(user, csrf_token)
+    if stato not in _STATI_RICHIESTA:
+        raise HTTPException(status_code=400, detail="Stato non valido")
+    with get_db() as conn:
+        riga = conn.execute(
+            "SELECT id FROM richieste_contatto WHERE id=?", (richiesta_id,)).fetchone()
+        if not riga:
+            raise HTTPException(status_code=404, detail="Richiesta non trovata")
+        conn.execute("UPDATE richieste_contatto SET stato=? WHERE id=?",
+                     (stato, richiesta_id))
+    return RedirectResponse(url=f"/admin/richieste/{richiesta_id}",
+                            status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/richieste/{richiesta_id}/elimina")
+def richiesta_elimina(request: Request, richiesta_id: int,
+                      csrf_token: str = Form(...),
+                      user: dict = Depends(require_admin_api)):
+    _check_csrf(user, csrf_token)
+    with get_db() as conn:
+        riga = conn.execute(
+            "SELECT id FROM richieste_contatto WHERE id=?", (richiesta_id,)).fetchone()
+        if not riga:
+            raise HTTPException(status_code=404, detail="Richiesta non trovata")
+        conn.execute("DELETE FROM richieste_contatto WHERE id=?", (richiesta_id,))
+    return RedirectResponse(url="/admin/richieste", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/condivisioni", response_class=HTMLResponse)
+def condivisioni_page(request: Request, user: dict = Depends(require_admin_user)):
+    """Elenco dei link di condivisione attivi: singola fotografia
+    (media.share_token) e selezione multipla (tabella condivisioni)."""
+    settings = get_settings()
+    base = settings.site_url.rstrip("/")
+    with get_db() as conn:
+        singole = conn.execute(
+            "SELECT m.id, m.filename, m.share_token, m.share_created_at, n.title AS album "
+            "FROM media m JOIN nodes n ON n.id = m.node_id "
+            "WHERE m.share_token IS NOT NULL "
+            "ORDER BY m.share_created_at DESC").fetchall()
+        selezioni = conn.execute(
+            "SELECT id, token, media_ids, created_at FROM condivisioni "
+            "ORDER BY created_at DESC").fetchall()
+    singole_out = [{"id": r["id"], "filename": r["filename"], "album": r["album"],
+                    "created_at": r["share_created_at"],
+                    "url": f"{base}/f/{r['share_token']}"} for r in singole]
+    selezioni_out = [{"id": r["id"],
+                      "conta": len(r["media_ids"].split(",")) if r["media_ids"] else 0,
+                      "created_at": r["created_at"],
+                      "url": f"{base}/fs/{r['token']}"} for r in selezioni]
+    return templates.TemplateResponse(request, "admin/condivisioni.html", {
+        "user": user, "singole": singole_out, "selezioni": selezioni_out})

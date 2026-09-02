@@ -9,6 +9,7 @@ from PIL import Image
 
 from .config import get_settings
 from .database import get_db, log_event, ricalcola_date_album
+from .indexnow import notify_indexnow
 from .numeri import azzera_ocr
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff"}
@@ -81,17 +82,31 @@ class Scanner:
         self.full = full
         self.result = {"nodes_added": 0, "nodes_removed": 0,
                        "media_added": 0, "media_updated": 0, "media_removed": 0}
+        # Slug degli album pubblici toccati da questa scansione (creati,
+        # tornati pubblici, o svuotati/spariti): notificati a IndexNow in
+        # un solo invio a fine run(), non uno alla volta durante il giro
+        # dell'albero. Vedi _walk() e run().
+        self._slug_da_notificare = set()
 
     def _unique_slug(self, conn, base: str, rel_path: str) -> str:
         row = conn.execute("SELECT slug FROM nodes WHERE rel_path=?", (rel_path,)).fetchone()
         if row:
             return row["slug"]
-        slug = base
+        # Prima si controllava uno slug alla volta con una query per
+        # tentativo (slug, slug-2, slug-3, ...): su una cartella con molti
+        # doppioni erano altrettante query sequenziali. Si leggono invece
+        # tutti gli slug che iniziano con la base in una sola query e si
+        # calcola in Python il primo libero.
+        fuga = base.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        esistenti = {r["slug"] for r in conn.execute(
+            "SELECT slug FROM nodes WHERE slug LIKE ? ESCAPE '\\'",
+            (fuga + "%",)).fetchall()}
+        if base not in esistenti:
+            return base
         i = 2
-        while conn.execute("SELECT 1 FROM nodes WHERE slug=?", (slug,)).fetchone():
-            slug = f"{base}-{i}"
+        while f"{base}-{i}" in esistenti:
             i += 1
-        return slug
+        return f"{base}-{i}"
 
     def _get_or_create_node(self, conn, abs_dir: Path, parent_id, depth: int,
                             is_private: int) -> int:
@@ -128,6 +143,11 @@ class Scanner:
              is_private, token, nascosto, _now(), _now()),
         )
         self.result["nodes_added"] += 1
+        # La notifica IndexNow vera e propria parte da _walk(), non da qui:
+        # appena creato il nodo non ha ancora total_media (lo calcola
+        # _walk() dopo aver letto le foto e le sottocartelle), quindi non si
+        # sa ancora se sara' un album pubblico con contenuto o una cartella
+        # vuota che verra' tolta subito dopo.
         return cur.lastrowid
 
     def _sync_media(self, conn, node_id: int, abs_dir: Path):
@@ -231,6 +251,18 @@ class Scanner:
             return 0
 
         node_id = self._get_or_create_node(conn, abs_dir, parent_id, depth, is_private)
+
+        # Stato pubblico PRIMA di questo giro: serve solo per capire, dopo
+        # l'update piu' sotto, se questa scansione fa comparire o sparire
+        # l'album dai risultati di ricerca (foto arrivate/svuotate sul NAS,
+        # non un cambio di privacy dal pannello: quello lo notifica gia'
+        # admin_nodes.py per conto suo). slug=None per un nodo appena creato,
+        # che quindi non puo' essere stato pubblico prima di ora.
+        riga = conn.execute("SELECT slug, total_media, hidden FROM nodes WHERE id=?",
+                            (node_id,)).fetchone()
+        slug = riga["slug"]
+        era_pubblico = bool(riga["total_media"] and not is_private and not riga["hidden"])
+
         direct = self._sync_media(conn, node_id, abs_dir)
 
         subtotal = direct
@@ -239,6 +271,14 @@ class Scanner:
 
         conn.execute("UPDATE nodes SET direct_media=?, total_media=? WHERE id=?",
                      (direct, subtotal, node_id))
+
+        ora_pubblico = bool(subtotal and not is_private and not riga["hidden"])
+        if era_pubblico != ora_pubblico:
+            # Comparso o sparito dai risultati pubblici in questa
+            # scansione: vale la pena farlo ricontrollare da IndexNow in
+            # entrambi i casi, che lo trovi se e' comparso o che tolga dai
+            # risultati una pagina ormai vuota/404 se e' sparito.
+            self._slug_da_notificare.add(slug)
 
         if subtotal == 0 and not self._configurato(conn, node_id):
             conn.execute("DELETE FROM nodes WHERE id=?", (node_id,))
@@ -256,10 +296,19 @@ class Scanner:
 
         _log("Avvio scansione ad albero...")
         with get_db() as conn:
-            for r in conn.execute("SELECT id, rel_path FROM nodes").fetchall():
+            for r in conn.execute(
+                    "SELECT id, rel_path, slug, total_media, is_private, hidden "
+                    "FROM nodes").fetchall():
                 if not (self.root / r["rel_path"]).exists():
                     conn.execute("DELETE FROM nodes WHERE id=?", (r["id"],))
                     self.result["nodes_removed"] += 1
+                    if r["total_media"] and not r["is_private"] and not r["hidden"]:
+                        # Cartella intera sparita dal NAS: era un album
+                        # pubblico indicizzabile, quindi la sua pagina va
+                        # segnalata come cambiata anche qui, non solo nel
+                        # caso "svuotata ma ancora presente" gestito in
+                        # _walk().
+                        self._slug_da_notificare.add(r["slug"])
             conn.commit()
 
             top = []
@@ -278,6 +327,18 @@ class Scanner:
 
         log_event("INFO", "scan", f"Scan ad albero completata: {self.result}")
         _log(f"COMPLETATA: {self.result}")
+
+        if self._slug_da_notificare:
+            # Un solo invio in batch a fine scansione, non uno per album:
+            # una scansione che fa comparire/sparire venti album manda una
+            # sola chiamata a IndexNow con venti indirizzi, non venti
+            # chiamate. Lo scanner gira come processo a se' (systemd timer,
+            # non dentro una richiesta web), quindi qui l'attesa di rete
+            # non rallenta nessun visitatore.
+            base = self.settings.site_url.rstrip("/")
+            urls = [f"{base}/n/{s}" for s in self._slug_da_notificare]
+            notify_indexnow(urls)
+
         return self.result
 
 
