@@ -7,14 +7,12 @@ visite.
 """
 from xml.sax.saxutils import escape
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, HTTPException, Response
 
 from .. import lingue
 from ..config import get_settings
 from ..database import get_db
-# Fotografie per pagina: si legge da tree, cosi' la sitemap conta le pagine
-# esattamente come le costruisce il sito e le due cose non possono divergere.
-from .tree import PAGE_SIZE, _ultime_gallerie
+from .tree import _ultime_gallerie
 
 router = APIRouter()
 
@@ -34,7 +32,7 @@ def robots():
     # si scrivesse solo "Disallow: /search", la versione inglese della
     # ricerca resterebbe aperta e tornerebbero le segnalazioni di Search
     # Console che avevamo appena chiuso.
-    chiusi = ["/admin", "/p/", "/download/", "/zip/", "/video/", "/search",
+    chiusi = ["/admin", "/p/", "/download/", "/zip/", "/video/",
               "/preferiti/", "/mie-preferite", "/radunimoto", "/lingua/",
               "/healthz"]
     righe = ["User-agent: *"]
@@ -65,6 +63,26 @@ def robots():
               f"Sitemap: {base}/sitemap-immagini.xml"]
     body = "\n".join(righe) + "\n"
     return Response(content=body, media_type="text/plain")
+
+
+@router.get("/{chiave}.txt", response_class=Response)
+def indexnow_key(chiave: str):
+    """Verifica della chiave IndexNow (vedi app/indexnow.py).
+
+    Lo standard richiede un file raggiungibile su /<chiave>.txt che
+    risponda con la chiave stessa in testo semplice: e' cosi' che Bing (e
+    gli altri motori che aderiscono al protocollo) si accertano che chi
+    manda le notifiche sia davvero il proprietario del sito.
+
+    La route e' generica (qualunque /<qualcosa>.txt) ma risponde solo se
+    "chiave" combacia esattamente con quella configurata: qualunque altro
+    indirizzo che finisce per ".txt" continua a dare 404 come prima,
+    nessun nuovo modo di scoprire pagine che non esistono.
+    """
+    attesa = get_settings().indexnow_key.strip()
+    if not attesa or chiave != attesa:
+        raise HTTPException(status_code=404)
+    return Response(content=attesa, media_type="text/plain")
 
 
 @router.get("/novita.xml", response_class=Response)
@@ -129,11 +147,13 @@ def sitemap():
     settings = get_settings()
     base = settings.site_url.rstrip("/")
     with get_db() as conn:
+        # Niente piu' bisogno di contare le foto per album (COUNT/JOIN su
+        # media): serviva solo a calcolare quante pagine ?page=N elencare,
+        # e quelle voci non si generano piu' — vedi il commento piu' sotto.
         rows = conn.execute(
-            "SELECT n.slug, n.updated_at, COUNT(m.id) AS quante "
-            "FROM nodes n LEFT JOIN media m ON m.node_id = n.id "
-            "WHERE n.is_private=0 AND n.hidden=0 "
-            "GROUP BY n.id ORDER BY n.depth, n.sort_order").fetchall()
+            "SELECT slug, updated_at FROM nodes "
+            "WHERE is_private=0 AND hidden=0 "
+            "ORDER BY depth, sort_order").fetchall()
     def voce(percorso: str, extra: str = "") -> str:
         """Una pagina, con l'elenco delle sue versioni nelle altre lingue.
 
@@ -159,18 +179,30 @@ def sitemap():
              # trovano solo seguendo i collegamenti del menu, e piu' tardi.
              voce("/chi-sono", "<priority>0.8</priority>"),
              voce("/novita", "<priority>0.7</priority>"),
-             voce("/recensioni", "<priority>0.6</priority>")]
+             voce("/recensioni", "<priority>0.6</priority>"),
+             voce("/contattami", "<priority>0.6</priority>")]
+    # Un solo indirizzo per album, sempre la prima pagina: fino al
+    # 01/09/2026 qui si elencava anche ogni pagina oltre la prima
+    # (?page=2, ?page=3...) di ogni album grande, per far scoprire ai
+    # motori di ricerca anche le fotografie oltre la centoventesima. Il
+    # problema era vero ma la soluzione sbagliata: Google Search Console
+    # segnalava ~2150 URL "scoperte ma non indicizzate" — un solo album
+    # da qualche migliaio di foto genera decine di quelle pagine, ognuna
+    # con lo stesso titolo/contenuto della pagina 1 e senza un motivo
+    # proprio per comparire nei risultati, ed erano proprio queste voci
+    # della sitemap a sottometterle attivamente come "pagine ufficiali da
+    # indicizzare".
+    #
+    # Le fotografie oltre pagina 1 restano scopribili lo stesso: le
+    # elenca gia' tutte, senza eccezioni, sitemap-immagini.xml (vedi
+    # sitemap_immagini() sotto), che le associa alla pagina canonica
+    # dell'album invece che a una pagina HTML duplicata a se' stante — il
+    # modo corretto secondo le linee guida di Google per la SEO immagini,
+    # e che qui esisteva gia' prima di questo cambiamento.
     for r in rows:
         lastmod = (r["updated_at"] or "")[:10]
         mod = f"<lastmod>{lastmod}</lastmod>" if len(lastmod) == 10 else ""
         parts.append(voce(f"/n/{r['slug']}", mod))
-        # Gli album grandi sono divisi in pagine. Elencando solo la prima,
-        # le fotografie oltre la centoventesima non venivano mai raggiunte
-        # dai motori di ricerca: per loro semplicemente non esistevano.
-        pagine = (r["quante"] + PAGE_SIZE - 1) // PAGE_SIZE
-        for p in range(2, pagine + 1):
-            parts.append(
-                f"  <url><loc>{base}/n/{r['slug']}?page={p}</loc>{mod}</url>")
     parts.append("</urlset>")
     return Response(content="\n".join(parts), media_type="application/xml")
 
