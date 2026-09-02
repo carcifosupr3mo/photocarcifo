@@ -1817,3 +1817,15 @@ body.menu-fermo{overflow:hidden;}
   font-size: .8rem;
   margin-top: .15rem;
 }
+
+/* Dentro la griglia raduni le card sono piccole (min 180px): lo stile hero
+   di .album-card (titolo enorme in overlay assoluto, pensato per card
+   grandi tipo homepage) qui trabocca e si sovrappone. Si riporta il
+   titolo sotto la copertina, come nella variante semplice della classe. */
+.rad-album-grid .album-card{background:none;}
+.rad-album-grid .album-card .thumb{aspect-ratio:4/3;}
+.rad-album-grid .album-card .thumb::before{content:none;}
+.rad-album-grid .album-card .meta{position:static;padding:.5rem 0 0;color:inherit;}
+.rad-album-grid .album-card .meta h3{font-size:.85rem;color:var(--ink);}
+.rad-album-grid .album-card .meta .sub{color:var(--ink-soft);}
+.rad-album-grid .album-card::after{content:none;}
