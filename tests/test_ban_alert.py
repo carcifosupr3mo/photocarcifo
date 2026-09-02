@@ -71,7 +71,7 @@ def test_nessuna_chiamata_di_rete_reale_senza_config(modulo, blocca_rete):
     assert ok is False  # nessun canale configurato: nessuna notifica
 
 
-def test_nessuna_chiamata_di_rete_reale_giro_completo(modulo, monkeypatch):
+def test_nessuna_chiamata_di_rete_reale_giro_completo(modulo_coda, monkeypatch):
     """Anche con Telegram/WhatsApp "configurati" (valori finti), la rete
     non deve mai essere toccata per davvero: tutte le funzioni di rete
     sono sostituite esplicitamente qui."""
@@ -84,12 +84,12 @@ def test_nessuna_chiamata_di_rete_reale_giro_completo(modulo, monkeypatch):
                              "di rete va sostituita esplicitamente per nome")
 
     monkeypatch.setattr(urllib.request, "urlopen", urlopen_finto)
-    monkeypatch.setattr(modulo, "geolocalizza", lambda ip: None)
-    monkeypatch.setattr(modulo, "reputazione", lambda ip, key: None)
-    monkeypatch.setattr(modulo, "motore_verificato", lambda ip: None)
-    monkeypatch.setattr(modulo, "invia_telegram", lambda cfg, testo: True)
+    monkeypatch.setattr(modulo_coda, "geolocalizza", lambda ip: None)
+    monkeypatch.setattr(modulo_coda, "reputazione", lambda ip, key: None)
+    monkeypatch.setattr(modulo_coda, "motore_verificato", lambda ip: None)
+    monkeypatch.setattr(modulo_coda, "invia_telegram", lambda cfg, testo: True)
 
-    ok = modulo.elabora("photocarcifo-scansioni", "203.0.113.55", "18",
+    ok = modulo_coda.elabora("photocarcifo-scansioni", "203.0.113.55", "18",
                         RIGHE_ESEMPIO,
                         config={"TELEGRAM_TOKEN": "finto", "TELEGRAM_CHAT": "finto"})
     assert ok is True
@@ -671,17 +671,17 @@ def test_storico_non_cresce_oltre_il_massimo(modulo, monkeypatch):
     assert len(storico) <= 5
 
 
-def test_elabora_salva_lo_snapshot_prima_di_notificare(modulo, monkeypatch):
+def test_elabora_salva_lo_snapshot_prima_di_notificare(modulo_coda, monkeypatch):
     """L'ordine richiesto: salva, POI notifica. Verificato facendo
     fallire invia_telegram() e controllando che lo snapshot sia comunque
     presente."""
-    monkeypatch.setattr(modulo, "geolocalizza", lambda ip: None)
-    monkeypatch.setattr(modulo, "reputazione", lambda ip, key: None)
-    monkeypatch.setattr(modulo, "motore_verificato", lambda ip: None)
-    monkeypatch.setattr(modulo, "invia_telegram", lambda cfg, testo: False)
-    modulo.elabora("photocarcifo-scansioni", "1.2.3.4", "27", RIGHE_ESEMPIO,
+    monkeypatch.setattr(modulo_coda, "geolocalizza", lambda ip: None)
+    monkeypatch.setattr(modulo_coda, "reputazione", lambda ip, key: None)
+    monkeypatch.setattr(modulo_coda, "motore_verificato", lambda ip: None)
+    monkeypatch.setattr(modulo_coda, "invia_telegram", lambda cfg, testo: False)
+    modulo_coda.elabora("photocarcifo-scansioni", "1.2.3.4", "27", RIGHE_ESEMPIO,
                    config={"TELEGRAM_TOKEN": "t", "TELEGRAM_CHAT": "c"})
-    snap = modulo.leggi_snapshot("1.2.3.4")
+    snap = modulo_coda.leggi_snapshot("1.2.3.4")
     assert snap is not None
     assert "/.env" in (snap.get("path") or [])
 

@@ -117,22 +117,32 @@ def loga(riga):
 
 # ---------------------------------------------------------------- config
 def leggi_config():
-    """Le stesse due righe che usano gli avvisi. Un posto solo."""
+    """Le stesse due righe che usano gli avvisi. Un posto solo.
+
+    File assente (es. import del modulo fuori dal server di produzione,
+    come nei test o in CI): valori vuoti invece di FileNotFoundError, cosi'
+    il modulo resta importabile. Chi lo esegue davvero come bot si ferma
+    comunque subito dopo, per TOKEN/CHAT mancanti (vedi sotto)."""
     valori = {}
-    with open(CONFIG, encoding="utf-8") as f:
-        for riga in f:
-            riga = riga.strip()
-            if riga.startswith("#") or "=" not in riga:
-                continue
-            k, _, v = riga.partition("=")
-            valori[k.strip()] = v.strip().strip('"').strip("'")
+    try:
+        with open(CONFIG, encoding="utf-8") as f:
+            for riga in f:
+                riga = riga.strip()
+                if riga.startswith("#") or "=" not in riga:
+                    continue
+                k, _, v = riga.partition("=")
+                valori[k.strip()] = v.strip().strip('"').strip("'")
+    except OSError:
+        pass
     return valori.get("TELEGRAM_TOKEN", ""), valori.get("TELEGRAM_CHAT", "")
 
 
 TOKEN, CHAT = leggi_config()
-if not TOKEN or not CHAT:
-    print("token o chat mancanti in " + CONFIG, file=sys.stderr)
-    sys.exit(0)
+# Il controllo che ferma il processo (sys.exit) sta in main(), non qui:
+# a livello di modulo servirebbe anche a chi importa questo file (i test,
+# vedi tests/test_bot_telegram.py e tests/test_bot_telegram_sicurezza.py),
+# facendo fallire l'import stesso invece di limitarsi a lasciare
+# TOKEN/CHAT vuoti come fa leggi_config() quando il file non c'e'.
 
 # CHAT e' l'id numerico della chat privata autorizzata, letto da
 # /etc/photocarcifo-telegram.conf (variabile TELEGRAM_CHAT nel file, nome
@@ -976,6 +986,9 @@ def scrivi_offset(n):
 
 
 def main():
+    if not TOKEN or not CHAT:
+        print("token o chat mancanti in " + CONFIG, file=sys.stderr)
+        sys.exit(0)
     tg("setMyCommands", commands=json.dumps([
         {"command": c, "description": d} for c, d in [
             ("stato", "Come sta il sito"),

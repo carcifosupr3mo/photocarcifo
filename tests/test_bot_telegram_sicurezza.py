@@ -221,6 +221,8 @@ def test_tentativo_respinto_viene_loggato_senza_testo_del_messaggio(bot, tmp_pat
     assert "RESPINTO" in contenuto
     assert "999999999" in contenuto
     assert "qualcosa di privato" not in contenuto
+    if not bot.TOKEN:
+        pytest.skip("TOKEN vuoto in questo ambiente: nulla da verificare")
     assert bot.TOKEN not in contenuto
 
 
@@ -262,6 +264,8 @@ def test_token_non_finisce_in_nessuna_risposta_telegram(bot):
     """Nessun messaggio inviato all'utente autorizzato deve mai contenere
     il token (es. per debug lasciato per errore)."""
     _un_giro(bot, _msg_privato(bot.CHAT, "/stato"))
+    if not bot.TOKEN:
+        pytest.skip("TOKEN vuoto in questo ambiente: nulla da verificare")
     for testo in _messaggi_inviati(bot):
         assert bot.TOKEN not in testo
 

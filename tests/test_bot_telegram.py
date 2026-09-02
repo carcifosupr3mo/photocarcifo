@@ -292,6 +292,8 @@ def test_log_non_contiene_il_token(bot, tmp_path, monkeypatch):
     bot._attesa["applica"] = time.time()
     bot.gestisci("/applica SI")
     contenuto = finto_log.read_text(encoding="utf-8") if finto_log.exists() else ""
+    if not bot.TOKEN:
+        pytest.skip("TOKEN vuoto in questo ambiente: nulla da verificare")
     assert bot.TOKEN not in contenuto
 
 
