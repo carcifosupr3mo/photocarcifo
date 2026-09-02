@@ -20,6 +20,20 @@ def test_pagine_fisse(client, lingua, pagina):
     assert "<html" in r.text.lower()
 
 
+def test_homepage_ricerca_non_ha_autofocus(client):
+    """Il campo di ricerca in home non deve aprire da solo la tastiera al
+    caricamento/reload: niente attributo autofocus sull'input. Deve restare
+    comunque raggiungibile con click/tap e Tab (nessun tabindex=-1)."""
+    r = client.get("/")
+    assert r.status_code == 200
+    import re
+    m = re.search(r'<input[^>]*name="q"[^>]*>', r.text)
+    assert m, "campo di ricerca non trovato in home"
+    campo = m.group(0)
+    assert "autofocus" not in campo, "il campo ricerca non deve avere autofocus"
+    assert 'tabindex="-1"' not in campo, "il campo deve restare raggiungibile con Tab"
+
+
 @pytest.mark.parametrize("lingua", LINGUE)
 def test_album_pubblico(client, dati, lingua):
     if not dati["slug"]:
@@ -175,3 +189,37 @@ def test_il_foglio_ridotto_non_perde_regole_al_pubblico(client, dati):
              if ha_regola(intero, c) and not ha_regola(pubblico, c)]
     assert not perse, (
         f"regole tolte al pubblico ma usate da una sua pagina: {perse[:12]}")
+
+
+def test_niente_banner_onboarding_ne_suggerimento_numero_gara(client, dati):
+    """Rimossi entrambi (26/08/2026): il banner "una volta sola" duplicava
+    la microcopy sempre visibile (avere sia banner sia testo permanente
+    era proprio cio' che si voleva evitare), e il suggerimento sul numero
+    di gara era un'istruzione in piu' per una ricerca che il campo in
+    home gia' spiega da solo (placeholder "Cerca album, evento o numero
+    foto..."). La ricerca per numero deve continuare a funzionare (vedi
+    tests/test_ricerca.py) — qui si controlla solo che non resti il
+    richiamo testuale."""
+    if not dati["slug"]:
+        pytest.skip("nessun album pubblico nel database")
+    r = client.get(f"/n/{dati['slug']}")
+    assert r.status_code == 200
+    assert "onboardingAvviso" not in r.text
+    assert "/static/js/onboarding.js" not in r.text
+    assert "cerca-numero" not in r.text
+    assert "numero di gara" not in r.text.lower()
+
+
+def test_controlli_selezione_hanno_spiegazione_accessibile(client, dati):
+    """Il bottone "Seleziona" deve avere un titolo/tooltip breve, e la riga
+    compatta ❤️/☑ deve restare visibile senza dipendere dall'hover (chi
+    e' su telefono non ha passaggio del mouse)."""
+    if not dati["slug"]:
+        pytest.skip("nessun album pubblico nel database")
+    r = client.get(f"/n/{dati['slug']}")
+    assert r.status_code == 200
+    if 'id="selMode"' not in r.text:
+        pytest.skip("album senza fotografie: la barra selezione non compare")
+    blocco = r.text.split('id="selMode"')[1].split(">")[0]
+    assert "title=" in blocco
+    assert "toolbar-aiuto" in r.text

@@ -87,6 +87,27 @@ def test_il_file_con_i_segreti_non_e_leggibile_da_tutti():
         f".env ha permessi {oct(modo)}: lo puo' leggere anche chi non deve")
 
 
+def test_il_file_con_i_segreti_appartiene_al_servizio():
+    """Il 01/09/2026 .env e' finito di proprieta' di root invece che
+    dell'utente photocarcifo (vedi deploy/photocarcifo.service, User=
+    Group=photocarcifo): il servizio non riusciva piu' a leggerlo e il sito
+    e' rimasto giu' fino al riavvio successivo. photocarcifo-applica.sh
+    ora corregge questo da solo prima di riavviare (vedi il passo "I
+    permessi di .env"); qui si verifica che l'ambiente corrente sia gia'
+    nello stato giusto, non solo che lo script sappia sistemarlo."""
+    import pwd
+    env = RADICE / ".env"
+    if not env.exists():
+        return
+    try:
+        atteso = pwd.getpwnam("photocarcifo")
+    except KeyError:
+        return  # ambiente senza quell'utente (es. sviluppo locale): salta
+    proprietario = env.stat().st_uid
+    assert proprietario == atteso.pw_uid, (
+        f".env appartiene a uid {proprietario}, non a photocarcifo (uid {atteso.pw_uid})")
+
+
 def test_niente_segreti_scritti_nel_codice():
     sospetti = []
     schema = re.compile(
@@ -122,3 +143,136 @@ def test_il_database_e_integro():
     with get_db() as conn:
         assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
         assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def _blocco_permessi_env(script_testo: str) -> str:
+    """Estrae solo il passo 'I permessi di .env' da photocarcifo-applica.sh,
+    dall'intestazione del passo fino alla riga vuota prima del passo
+    successivo: i test qui sotto verificano quella logica isolata, senza
+    eseguire l'intero script (che riavvierebbe nginx/systemd davvero)."""
+    inizio = script_testo.index('passo "I permessi di .env"')
+    fine = script_testo.index('\nif [ "$SOLO_PROVA" = 1 ]', inizio)
+    return script_testo[inizio:fine]
+
+
+def test_lo_script_di_deploy_non_tocca_env_in_modalita_prova(tmp_path):
+    """Il 01/09/2026 un salvataggio di .env lo ha lasciato di proprieta' di
+    root: il servizio (utente photocarcifo) non riusciva piu' a leggerlo e
+    il sito e' rimasto giu' al riavvio successivo. Qui si verifica che
+    photocarcifo-applica.sh --prova, di fronte a permessi sbagliati,
+    ABORTISCA e non modifichi il file (--prova promette di non toccare
+    nulla) — e che invece la modalita' normale corregga owner e permessi
+    prima del riavvio, cosi' l'incidente non puo' ripetersi."""
+    import subprocess
+
+    import os
+    import pwd
+    try:
+        pwd.getpwnam("photocarcifo")
+    except KeyError:
+        return  # ambiente senza quell'utente: il controllo non si applica
+
+    # pytest crea tmp_path con permessi 700: nessuno tranne root potrebbe
+    # attraversarla, il che farebbe fallire "su photocarcifo -c test -r"
+    # per un motivo estraneo al test (la cartella, non il file). In
+    # produzione la working directory e' /opt/photocarcifo, attraversabile
+    # da tutti — qui si replica quella condizione, non se ne introduce
+    # una nuova.
+    os.chmod(tmp_path, 0o755)
+
+    script = (RADICE / "script" / "photocarcifo-applica.sh").read_text(encoding="utf-8")
+    blocco = _blocco_permessi_env(script)
+
+    finto = tmp_path / ".env"
+    finto.write_text("SECRET_KEY=test\n", encoding="utf-8")
+    os.chown(finto, 0, 0)  # root:root, come nell'incidente reale
+    finto.chmod(0o600)
+
+    copione = f"""#!/bin/bash
+set -uo pipefail
+cd {tmp_path}
+SOLO_PROVA=1
+passo() {{ printf '\\n▸ %s\\n' "$1"; }}
+ko() {{ printf '  x %s\\n' "$1"; exit 1; }}
+ok() {{ printf '  ok %s\\n' "$1"; }}
+{blocco}
+"""
+    eseguibile = tmp_path / "prova.sh"
+    eseguibile.write_text(copione, encoding="utf-8")
+    eseguibile.chmod(0o755)
+
+    r = subprocess.run(["bash", str(eseguibile)], capture_output=True, text=True)
+    assert r.returncode != 0, "con permessi sbagliati --prova doveva abortire, non proseguire"
+    assert finto.stat().st_uid == 0, "--prova non deve MAI modificare .env, nemmeno per correggerlo"
+
+    # Ora la modalita' normale (SOLO_PROVA=0): deve correggere da sola.
+    copione_vero = copione.replace("SOLO_PROVA=1", "SOLO_PROVA=0")
+    eseguibile.write_text(copione_vero, encoding="utf-8")
+    r2 = subprocess.run(["bash", str(eseguibile)], capture_output=True, text=True)
+    assert r2.returncode == 0, f"il deploy vero doveva correggere da solo: {r2.stdout}{r2.stderr}"
+    atteso = pwd.getpwnam("photocarcifo")
+    assert finto.stat().st_uid == atteso.pw_uid, "il deploy vero non ha corretto l'owner di .env"
+    assert (finto.stat().st_mode & 0o777) == 0o600, "il deploy vero non ha corretto i permessi di .env"
+
+
+def test_scanner_stesso_stato_due_scansioni_zero_notifiche_indexnow(tmp_path, monkeypatch):
+    """Un restart (applicazione o CT) non deve mai far ripartire lo scanner
+    come se ogni album fosse nuovo: lo stato 'e' gia' pubblico' vive nel
+    database su disco (nodes.total_media/is_private/hidden), non in
+    memoria, quindi sopravvive a qualunque riavvio. Qui si verifica che
+    due scansioni consecutive sullo STESSO stato del NAS producano
+    entrambe zero notifiche IndexNow — non solo la seconda: nemmeno la
+    prima, se il DB arriva gia' con lo stato di un giro precedente."""
+    import sqlite3
+    import contextlib
+
+    monkeypatch.setenv("SITE_URL", "https://photocarcifo.ch")
+    monkeypatch.setenv("INDEXNOW_KEY", "")  # non deve nemmeno provare a mandare nulla
+    from app.config import get_settings
+    get_settings.cache_clear()
+
+    nas = tmp_path / "nas"
+    (nas / "CATEGORIA" / "Album").mkdir(parents=True)
+
+    from PIL import Image
+    Image.new("RGB", (10, 10)).save(nas / "CATEGORIA" / "Album" / "foto1.jpg")
+
+    dbfile = tmp_path / "photocarcifo.db"
+
+    @contextlib.contextmanager
+    def get_db_isolato():
+        conn = sqlite3.connect(str(dbfile))
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys=ON")
+        try:
+            yield conn
+            conn.commit()
+        finally:
+            conn.close()
+
+    from app import database as database_mod
+    import app.scanner as scanner_mod
+    monkeypatch.setattr(database_mod, "get_db", get_db_isolato)
+    monkeypatch.setattr(scanner_mod, "get_db", get_db_isolato)
+
+    database_mod.init_db()
+
+    s = scanner_mod.Scanner(full=False)
+    s.root = nas
+    r1 = s.run()
+    assert r1["nodes_added"] >= 1, "il primo giro deve aver trovato l'album (precondizione del test)"
+
+    # Secondo giro, stesso identico stato del NAS: nessuna modifica.
+    s2 = scanner_mod.Scanner(full=False)
+    s2.root = nas
+    s2.run()
+    assert s2._slug_da_notificare == set(), (
+        f"secondo scan sullo stesso stato ha comunque notificato: {s2._slug_da_notificare}")
+
+    # Un "restart" e' esattamente questo: un nuovo processo Scanner, che
+    # rilegge lo stato dal disco invece che tenerlo in memoria.
+    s3 = scanner_mod.Scanner(full=False)
+    s3.root = nas
+    s3.run()
+    assert s3._slug_da_notificare == set(), (
+        f"scan dopo un 'restart' simulato ha rinotificato album gia' noti: {s3._slug_da_notificare}")

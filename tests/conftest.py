@@ -19,6 +19,41 @@ RADICE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RADICE))
 
 
+@pytest.fixture(autouse=True)
+def telegram_finto(monkeypatch):
+    """Nessun test manda mai un messaggio Telegram vero.
+
+    Fino al 26/08/2026 i test del modulo di contatto (tests/test_contattami.py)
+    passavano davvero da app.telegram_avvisi.invia() ogni volta che un POST
+    a /contattami arrivava fino all'insert: la funzione legge le credenziali
+    vere da /etc/photocarcifo-telegram.conf (stesso bot amministrativo usato
+    in produzione) e chiama davvero l'API di Telegram. Ogni run della suite
+    mandava percio' notifiche reali nella chat vera.
+
+    Questa fixture sostituisce invia() con un finto che non fa mai una
+    richiesta di rete, per TUTTI i test (autouse), senza che il codice di
+    produzione sappia di essere sotto test: nessun `if pytest` in
+    app/telegram_avvisi.py o app/routers/contattami.py, la sostituzione
+    avviene solo qui, lato test. Il fake registra ogni chiamata (testo
+    ricevuto) in TELEGRAM_CHIAMATE, cosi' un test puo' comunque verificare
+    che la notifica sarebbe partita e con quale contenuto, senza che parta
+    per davvero. Un singolo test puo' comunque monkeypatchare di nuovo
+    telegram_avvisi.invia per esercitare il percorso reale della funzione
+    (es. verificare cosa succede con la config assente): monkeypatch non
+    interferisce, l'override piu' specifico vince per la durata di quel
+    test.
+    """
+    from app import telegram_avvisi
+    chiamate = []
+
+    def finto(testo, percorso_config=None):
+        chiamate.append(testo)
+        return True
+
+    monkeypatch.setattr(telegram_avvisi, "invia", finto)
+    yield chiamate
+
+
 @pytest.fixture(scope="session")
 def app():
     from app.main import app as applicazione

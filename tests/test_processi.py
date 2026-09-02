@@ -86,12 +86,15 @@ def test_avanzamento_della_lettura_numeri_leggibile_da_ogni_processo():
 
 def test_nessuno_stato_nuovo_e_finito_in_memoria():
     """Guardia per il futuro: un contenitore modificabile a livello di
-    modulo, in un sito su piu' processi, e' quasi sempre un errore. Le tre
-    eccezioni qui sotto sono deliberate e spiegate."""
+    modulo, in un sito su piu' processi, e' quasi sempre un errore. Le
+    quattro eccezioni qui sotto sono deliberate e spiegate."""
     consentiti = {
         # Coda delle visite da scrivere: ogni processo scrive la sua, e il
         # totale e' la somma. Niente da condividere.
         ("app/database.py", "_coda_stat"),
+        # Stessa coda, stesso motivo, ma per le statistiche per album
+        # (node_stats): aperture e download bufferizzati prima di scrivere.
+        ("app/database.py", "_coda_node_stat"),
         # Avanzamento della lettura numeri: e' anche su file, e il file e'
         # cio' che gli altri processi leggono (vedi ocr.stato_lavoro).
         ("app/ocr.py", "_stato"),
