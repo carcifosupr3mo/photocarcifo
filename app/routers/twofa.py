@@ -8,8 +8,9 @@ from fastapi import APIRouter, Request, Form, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ..database import get_db, log_event
-from ..deps import require_admin_user, require_admin_api
-from ..security import verify_csrf, verify_password, dimentica_dispositivi
+from ..deps import require_admin_user, require_admin_api, client_ip
+from ..security import (verify_csrf, verify_password, dimentica_dispositivi,
+                        totp_limiter)
 from ..templating import templates
 
 router = APIRouter(prefix="/admin/2fa")
@@ -50,13 +51,19 @@ def page(request: Request, user: dict = Depends(require_admin_user)):
 def enable(request: Request, csrf_token: str = Form(...), code: str = Form(...),
            user: dict = Depends(require_admin_api)):
     _check_csrf(user, csrf_token)
+    # Sei cifre si indovinano in fretta: stesso freno del login, cosi' una
+    # sessione rubata non basta per forzare il codice a tentativi.
+    if not totp_limiter.check(client_ip(request)):
+        raise HTTPException(status_code=429, detail="Troppi tentativi")
     with get_db() as conn:
         row = conn.execute("SELECT totp_secret FROM users WHERE id=?", (user["id"],)).fetchone()
         if not row or not row["totp_secret"]:
             raise HTTPException(status_code=400, detail="Nessun segreto generato")
         if not pyotp.TOTP(row["totp_secret"]).verify(code.strip(), valid_window=1):
+            totp_limiter.hit(client_ip(request))
             log_event("WARNING", "auth", "Codice 2FA errato in attivazione")
             return RedirectResponse(url="/admin/2fa?err=1", status_code=status.HTTP_303_SEE_OTHER)
+        totp_limiter.reset(client_ip(request))
         conn.execute("UPDATE users SET totp_enabled=1 WHERE id=?", (user["id"],))
     log_event("INFO", "auth", f"2FA attivato per {user['username']}")
     return RedirectResponse(url="/admin/2fa", status_code=status.HTTP_303_SEE_OTHER)
@@ -66,11 +73,15 @@ def enable(request: Request, csrf_token: str = Form(...), code: str = Form(...),
 def disable(request: Request, csrf_token: str = Form(...), password: str = Form(...),
             user: dict = Depends(require_admin_api)):
     _check_csrf(user, csrf_token)
+    if not totp_limiter.check(client_ip(request)):
+        raise HTTPException(status_code=429, detail="Troppi tentativi")
     with get_db() as conn:
         row = conn.execute("SELECT password_hash FROM users WHERE id=?", (user["id"],)).fetchone()
         if not row or not verify_password(password, row["password_hash"]):
+            totp_limiter.hit(client_ip(request))
             log_event("WARNING", "auth", "Password errata in disattivazione 2FA")
             return RedirectResponse(url="/admin/2fa?err=2", status_code=status.HTTP_303_SEE_OTHER)
+        totp_limiter.reset(client_ip(request))
         conn.execute("UPDATE users SET totp_enabled=0, totp_secret=NULL WHERE id=?", (user["id"],))
     log_event("INFO", "auth", f"2FA disattivato per {user['username']}")
     return RedirectResponse(url="/admin/2fa", status_code=status.HTTP_303_SEE_OTHER)

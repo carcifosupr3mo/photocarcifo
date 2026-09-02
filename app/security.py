@@ -220,6 +220,16 @@ class RateLimiter:
 login_limiter = RateLimiter("login", max_attempts=get_settings().rate_limit_login,
                             window_seconds=300)
 
+# Contatore a parte per il codice a sei cifre e per la password che
+# disattiva la verifica in due passaggi. Separato dal login perche' le due
+# porte sono diverse: sbagliare il codice dell'applicazione (l'orologio del
+# telefono che va indietro, una cifra digitata male) non deve chiudere
+# fuori anche chi poi vuole semplicemente rientrare dalla porta principale,
+# e viceversa. Il freno contro chi prova a indovinare resta su entrambe,
+# solo che ognuna conta i suoi.
+totp_limiter = RateLimiter("totp", max_attempts=get_settings().rate_limit_login,
+                           window_seconds=300)
+
 
 # ---------------- Security headers ----------------
 def security_headers() -> dict[str, str]:

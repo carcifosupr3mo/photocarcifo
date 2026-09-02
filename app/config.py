@@ -19,7 +19,24 @@ class Settings(BaseSettings):
     # questo dispositivo". Novanta giorni: abbastanza da non rifare mai
     # il login dal telefono, poco abbastanza da non essere per sempre.
     session_max_age_lungo: int = 7776000  # 90 giorni
-    rate_limit_login: int = 5             # tentativi login per finestra
+    # Tentativi di login/2FA per finestra di 5 minuti (vedi security.py,
+    # login_limiter/totp_limiter). Alzato da 5 a 50 il 01/09/2026, richiesto
+    # esplicitamente: un utente vero che sbaglia la password/il codice
+    # TOTP qualche volta non deve restare bloccato, mentre chi tenta
+    # centinaia di combinazioni al minuto resta comunque fermato — la
+    # protezione vera contro il bruteforce e' Argon2id (lento di proposito)
+    # piu' il limite di 8 richieste/minuto per IP gia' imposto da nginx
+    # (zona pclogin), non questo contatore da solo.
+    rate_limit_login: int = 50
+
+    # Chiave IndexNow (vedi app/indexnow.py). Non e' un segreto nel senso
+    # classico: lo standard la vuole leggibile pubblicamente all'indirizzo
+    # https://photocarcifo.ch/<chiave>.txt, per questo vive qui insieme al
+    # resto della configurazione invece che in un posto protetto a parte.
+    # Stringa esadecimale di 32 caratteri, il formato che IndexNow richiede
+    # (solo lettere a-f e cifre); vuota = IndexNow disattivato, nessuna
+    # notifica viene tentata.
+    indexnow_key: str = ""
 
     # Percorsi
     photo_root: str = "/mnt/magazzino"    # mount SMB del Synology (read-only)
