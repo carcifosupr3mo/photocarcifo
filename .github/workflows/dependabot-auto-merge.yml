@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Leggi i metadati della PR (pacchetto, versione, tipo di update)
         id: metadata
-        uses: dependabot/fetch-metadata@v2
+        uses: dependabot/fetch-metadata@v3
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
