@@ -1424,3 +1424,7 @@ Plugin Claude Code (`DietrichGebert/ponytail`), installato a livello utente (non
 **Verificato**: invocabile con `/ponytail`, `/ponytail-review` (review anti-over-engineering di un diff), `/ponytail-audit` (audit dell'intero repo) dalla sessione principale di Claude Code, tramite il tool `Skill`.
 
 **Limite noto verificato**: un subagent lanciato in modalità "fork" isolata (background worker) **non ha accesso al tool `Skill`** in questo ambiente — è un vincolo strutturale del tipo di esecuzione, non una mancata configurazione. Ponytail va quindi invocato dalla sessione principale (o da un subagent con accesso esplicito al tool Skill), non da un fork worker.
+
+## 43. Review UI pubblica (2026-09-02, fase 4)
+
+Ispezione visiva reale (screenshot Playwright, desktop 1440px e mobile 375px) di home, recensioni, contattami, radunimoto. Nessun problema concreto trovato oltre ai due bug già corretti nella card raduni (sezione 30, righe #7-8): griglia portfolio, form recensioni/contatti, navbar (inclusa voce RADUNI) risultano ordinati su entrambi i viewport, nessun overflow, nessuna sovrapposizione, tap target adeguati. Non ispezionate in questa sessione le pagine admin (richiedono login) — restano da coprire in una review successiva se necessario.
