@@ -33,3 +33,29 @@ Non rileggere file già letti in sessione. Non caricare l'intero PROJECT_KNOWLED
 - Template/CSS/responsive/UX: ui-ux-reviewer
 - Modifica banale/documentale: nessun agente aggiuntivo
 - Reviewer paralleli operano sul diff/file coinvolti, non sull'intero repo
+
+## Token & Context Efficiency Policy
+
+Regole vincolanti per ridurre cache read/token/contesto ripetuto tra sessioni. Non ripetere queste regole nei prompt: bastano istruzioni brevi ("implementa X seguendo CLAUDE.md e PROJECT_KNOWLEDGE.md").
+
+- **Ponytail** (`/ponytail`, plugin lato client): durante sessioni lunghe, dopo ogni fase completata comprimi/scarta log, diff vecchi, output test già passati, output agenti già sintetizzati — mantieni sempre obiettivo, vincoli, file modificati, decisioni, problemi aperti, test falliti, TODO correnti. Se il plugin non è disponibile in un dato contesto di esecuzione (es. subagent isolato), dichiaralo invece di fingere di averlo usato.
+- **Output terminale compatto**: `pytest -q` non `-vv`; `git diff --stat` o `git diff -- <file>` non il diff intero del repo; `journalctl -n 100` non completo; `git status --short` quando basta. Filtra prima di stampare, non dopo.
+- **Test mirati prima della suite completa**: modifica → test specifici sul file toccato → review → fix → suite completa solo a fine task, non dopo ogni riga.
+- **Non rileggere/riverificare cose già accertate in sessione**: stesso file, stessa query Graphify, stesso agente sulla stessa domanda — riusa il risultato già ottenuto. Ri-verifica solo se il codice relativo è cambiato nel frattempo.
+- **Sessioni più corte**: una macro-feature completata, testata, committata (e pushata quando pertinente) è un confine naturale — preferire una sessione nuova a continuare ad accumulare contesto indefinitamente. Lasciare nel commit/PROJECT_KNOWLEDGE.md quanto serve alla sessione successiva per ripartire senza dover rileggere tutto.
+- **Sub-agent**: contesto minimo — solo task, requisiti pertinenti, diff, file realmente coinvolti, errori/test rilevanti. Mai l'intera conversazione, l'intero PROJECT_KNOWLEDGE.md, o l'intero repo.
+- **Cache read**: non va "azzerata" — leggere dalla cache è più economico che rigenerare input. L'obiettivo è ridurre dimensione-del-contesto × numero-di-chiamate: prima di ogni tool/agent importante, chiedersi se si sta passando più contesto di quanto serva.
+
+### Standard Task Workflow
+
+1. leggi solo il contesto necessario (sezioni PROJECT_KNOWLEDGE.md pertinenti, non il file intero)
+2. Graphify per restringere il perimetro (2-5 file, non scansione integrale)
+3. apri solo i file minimi indicati
+4. implementazione
+5. test mirati
+6. agenti solo quelli pertinenti (vedi sezione sopra)
+7. Ponytail per comprimere contesto non più necessario
+8. suite completa finale
+9. commit
+10. push (solo sul remote concordato, mai a caso)
+11. nuova sessione se la macro-feature è conclusa
