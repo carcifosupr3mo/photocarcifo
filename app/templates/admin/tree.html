@@ -7,6 +7,19 @@
     <h1>Album</h1>
     <nav class="mgr-crumbs" id="crumbs"><span class="current">Tutte le categorie</span></nav>
   </div>
+  <div class="mgr-sel-head">
+    <label class="mgr-sel-all"><input type="checkbox" id="selAll"> Seleziona tutti</label>
+  </div>
+</div>
+<form class="mgr-search" id="searchForm" role="search">
+  <input type="search" id="searchInput" name="q" placeholder="Cerca un album per nome…" autocomplete="off">
+</form>
+<div class="bulk-toolbar" id="bulkToolbar" hidden>
+  <span class="bulk-count" id="bulkCount">0 selezionati</span>
+  <button class="btn btn-ghost" type="button" data-bulk="pubblico">Rendi pubblico</button>
+  <button class="btn btn-ghost" type="button" data-bulk="privato">Rendi privato</button>
+  <button class="btn btn-ghost" type="button" data-bulk="mostra">Mostra</button>
+  <button class="btn btn-ghost" type="button" data-bulk="nascondi">Nascondi</button>
 </div>
 <div class="mgr-grid" id="grid"><p class="tree-hint">Caricamento…</p></div>
 <div class="mgr-sheet" id="sheet" hidden><div class="sheet-inner" id="sheetInner"></div></div>
