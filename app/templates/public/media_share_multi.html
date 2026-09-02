@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{% if trovata %}{{ t('fcondm.titolo') }}{% else %}{{ t('fcond.non_trovata') }}{% endif %} — {{ site_name() }}{% endblock %}
+{% block head_extra %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block og_image %}{% if trovata and media_list %}<meta property="og:image" content="{{ site_url() }}/fs/{{ token }}/anteprima/{{ media_list[0].id }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/jpeg">{% else %}{{ super() }}{% endif %}{% endblock %}
+{% block content %}
+<section class="section"><div class="container">
+  {% if not trovata %}
+  <div class="empty" style="max-width:52ch;margin:clamp(3rem,10vw,6rem) auto;text-align:center;">
+    <h1 style="font-size:clamp(1.6rem,4vw,2.4rem);margin-bottom:1rem;">{{ t('fcond.non_trovata') }}</h1>
+    <p style="color:var(--ink-soft);line-height:1.7;">{{ t('fcond.non_trovata_testo') }}</p>
+    <p style="margin-top:2rem;"><a class="btn" href="/">{{ t('com.torna') }}</a></p>
+  </div>
+  {% else %}
+  <div class="foto-condivisa-multi">
+    <h1 style="margin-bottom:1rem;text-align:center;">{{ t('fcondm.titolo') }}</h1>
+    {% if downloads_enabled %}
+    <p style="text-align:center;margin-bottom:1.5rem;">
+      <a class="btn btn-accent" rel="nofollow" href="/fs/{{ token }}/zip">{{ t('fcondm.scarica_tutte') }} ({{ media_list|length }})</a>
+    </p>
+    {% endif %}
+    {#
+      Le foto della griglia portano sempre .sel-box (selezione) e .share-box
+      (condivisione singola), aggiunte automaticamente da initGrid() in
+      app.js a prescindere dalla pagina. .share-box funziona da sola, ma
+      .sel-box chiama enterSelect(), che tocca senza controlli i bottoni
+      della barra di selezione (#selMode e affini): senza di loro qui
+      andrebbe in errore al primo tocco. Restano nascosti come in node.html,
+      initGrid() li gestisce da solo mostrandoli solo in modalita' selezione.
+    #}
+    <button class="btn btn-ghost" id="selMode" type="button" style="display:none;">{{ t('node.seleziona') }}</button>
+    {% if downloads_enabled %}
+    <button class="btn btn-accent" id="dlSel" type="button" style="display:none;">{{ t('node.scarica_sel') }}</button>
+    {% endif %}
+    <button class="btn btn-ghost" id="selCancel" type="button" style="display:none;">{{ t('node.annulla') }}</button>
+    <p id="selEcho" role="status" aria-live="polite" style="display:none;"></p>
+    <div class="photo-grid">
+      {% for m in media_list %}
+      {#
+        Non esiste ancora una rotta /fs/{token}/video/{id} equivalente a
+        /video/{id} di node.html: per i video di questa collezione manca un
+        indirizzo pubblico da collegare. data-preview punta comunque
+        all'anteprima (una miniatura statica) cosi' il resto della
+        lightbox funziona; solo la riproduzione video resta non collegata,
+        come oggi.
+      #}
+      <div class="photo" data-id="{{ m.id }}" data-kind="{{ m.kind }}"
+           data-preview="/fs/{{ token }}/anteprima/{{ m.id }}"
+           {% if downloads_enabled %}data-download="/fs/{{ token }}/download/{{ m.id }}"{% endif %}
+           data-alt="{{ t('fcondm.titolo') }} — Photocarcifo {{ loop.index }}"
+           style="{% if m.width and m.height %}--prop: {{ m.width }} / {{ m.height }};{% endif %}">
+        <img decoding="async" loading="lazy" src="/fs/{{ token }}/miniatura/{{ m.id }}"
+             alt="{{ t('fcondm.titolo') }} — Photocarcifo {{ loop.index }}">
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div></section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ asset('/static/js/app.js') }}" defer></script>
+{% endblock %}

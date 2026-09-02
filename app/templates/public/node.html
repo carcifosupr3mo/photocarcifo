@@ -10,7 +10,7 @@
   Le cartelle riservate restano fuori: hanno un indirizzo segreto e non
   devono finire in nessun elenco pubblico.
 #}
-{% block head_extra %}{% if node.is_private %}<meta name="robots" content="noindex, nofollow">{% endif %}
+{% block head_extra %}{% if node.is_private or node.hidden %}<meta name="robots" content="noindex, nofollow">{% endif %}
 {%- if not node.is_private and not via_token %}
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
@@ -70,7 +70,16 @@
   <nav class="breadcrumb" aria-label="{{ t('com.percorso') }}">
     <a href="/">{{ t('com.home') }}</a>
     {% for cr in crumbs %}<span>/</span>
-      {% if loop.last %}<span class="current">{{ cr.title }}</span>
+      {#
+        cr.sbloccato viene deciso lato server (tree.py:_breadcrumb), non
+        qui: il template si limita a leggerlo. Un antenato riservato che
+        il visitatore non ha il diritto di vedere arriva gia' con
+        title/access_token annullati (None) — non mostra mai il nome
+        vero ne' un link, solo l'etichetta neutra "Privato", cosi' come
+        una cartella senza nome proprio.
+      #}
+      {% if loop.last %}<span class="current">{{ cr.title if cr.sbloccato else t('com.privato') }}</span>
+      {% elif not cr.sbloccato %}<span class="current">{{ t('com.privato') }}</span>
       {% elif cr.is_private %}{% if cr.access_token %}<a href="/p/{{ cr.access_token }}">{{ cr.title }}</a>{% else %}<span class="current">{{ cr.title }}</span>{% endif %}
       {% else %}<a href="/n/{{ cr.slug }}">{{ cr.title }}</a>{% endif %}
     {% endfor %}
@@ -120,18 +129,39 @@
         da solo non basta (chi lo ignora lo ignora), ma toglie di mezzo
         tutti quelli che le regole le rispettano.
       #}
-      <a class="btn" rel="nofollow" href="/zip/node/{{ node.id }}">{{ t('node.scarica_tutto') }} ({{ total_media }})</a>
+      <a class="btn" id="dlTutto" rel="nofollow" href="/zip/node/{{ node.id }}">{{ t('node.scarica_tutto') }} ({{ total_media }})</a>
+      {% else %}
+      <p class="dl-disattivi">{{ t('node.download_disattivi') }}</p>
       {% endif %}
-      <button class="btn btn-ghost" id="selMode" type="button">{{ t('node.seleziona') }}</button>
+      <button class="btn btn-ghost" id="selMode" type="button" title="{{ t('node.seleziona_aiuto') }}" aria-describedby="selModeAiuto">{{ t('node.seleziona') }}</button>
       {% if node.downloads_enabled %}
       <button class="btn btn-accent" id="dlSel" type="button" style="display:none;">{{ t('node.scarica_sel') }}</button>
       {% endif %}
+      {# Condividere non e' scaricare: il collegamento mostra la galleria e
+         basta, e lo ZIP dentro la pagina condivisa resta comunque legato a
+         downloads_enabled. Il bottone quindi non dipende dai download,
+         altrimenti in un album a download spento non si potrebbe piu'
+         condividere una scelta di fotografie pur potendole vedere. #}
+      <button class="btn btn-ghost" id="shareSel" type="button" style="display:none;">{{ t('node.condividi_sel') }}</button>
       {% if is_admin %}
       <button class="btn btn-danger" id="delSel" type="button" style="display:none;">{{ t('node.cestino') }}</button>
       {% endif %}
       <a class="btn btn-ghost" id="dlPref" href="#" style="display:none;">{{ t('node.scarica_pref') }}</a>
+      <button class="btn btn-ghost" id="selTutte" type="button" style="display:none;">{{ t('node.tutte') }}</button>
       <button class="btn btn-ghost" id="selCancel" type="button" style="display:none;">{{ t('node.annulla') }}</button>
+      {# Quante fotografie sono scelte in tutto l'album e non solo in questa
+         pagina: la selezione sopravvive al cambio pagina, quindi senza
+         questo riscontro chi sceglie immagini sparse non sa piu' quante ne
+         ha in mano. Lo riempie refreshBar(). #}
+      <p id="selEcho" role="status" aria-live="polite" style="display:none;"></p>
     </div>
+    {#
+      Testo sempre visibile e non solo a comparsa (title/tooltip): su
+      telefono non c'e' passaggio del mouse, quindi la spiegazione dei due
+      controlli distinti — cuore e casella — deve stare gia' scritta,
+      piccola e discreta, accanto alla barra.
+    #}
+    <p class="toolbar-aiuto" id="selModeAiuto">{{ t('node.controlli_aiuto') }}</p>
 
     <div class="vista-bar">
       <span class="ordina-eti">{{ t('node.vista') }}</span>
@@ -158,6 +188,7 @@
            {% if m.kind == 'video' %}data-video="/video/{{ m.id }}"{% else %}data-preview="/preview/{{ m.id }}"{% endif %}
            {% if node.downloads_enabled %}data-download="/download/{{ m.id }}"{% endif %}
            data-alt="{{ node.title }} — Photocarcifo"
+           {% if is_admin and node.cover_media_id == m.id %}data-copertina="1"{% endif %}
            {% if m.width and m.height %}style="--prop: {{ m.width }} / {{ m.height }};"{% endif %}>
         {#
           I due formati sono descritti per larghezza reale (640w e 1280w) e
@@ -181,9 +212,20 @@
 
     {% if pages > 1 %}
     <nav class="pager" aria-label="{{ t('com.pagine') }}">
-      {% if page > 1 %}<a class="btn btn-ghost" href="{{ base_url }}?page={{ page - 1 }}">{{ t('com.indietro') }}</a>{% endif %}
+      {#
+        rel="nofollow", come gia' sui quattro ordinamenti qui sopra:
+        senza, un crawler che segue i link normali di un album grande
+        arriva a ?page=2, poi da li' a ?page=3, e cosi' fino all'ultima —
+        per un album da qualche migliaio di foto sono decine di indirizzi
+        in piu' scoperti da un solo album, moltiplicati su tutti gli
+        album grandi del sito. La prima pagina resta l'unica che un
+        crawler raggiunge seguendo i link; le altre restano comunque
+        raggiungibili a chi le apre a mano (il pulsante funziona
+        lo stesso, nofollow riguarda solo chi segue i link in automatico).
+      #}
+      {% if page > 1 %}<a class="btn btn-ghost" rel="nofollow" href="{{ base_url }}?page={{ page - 1 }}">{{ t('com.indietro') }}</a>{% endif %}
       <span class="pager-now">{{ t('com.pagina_di').format(p=page, n=pages) }}</span>
-      {% if page < pages %}<a class="btn" href="{{ base_url }}?page={{ page + 1 }}">{{ t('com.altre') }}</a>{% endif %}
+      {% if page < pages %}<a class="btn" rel="nofollow" href="{{ base_url }}?page={{ page + 1 }}">{{ t('com.altre') }}</a>{% endif %}
     </nav>
     {% endif %}
   {% endif %}
