@@ -327,14 +327,14 @@ Due meccanismi distinti, verificati nel database e nel codice:
 **Condivisione di una singola foto** (colonna `media.share_token`, `media.share_created_at`):
 - Generata dalla route `POST /condividi/{media_id}`.
 - Accessibile pubblicamente via `/f/{token}` e i relativi sotto-percorsi (download, anteprima, miniatura, social, video).
-- **Non scade** (nessun campo di scadenza sul token della singola foto).
+- Scadenza opzionale (`media.share_expires_at`, aggiunta 02/09/2026): NULL = nessuna scadenza (comportamento di sempre); impostabile dal pannello Condivisioni (7/30/90 giorni).
 - Se la foto appartiene a un album privato, il link della foto vale come lasciapassare **solo per quella foto**, non per l'intero album — ma solo se l'album non è nascosto né scaduto (controlli che restano prioritari, vedi `_can_access` in sezione 5/16).
 
 **Condivisione multipla** (tabella `condivisioni`: `token`, `media_ids` come lista separata da virgole, `created_at`):
 - Generata da `POST /condividi/selezione`.
 - Accessibile via `/fs/{token}` e sotto-percorsi, inclusa una route ZIP dedicata (`/fs/{token}/zip`).
 - La selezione di ID viene filtrata per accessibilità al momento della creazione.
-- Anch'essa non ha campo di scadenza nello schema.
+- Scadenza opzionale (`condivisioni.expires_at`, aggiunta 02/09/2026), stesso meccanismo del link singolo.
 - Revocabile dal pannello (`POST /admin/tree/condivisioni/{id}/revoca`).
 
 **Album privati** (diversi dalla condivisione di singola foto):
