@@ -12,14 +12,14 @@ from fastapi.staticfiles import StaticFiles
 
 from . import lingue
 from .config import get_settings
-from .database import init_db, svuota_stat
+from .database import init_db, svuota_stat, svuota_node_stat
 from .cli import _seed_admin
 from .security import security_headers
 from .deps import _RedirectToLogin, redirect_to_login
 from .templating import templates, COOKIE_STILE
 from .routers import (tree, media, auth, admin, seo, admin_nodes, twofa,
                       upload, trash, preferiti, pref_admin, raduni, legacy,
-                      lingua, recensioni)
+                      lingua, recensioni, contattami, statistiche)
 
 
 @asynccontextmanager
@@ -27,7 +27,8 @@ async def lifespan(app: FastAPI):
     init_db()
     _seed_admin()
     yield
-    svuota_stat()   # non perdere le visite in coda
+    svuota_stat()        # non perdere le visite in coda
+    svuota_node_stat()   # ne' le statistiche per album
 
 
 settings = get_settings()
@@ -331,8 +332,10 @@ app.include_router(upload.router)
 app.include_router(trash.router)
 app.include_router(preferiti.router)
 app.include_router(pref_admin.router)
+app.include_router(statistiche.router)
 app.include_router(raduni.router)
 app.include_router(recensioni.router)
+app.include_router(contattami.router)
 app.include_router(lingua.router)
 app.include_router(legacy.router)  # indirizzi della vecchia galleria
 app.include_router(tree.router)   # tree per ultimo: contiene la root "/"
