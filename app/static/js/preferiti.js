@@ -28,6 +28,7 @@
       b.className = "cuore" + (scelte[id] ? " attivo" : "");
       b.type = "button";
       b.setAttribute("aria-label", T("pref_segna"));
+      b.title = T("pref_segna");
       b.setAttribute("aria-pressed", scelte[id] ? "true" : "false");
       b.innerHTML = "<svg viewBox='0 0 24 24' aria-hidden='true'>" +
         "<path d='M12 20.4 4.6 13a4.6 4.6 0 0 1 6.5-6.5l.9.9.9-.9A4.6 4.6 0 0 1 19.4 13z'/></svg>";

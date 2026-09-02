@@ -8,10 +8,11 @@ approvate dal pannello: senza questo passaggio la pagina si riempirebbe di
 pubblicita' automatica nel giro di poche settimane, come succede a
 qualunque modulo aperto su internet.
 
-Le difese contro l'invio automatico sono tre e nessuna disturba chi scrive
-davvero: un campo invisibile che solo i programmi compilano, un tetto di
-recensioni al giorno per collegamento, e un tempo minimo fra l'apertura
-della pagina e l'invio.
+Le difese contro l'invio automatico sono due e nessuna disturba chi scrive
+davvero: un campo invisibile che solo i programmi compilano, e un tetto di
+recensioni al giorno per collegamento. Un terzo controllo era stato
+previsto — un tempo minimo fra l'apertura della pagina e l'invio — ma non
+e' mai stato scritto: se serve va aggiunto qui, non solo nominato.
 """
 from datetime import datetime, timezone, timedelta
 

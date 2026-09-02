@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Contattami — {{ site_name() }}{% endblock %}
+{% block description %}{{ t('cont.descrizione') }}{% endblock %}
+{% block content %}
+
+<section class="hero"><div class="container">
+  <nav class="breadcrumb" aria-label="{{ t('com.percorso') }}">
+    <a href="/">{{ t('com.home') }}</a><span>/</span><span class="current">{{ t('nav.contattami') }}</span>
+  </nav>
+  <h1>{{ t('nav.contattami') }}</h1>
+  <p class="cont-sottotitolo">{{ t('cont.sottotitolo') }}</p>
+</div></section>
+
+<section class="section"><div class="container">
+
+  {% if inviato %}<div class="rec-esito ok">{{ t('cont.grazie') }}</div>{% endif %}
+  {% if errore %}<div class="rec-esito ko">{{ errore }}</div>{% endif %}
+
+  <form method="post" action="/contattami" class="cont-form" data-invio-unico>
+    <input type="text" name="sito_web" value="" autocomplete="off" tabindex="-1"
+           class="cont-honeypot" aria-hidden="true">
+    <label>Nome <input type="text" name="nome" maxlength="100" required></label>
+    <label>Cognome <input type="text" name="cognome" maxlength="100" required></label>
+    <label>Email <input type="email" name="email" maxlength="200" required></label>
+    <label>Telefono <input type="tel" name="telefono" maxlength="40"></label>
+    <label>Motivo
+      <select name="motivo" required>
+        <option value="">—</option>
+        {% for codice, etichetta in motivi %}
+        <option value="{{ codice }}">{{ etichetta }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Data evento <input type="text" name="data_evento" maxlength="60"></label>
+    <label>Luogo <input type="text" name="luogo" maxlength="100"></label>
+    <label>Messaggio <textarea name="messaggio" maxlength="3000" required></textarea></label>
+    <button class="btn btn-accent" type="submit">Invia</button>
+  </form>
+
+</div></section>
+{% endblock %}

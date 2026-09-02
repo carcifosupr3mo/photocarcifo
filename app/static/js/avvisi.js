@@ -62,6 +62,29 @@
     setTimeout(function () { via(a); }, DURATA);
   };
 
+  /* Avviso che resta finche' non lo si chiude: serve per le attese di cui
+     non si conosce la durata (la preparazione di un archivio di
+     fotografie). A differenza di PC.avviso non sparisce da solo — sparire
+     a meta' attesa direbbe a chi guarda che il lavoro e' finito quando non
+     lo e'. Restituisce un oggetto con .chiudi() da chiamare a cose fatte. */
+  PC.attesa = function (testo) {
+    if (!testo) return null;
+    var zona = prepara();
+    var a = document.createElement("div");
+    a.className = "avviso avviso-ok avviso-attesa";
+    a.setAttribute("role", "status");
+    a.setAttribute("aria-live", "polite");
+    var p = document.createElement("p");
+    p.textContent = testo;
+    a.appendChild(p);
+    zona.appendChild(a);
+    requestAnimationFrame(function () { a.classList.add("visibile"); });
+    return {
+      chiudi: function () { via(a); },
+      cambia: function (nuovo) { if (nuovo) p.textContent = nuovo; }
+    };
+  };
+
   /* Scorciatoia per il caso piu' frequente: una richiesta non riuscita. */
   PC.avvisoRete = function () {
     PC.avviso(scritta("rete_ko",
