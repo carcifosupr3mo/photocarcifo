@@ -1,0 +1,10 @@
+[Unit]
+Description=Photocarcifo - esporta configurazione sul NAS ogni notte
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

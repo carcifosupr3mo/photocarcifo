@@ -1457,3 +1457,17 @@ Plugin Claude Code (`DietrichGebert/ponytail`), installato a livello utente (non
 ## 43. Review UI pubblica (2026-09-02, fase 4)
 
 Ispezione visiva reale (screenshot Playwright, desktop 1440px e mobile 375px) di home, recensioni, contattami, radunimoto. Nessun problema concreto trovato oltre ai due bug già corretti nella card raduni (sezione 30, righe #7-8): griglia portfolio, form recensioni/contatti, navbar (inclusa voce RADUNI) risultano ordinati su entrambi i viewport, nessun overflow, nessuna sovrapposizione, tap target adeguati. Non ispezionate in questa sessione le pagine admin (richiedono login) — restano da coprire in una review successiva se necessario.
+
+---
+
+## 44. Disaster recovery (aggiunto 03/09/2026)
+
+Runbook completo, verificato sul sistema reale: `docs/DISASTER_RECOVERY.md`.
+
+**Perche' un documento a parte e non qui**: e' una procedura passo-passo lunga (ricostruzione container, mount NAS, ripristino database, systemd, nginx, TLS), non una nota di conoscenza — mescolarla a questo file la renderebbe piu' difficile da seguire in un momento di emergenza.
+
+**Riassunto**: se il container Proxmox viene perso, sopravvivono repository git, fotografie sul NAS e i backup esportati. I tre punti di rottura reali sono il database (coperto dal backup gia' esistente, sezione 11), le unit systemd (22 su 27 non erano versionate) e la configurazione nginx in uso. Introdotto `photocarcifo-export-config.sh` (timer notturno alle 03:30, dopo il backup del database) che porta tutto questo sul NAS, in `_backup_sito/configurazione` — cartella gia' esclusa dallo scanner (IGNORE_DIRS) e ristretta a `chmod 700` (verificato che la cartella condivisa del NAS aveva permessi 777, corretto prima di scriverci il backup della password admin/2FA).
+
+**Verificato in questa sessione**: restore del database su path temporaneo (`integrity_check` ok, conteggi identici al live), `systemd-analyze verify` su tutte le unit, `nginx -t` sulla configurazione in uso, esecuzione reale dello script di export (idempotente, con lock contro esecuzioni concorrenti).
+
+**Gap noto**: `deploy/install.sh` e' disallineato con il sistema reale (monta il NAS via CIFS/SMB con credenziali, mentre in produzione e' NFSv4 senza credenziali; dichiara Ubuntu 22.04 mentre il container reale e' 24.04; non installa `nfs-common` ne' `ffmpeg`). Serve per una prima installazione, non per un ripristino: in caso di dubbio vale `docs/DISASTER_RECOVERY.md`, non quello script.
