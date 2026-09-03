@@ -254,6 +254,14 @@ def test_scanner_stesso_stato_due_scansioni_zero_notifiche_indexnow(tmp_path, mo
     import app.scanner as scanner_mod
     monkeypatch.setattr(database_mod, "get_db", get_db_isolato)
     monkeypatch.setattr(scanner_mod, "get_db", get_db_isolato)
+    # tmp_path e' una cartella locale, non un vero mount NFS: senza
+    # questo, _nas_disponibile() la rifiuterebbe a ragione (e' proprio
+    # il caso che protegge in produzione). Qui si simula solo che il
+    # NAS sia raggiungibile, non si aggira il controllo altrove.
+    vero_ismount = scanner_mod.os.path.ismount
+    monkeypatch.setattr(
+        scanner_mod.os.path, "ismount",
+        lambda p: True if str(p) == str(nas) else vero_ismount(p))
 
     database_mod.init_db()
 

@@ -209,6 +209,21 @@ def controlla_db_integrita_completa(percorso=DB_PATH):
         return False, str(errore)
 
 
+def controlla_nas(percorso="/mnt/magazzino"):
+    """Vero solo se il NAS e' realmente montato, non solo se la cartella
+    esiste: un NFS che cade lascia il mountpoint locale al suo posto,
+    normale cartella (spesso vuota), che .exists() vedrebbe comunque
+    come presente. Stessa logica di app.scanner._nas_disponibile."""
+    try:
+        if not os.path.ismount(percorso):
+            return False
+        with os.scandir(percorso):
+            pass
+        return True
+    except OSError:
+        return False
+
+
 def controlla_disco(percorso=DISCO_PATH):
     try:
         uso = shutil.disk_usage(percorso)
@@ -394,6 +409,17 @@ def esegui_controlli(config=None, adesso=None):
                 "Database - integrity_check fallito", integ_dettaglio)),
             lambda: avvisa(costruisci_messaggio_recovery("Database (integrity_check)")),
         )
+
+    # ---- NAS: un solo alert alla caduta, uno al ritorno, silenzio
+    # se resta giu' o resta su fra un giro e l'altro
+    nas_ok = controlla_nas()
+    _transizione(
+        stato, "nas",
+        nas_ok,
+        lambda: avvisa(costruisci_messaggio_critical(
+            "NAS non raggiungibile", "/mnt/magazzino non e' montato o non risponde")),
+        lambda: avvisa(costruisci_messaggio_recovery("NAS")),
+    )
 
     # ---- disco
     livello_disco, liberi_pct = controlla_disco()

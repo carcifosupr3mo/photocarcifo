@@ -18,6 +18,17 @@ IGNORE_DIRS = {"@eadir", "pwg_representative", "#recycle", "_cestino", "_backup_
 PRIVATE_TOP = "SHOOTING_PRIVATI"
 
 
+class NASNonDisponibile(Exception):
+    """Il NAS e' caduto a meta' di una scansione gia' iniziata.
+
+    Distingue "questo file/cartella e' stato davvero rimosso sul NAS"
+    da "il NAS ha smesso di rispondere mentre lo stavamo leggendo": la
+    prima e' un'informazione vera che va registrata, la seconda non lo
+    e' e non deve mai tradursi in cancellazioni. Interrompe subito
+    run(), prima che il giro prosegua sulle categorie/cartelle non
+    ancora visitate scambiando per vuoto cio' che non e' raggiungibile."""
+
+
 def _slugify(text: str) -> str:
     text = text.strip().lower()
     text = re.sub(r"[^\w\s-]", "", text, flags=re.UNICODE)
@@ -39,6 +50,32 @@ def _prettify(name: str) -> str:
 
 def _is_ignored(name: str) -> bool:
     return name.lower() in IGNORE_DIRS
+
+
+def _nas_disponibile(root: Path) -> bool:
+    """Vero solo se il NAS e' realmente montato e leggibile, non solo se
+    la cartella esiste.
+
+    root.exists() da solo non basta: se l'NFS si stacca, il mountpoint
+    locale resta li' come una normale directory (spesso vuota) e
+    "esiste" comunque agli occhi del filesystem. Uno scan che si fidasse
+    solo di .exists() vedrebbe un NAS staccato come "cartella svuotata"
+    e cancellerebbe dal database ogni nodo e ogni fotografia che pensava
+    di trovarci: un NAS offline non deve mai poter sembrare un NAS
+    vuoto. os.path.ismount() guarda invece il dispositivo/mount reale
+    (st_dev), non il solo contenuto — e' la stessa distinzione che
+    "mount" o "findmnt" fanno da riga di comando."""
+    try:
+        if not os.path.ismount(root):
+            return False
+        # Il mount puo' risultare tecnicamente attivo ma non piu'
+        # rispondere (NFS "soft" che ha appena iniziato a fallire le
+        # richieste): un tentativo di lettura reale lo smaschera.
+        with os.scandir(root):
+            pass
+        return True
+    except OSError:
+        return False
 
 
 def _media_kind(suffix: str):
@@ -166,6 +203,13 @@ class Scanner:
                     except OSError:
                         continue
         except OSError:
+            # Cartella illeggibile: se il NAS e' ancora raggiungibile e'
+            # un problema locale a questa sola cartella (permessi,
+            # simlink rotto) e si prosegue come prima trattandola vuota;
+            # se invece il NAS e' sparito, non e' vuota, e' irraggiungibile
+            # — tutta la scansione va fermata, non solo questa cartella.
+            if not _nas_disponibile(self.root):
+                raise NASNonDisponibile(str(abs_dir))
             return 0
 
         db_media = {r["rel_path"]: r for r in conn.execute(
@@ -248,6 +292,8 @@ class Scanner:
                     except OSError:
                         continue
         except OSError:
+            if not _nas_disponibile(self.root):
+                raise NASNonDisponibile(str(abs_dir))
             return 0
 
         node_id = self._get_or_create_node(conn, abs_dir, parent_id, depth, is_private)
@@ -289,17 +335,40 @@ class Scanner:
         return subtotal
 
     def run(self) -> dict:
-        if not self.root.exists():
-            log_event("ERROR", "scan", f"PHOTO_ROOT non accessibile: {self.root}")
-            _log(f"ERRORE: {self.root} non accessibile")
+        if not _nas_disponibile(self.root):
+            # Qui ci si ferma PRIMA di toccare qualunque riga di nodes o
+            # media: il resto di run() cancella dal database cio' che
+            # non trova piu' sul NAS, quindi se il NAS non e' davvero
+            # raggiungibile bisogna uscire subito, non entrare nel giro
+            # e interpretare l'assenza come "e' stato tutto rimosso".
+            log_event("ERROR", "scan", f"NAS non disponibile — scan annullato: {self.root}")
+            _log(f"NAS non disponibile — scan annullato: {self.root}")
             return self.result
 
         _log("Avvio scansione ad albero...")
         with get_db() as conn:
-            for r in conn.execute(
+            try:
+                righe = conn.execute(
                     "SELECT id, rel_path, slug, total_media, is_private, hidden "
-                    "FROM nodes").fetchall():
-                if not (self.root / r["rel_path"]).exists():
+                    "FROM nodes").fetchall()
+                for i, r in enumerate(righe):
+                    try:
+                        assente = not (self.root / r["rel_path"]).exists()
+                    except OSError:
+                        assente = True
+                    if not assente:
+                        continue
+                    # Prima di cancellare, non ci si fida del primo
+                    # .exists() negativo da solo: puo' essere il NAS
+                    # caduto proprio durante questo giro (che scorre
+                    # TUTTI i nodi del database, anche migliaia) invece
+                    # di una cartella davvero rimossa. Stesso principio
+                    # gia' applicato in _walk()/_sync_media(): qui serve
+                    # perche' e' l'altro punto del file che cancella
+                    # nodes in base alla sola presenza sul filesystem.
+                    if not _nas_disponibile(self.root):
+                        raise NASNonDisponibile(
+                            f"durante la pulizia nodi (riga {i+1}/{len(righe)}): {r['rel_path']}")
                     conn.execute("DELETE FROM nodes WHERE id=?", (r["id"],))
                     self.result["nodes_removed"] += 1
                     if r["total_media"] and not r["is_private"] and not r["hidden"]:
@@ -309,18 +378,33 @@ class Scanner:
                         # caso "svuotata ma ancora presente" gestito in
                         # _walk().
                         self._slug_da_notificare.add(r["slug"])
-            conn.commit()
+                conn.commit()
 
-            top = []
-            try:
-                with os.scandir(self.root) as it:
-                    for entry in it:
-                        if entry.is_dir(follow_symlinks=False) and not _is_ignored(entry.name):
-                            top.append(Path(entry.path))
-            except OSError:
-                pass
-            for cat in sorted(top):
-                self._walk(conn, cat, None, 0, 0)
+                top = []
+                try:
+                    with os.scandir(self.root) as it:
+                        for entry in it:
+                            if entry.is_dir(follow_symlinks=False) and not _is_ignored(entry.name):
+                                top.append(Path(entry.path))
+                except OSError:
+                    if not _nas_disponibile(self.root):
+                        raise NASNonDisponibile(f"listato categorie: {self.root}")
+                for cat in sorted(top):
+                    self._walk(conn, cat, None, 0, 0)
+            except NASNonDisponibile as exc:
+                log_event("ERROR", "scan",
+                          f"NAS caduto durante lo scan, interrotto a meta': {exc}")
+                _log(f"NAS caduto durante lo scan, interrotto a meta': {exc}")
+                # Niente IndexNow: la lista di slug raccolta finora
+                # riflette solo la parte di albero vista prima della
+                # caduta, non lo stato reale del sito. I DELETE gia'
+                # committati sopra (se il crollo e' avvenuto dopo quel
+                # commit) non si possono disfare qui: e' per questo che
+                # ogni cancellazione, prima di eseguire, riverifica
+                # _nas_disponibile() invece di limitarsi a un controllo
+                # una tantum a inizio funzione.
+                self._slug_da_notificare.clear()
+                return self.result
             # Le pagine ordinano per data dello scatto piu' recente: la si
             # calcola qui una volta sola, non a ogni visita.
             ricalcola_date_album(conn)

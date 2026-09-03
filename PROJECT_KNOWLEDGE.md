@@ -535,6 +535,20 @@ Componente: `app/scanner.py`, classe `Scanner`. Eseguito sia manualmente (`pytho
 
 **Notifica IndexNow post-scansione**: gli slug degli album che sono comparsi o spariti dai risultati pubblici durante la scansione vengono raccolti in un insieme (`_slug_da_notificare`) e notificati in un'unica chiamata batch a fine `run()`.
 
+### Resilienza a NAS offline (aggiunto 03/09/2026)
+
+**Il bug che questo fix previene**: un NFS che cade lascia il mountpoint locale al suo posto, come una normale cartella (spesso vuota) — `Path.exists()` la vede comunque come presente. Uno scanner che si fidasse solo di `.exists()` interpreterebbe un NAS irraggiungibile come tutte le cartelle sono state cancellate e procederebbe a cancellare da `nodes`/`media` tutto cio' che pensava di trovarci: un NAS offline non deve mai poter sembrare un NAS vuoto.
+
+**Health check** (`_nas_disponibile(root)`, in `app/scanner.py`): vero solo se `os.path.ismount(root)` e' vero (guarda il device/mount reale, non il contenuto) **e** una lettura di prova (`os.scandir`) riesce. Usato: (1) come primo controllo in `Scanner.run()`, prima di toccare qualunque riga del DB; (2) ri-verificato prima di ogni singola cancellazione nei tre punti del file che eseguono `DELETE` in base alla presenza sul filesystem — il ciclo di pulizia nodi orfani in `run()`, `_walk()`, `_sync_media()`.
+
+**Fail-safe**: se il NAS non e' disponibile all'avvio, lo scan si annulla subito (log `ERROR`, nessuna scrittura). Se cade **a meta'** di uno scan gia' iniziato, viene sollevata l'eccezione dedicata `NASNonDisponibile`, catturata a livello di `run()`: lo scan si interrompe, non notifica IndexNow (la lista di slug raccolta rifletterebbe solo la parte di albero vista prima della caduta, non lo stato reale del sito) e ritorna senza completare il resto del ciclo.
+
+**Limite onestamente residuo**: se un `conn.commit()` e' gia' avvenuto prima che il NAS cada, quel commit non e' retroattivamente annullabile. Il fix minimizza la finestra di rischio ri-verificando prima di ogni singola cancellazione (non solo una volta a inizio funzione), ma non elimina il rischio residuo di un batch gia' scritto su disco in una finestra dove l'health check era passato un istante prima.
+
+**Alert**: `script/photocarcifo-monitor.py`, funzione `controlla_nas()` (stessa logica di `_nas_disponibile`), integrata nel ciclo esistente di `_transizione()`: un solo alert Telegram alla caduta, uno al ripristino, silenzio se lo stato NAS resta invariato fra un giro e l'altro — nessun sistema di notifica nuovo, riusa quello gia' in produzione per disco/servizi.
+
+**Test**: `tests/test_scanner_nas.py` — mount reale, path inesistente, cartella locale vuota (il caso critico: non deve leggersi come disponibile solo perche' `.exists()` e' vero), cartella illeggibile, scan end-to-end su root non montata (zero righe toccate), e caduta simulata del NAS a meta' del ciclo di pulizia orfani (un nodo certamente assente non viene cancellato, ne' lo e' alcun altro).
+
 ---
 
 ## 13. IndexNow e indicizzazione
@@ -710,7 +724,7 @@ Entrambi con opzioni `_netdev,soft` in `/etc/fstab`.
 
 **Permessi**: la separazione read-only/read-write è la barriera principale contro modifiche accidentali o dolose al NAS dal lato applicativo — solo due file del codice (`upload.py`, `trash.py`) usano il percorso scrivibile.
 
-**Comportamento offline**: `RequiresMountsFor=/mnt/magazzino` sul servizio OCR impedisce l'avvio se il NAS non è raggiungibile; il comportamento dell'applicazione web principale in caso di NAS irraggiungibile durante il funzionamento normale non è stato testato attivamente in questa sessione (nessun test di disconnessione eseguito, per non impattare il servizio in produzione) — lo scanner logga un errore esplicito (`log_event("ERROR", "scan", ...)`) e interrompe la scansione se `PHOTO_ROOT` non esiste.
+**Comportamento offline**: `RequiresMountsFor=/mnt/magazzino` sul servizio OCR impedisce l'avvio se il NAS non è raggiungibile. Lo scanner ha un health check dedicato (`_nas_disponibile`, sezione 12) che si ferma prima di cancellare qualunque riga se il NAS non è un mount realmente attivo — non solo se `PHOTO_ROOT` non esiste come cartella, ma anche se esiste come mountpoint locale caduto. Le pagine web (thumbnail/download/ZIP) verificate con NAS offline in questa sessione tramite `_nas_disponibile`/mount reale: restano soggette ai normali errori di I/O (404/500) su richieste dirette ai file, ma non causano cancellazioni — solo lo scanner scrive nel DB in base alla presenza filesystem. Il mount `soft` in `/etc/fstab` fa sì che una richiesta su NAS lento/irraggiungibile fallisca con errore I/O dopo il timeout configurato (`timeo`/`retrans`) invece di bloccare indefinitamente il processo — comportamento verificato a livello di configurazione mount, non con un test di rete reale in questa sessione.
 
 **Relazione con gli album**: ogni cartella di primo livello sotto `/volume1/photocarcifo` diventa una categoria; `SHOOTING_PRIVATI` è il nome speciale che rende privato l'intero sottoalbero (sezione 6).
 
