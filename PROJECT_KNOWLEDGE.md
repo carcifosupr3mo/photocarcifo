@@ -432,6 +432,18 @@ Colonne principali: `id`, `node_id` (FK, cascade), `kind` (`image`/`video`), `re
 
 ### Migrazioni
 Il file mantiene un elenco esplicito di colonne aggiunte dopo la prima versione dello schema (`MIGRAZIONI`), applicate con `ALTER TABLE` idempotente all'avvio, perché `CREATE TABLE IF NOT EXISTS` non modifica tabelle già esistenti.
+### Backup (aggiunto 03/09/2026)
+Backup giornaliero automatico e verificato, indipendente dalla copia che `photocarcifo-notte.sh` fa già prima di ogni aggiornamento di sistema (quella tiene solo 3 giorni e si ferma se l'aggiornamento fallisce prima di arrivarci).
+
+- **Metodo**: `sqlite3 "$DB" ".backup 'file'"` — API di backup SQLite, sicura con WAL attivo e con l'app in esecuzione (non una copia raw del file `.db`).
+- **Script**: `/usr/local/bin/photocarcifo-db-backup.sh`.
+- **Destinazione**: `/opt/photocarcifo-db-backup/` — fuori dal repository, permessi `700` sulla directory e `600` sui file (solo root).
+- **Retention**: 14 backup giornalieri rolling, rimossi solo dopo che il nuovo backup è stato creato E verificato.
+- **Verifica automatica ad ogni run**: `PRAGMA integrity_check`, conteggi `nodes`/`media` non nulli, confronto dimensione logica (byte via `stat`, non `du` — il DB è un file sparse dopo VACUUM, `du` lo sottostima) contro l'originale.
+- **Timer**: `photocarcifo-db-backup.timer`, ogni notte alle 03:00 (tra `pregen` alle 01:00 e `notte` alle 04:32, per catturare lo stato prima del VACUUM notturno).
+- **Alert**: solo su fallimento, via lo stesso meccanismo Telegram di `photocarcifo-mensile.sh` (`/etc/photocarcifo-telegram.conf`) — nessun messaggio sui successi.
+- **Restore** (mai eseguito sul DB live in questa sessione, solo verificato su copia): fermare il servizio, copiare il file di backup su `data/photocarcifo.db` (rimuovendo eventuali `-wal`/`-shm` residui del vecchio file), riavviare. Verificato che un backup si apra e risponda a query reali senza toccare il database in produzione.
+
 
 ### Conteggi reali (verificati con query dirette al DB, 2026-09-02)
 | Tabella/metrica | Valore |
