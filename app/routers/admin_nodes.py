@@ -484,7 +484,8 @@ def media_share_revoke(request: Request, media_id: int, csrf_token: str = Form(.
         if not m:
             raise HTTPException(status_code=404, detail="Fotografia non trovata")
         conn.execute(
-            "UPDATE media SET share_token=NULL, share_created_at=NULL WHERE id=?",
+            "UPDATE media SET share_token=NULL, share_created_at=NULL, "
+            "share_expires_at=NULL WHERE id=?",
             (media_id,))
     return JSONResponse({"ok": True})
 
