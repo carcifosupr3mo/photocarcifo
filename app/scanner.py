@@ -328,6 +328,13 @@ class Scanner:
 
         if subtotal == 0 and not self._configurato(conn, node_id):
             conn.execute("DELETE FROM nodes WHERE id=?", (node_id,))
+            # Il nodo puo' essere stato creato proprio in questo giro (una
+            # riga piu' su, in _get_or_create_node) e poi scartato subito
+            # perche' vuota: e' comunque una cancellazione avvenuta durante
+            # questo scan, va contata come le altre (vedi riga ~373) o il log
+            # mostra solo la meta' dell'evento ("+3 aggiunti" senza mai un
+            # "-3 rimossi" a bilanciarlo, anche se il DB resta invariato).
+            self.result["nodes_removed"] += 1
         else:
             conn.commit()
             _log(f"{'  '*depth}{_prettify(name)}: {direct} diretti, {subtotal} totali")

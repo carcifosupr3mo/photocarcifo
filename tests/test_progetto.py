@@ -284,3 +284,115 @@ def test_scanner_stesso_stato_due_scansioni_zero_notifiche_indexnow(tmp_path, mo
     s3.run()
     assert s3._slug_da_notificare == set(), (
         f"scan dopo un 'restart' simulato ha rinotificato album gia' noti: {s3._slug_da_notificare}")
+
+
+def _scanner_isolato(tmp_path, monkeypatch):
+    """Stesso setup di test_scanner_stesso_stato_due_scansioni_zero_notifiche_indexnow:
+    Scanner reale su un NAS finto in tmp_path, DB isolato su file temporaneo."""
+    import sqlite3
+    import contextlib
+
+    monkeypatch.setenv("SITE_URL", "https://photocarcifo.ch")
+    monkeypatch.setenv("INDEXNOW_KEY", "")
+    from app.config import get_settings
+    get_settings.cache_clear()
+
+    nas = tmp_path / "nas"
+    nas.mkdir()
+    dbfile = tmp_path / "photocarcifo.db"
+
+    @contextlib.contextmanager
+    def get_db_isolato():
+        conn = sqlite3.connect(str(dbfile))
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys=ON")
+        try:
+            yield conn
+            conn.commit()
+        finally:
+            conn.close()
+
+    from app import database as database_mod
+    import app.scanner as scanner_mod
+    monkeypatch.setattr(database_mod, "get_db", get_db_isolato)
+    monkeypatch.setattr(scanner_mod, "get_db", get_db_isolato)
+    vero_ismount = scanner_mod.os.path.ismount
+    monkeypatch.setattr(
+        scanner_mod.os.path, "ismount",
+        lambda p: True if str(p) == str(nas) else vero_ismount(p))
+
+    database_mod.init_db()
+    return nas, scanner_mod
+
+
+def _conta_nodi(dbfile):
+    import sqlite3
+    conn = sqlite3.connect(str(dbfile))
+    n = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
+    conn.close()
+    return n
+
+
+def test_cartella_vuota_transitoria_conta_come_aggiunta_e_rimossa(tmp_path, monkeypatch):
+    """Una cartella vista dal filesystem, creata come nodo e subito scartata
+    (vuota, non configurata) nello stesso ciclo di scan: e' un evento di
+    aggiunta E un evento di rimozione avvenuti entrambi durante questo scan,
+    anche se il DB finale non cambia. Prima del fix, nodes_removed restava a
+    0 nonostante il DELETE fosse eseguito davvero (vedi app/scanner.py, il
+    DELETE per "subtotal == 0 and not configurato")."""
+    nas, scanner_mod = _scanner_isolato(tmp_path, monkeypatch)
+    (nas / "CartellaVuota").mkdir()
+
+    s = scanner_mod.Scanner(full=False)
+    s.root = nas
+    esito = s.run()
+
+    assert esito["nodes_added"] == 1
+    assert esito["nodes_removed"] == 1
+    dbfile = tmp_path / "photocarcifo.db"
+    assert _conta_nodi(dbfile) == 0, "il nodo transitorio non deve restare nel DB"
+
+
+def test_album_reale_con_media_incrementa_solo_nodes_added(tmp_path, monkeypatch):
+    """Un album con una fotografia vera resta nel DB: aggiunto, mai
+    rimosso."""
+    nas, scanner_mod = _scanner_isolato(tmp_path, monkeypatch)
+    (nas / "CATEGORIA" / "Album").mkdir(parents=True)
+    from PIL import Image
+    Image.new("RGB", (10, 10)).save(nas / "CATEGORIA" / "Album" / "foto1.jpg")
+
+    s = scanner_mod.Scanner(full=False)
+    s.root = nas
+    esito = s.run()
+
+    assert esito["nodes_added"] == 2  # CATEGORIA + Album
+    assert esito["nodes_removed"] == 0
+    dbfile = tmp_path / "photocarcifo.db"
+    assert _conta_nodi(dbfile) == 2
+
+
+def test_nodo_esistente_sparito_dal_nas_incrementa_nodes_removed(tmp_path, monkeypatch):
+    """Il percorso di rimozione gia' esistente (nodo persistito in un giro
+    precedente, poi sparito davvero dal NAS) deve continuare a funzionare
+    come prima: non e' quello toccato dal fix."""
+    nas, scanner_mod = _scanner_isolato(tmp_path, monkeypatch)
+    (nas / "CATEGORIA" / "Album").mkdir(parents=True)
+    from PIL import Image
+    Image.new("RGB", (10, 10)).save(nas / "CATEGORIA" / "Album" / "foto1.jpg")
+
+    s = scanner_mod.Scanner(full=False)
+    s.root = nas
+    r1 = s.run()
+    assert r1["nodes_added"] == 2
+
+    # La cartella Album (con la foto) sparisce davvero dal NAS.
+    import shutil
+    shutil.rmtree(nas / "CATEGORIA" / "Album")
+
+    s2 = scanner_mod.Scanner(full=False)
+    s2.root = nas
+    r2 = s2.run()
+
+    assert r2["nodes_removed"] >= 1
+    dbfile = tmp_path / "photocarcifo.db"
+    assert _conta_nodi(dbfile) == 0
