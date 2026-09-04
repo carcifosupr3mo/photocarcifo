@@ -883,7 +883,7 @@ Le impostazioni sono centralizzate in `app/config.py` (classe `Settings`, `pydan
 
 **Nota**: `PHOTO_ROOT_RW` (percorso di scrittura NAS) **non va messo in `.env`** secondo la documentazione interna — i moduli che ne hanno bisogno lo leggono dall'ambiente con un valore predefinito, per una scelta di sicurezza esplicita (`config.py` rifiuta variabili non dichiarate nello schema Pydantic, quindi una variabile extra in `.env` farebbe fallire l'avvio).
 
-Esiste inoltre un file separato `/etc/photocarcifo-smb.cred` con le credenziali di mount del NAS — **verificata solo l'esistenza del file**, contenuto non letto.
+Esisteva un file separato `/etc/photocarcifo-smb.cred`, residuo storico della vecchia configurazione CIFS (mai letto, solo verificata l'esistenza): rimosso il 04/09/2026 dopo aver verificato che non fosse piu' referenziato da fstab, systemd, nginx, script o dal repository.
 
 ---
 
