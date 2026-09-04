@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================
-# Photocarcifo - Script di installazione per Ubuntu Server 22.04
+# Photocarcifo - Script di installazione per Ubuntu Server 24.04
 # Da eseguire come root sul container Proxmox (192.168.1.206)
 #
 #   chmod +x deploy/install.sh
@@ -11,10 +11,12 @@ set -euo pipefail
 APP_DIR="/opt/photocarcifo"
 SERVICE_USER="photocarcifo"
 MOUNT_POINT="/mnt/magazzino"
+MOUNT_POINT_RW="/mnt/magazzino-rw"
 
 echo "==> [1/8] Aggiornamento pacchetti e dipendenze di sistema"
 apt-get update
-apt-get install -y python3 python3-venv python3-pip cifs-utils nginx openssl
+apt-get install -y python3 python3-venv python3-pip nfs-common nginx openssl \
+                   ffmpeg sqlite3 certbot python3-certbot-nginx
 
 echo "==> [2/8] Creazione utente di servizio (senza login shell)"
 if ! id "$SERVICE_USER" &>/dev/null; then
@@ -43,30 +45,44 @@ if [ ! -f "$APP_DIR/.env" ]; then
     echo "    -> MODIFICA ADMIN_PASSWORD in $APP_DIR/.env prima del primo avvio!"
 fi
 
-echo "==> [6/8] Creazione mount point NAS ($MOUNT_POINT)"
-mkdir -p "$MOUNT_POINT"
-if [ ! -f /etc/photocarcifo-smb.cred ]; then
-    cat > /etc/photocarcifo-smb.cred <<'EOF'
-username=IL_TUO_UTENTE_SYNOLOGY
-password=LA_TUA_PASSWORD_SYNOLOGY
-EOF
-    chmod 600 /etc/photocarcifo-smb.cred
-    echo "    -> Modifica /etc/photocarcifo-smb.cred con le credenziali Synology."
+echo "==> [6/8] Creazione mount point NAS ($MOUNT_POINT, $MOUNT_POINT_RW)"
+mkdir -p "$MOUNT_POINT" "$MOUNT_POINT_RW"
+
+# Mount NFSv4 (nessuna credenziale richiesta): un mount read-only e uno
+# read-write sullo stesso export, usati da parti diverse dell'app.
+FSTAB_LINE_RO="192.168.1.11:/volume1/photocarcifo  ${MOUNT_POINT}  nfs4  ro,_netdev,soft  0  0"
+FSTAB_LINE_RW="192.168.1.11:/volume1/photocarcifo  ${MOUNT_POINT_RW}  nfs4  rw,_netdev,soft  0  0"
+
+if ! grep -q "$MOUNT_POINT " /etc/fstab; then
+    echo "$FSTAB_LINE_RO" >> /etc/fstab
+fi
+if ! grep -q "$MOUNT_POINT_RW " /etc/fstab; then
+    echo "$FSTAB_LINE_RW" >> /etc/fstab
 fi
 
-# Aggiunge la voce a /etc/fstab se non presente (mount SMB read-only)
-FSTAB_LINE="//192.168.1.11/Foto  ${MOUNT_POINT}  cifs  credentials=/etc/photocarcifo-smb.cred,ro,uid=${SERVICE_USER},iocharset=utf8,vers=3.0,nofail,x-systemd.automount  0  0"
-if ! grep -q "$MOUNT_POINT" /etc/fstab; then
-    echo "$FSTAB_LINE" >> /etc/fstab
-    echo "    -> Voce fstab aggiunta. Monto adesso..."
-    systemctl daemon-reload || true
-    mount -a || echo "    !! Mount fallito: verifica credenziali/percorso NAS."
-fi
+systemctl daemon-reload || true
+mount -a || echo "    !! Mount fallito: verifica il percorso NAS."
+
+for mp in "$MOUNT_POINT" "$MOUNT_POINT_RW"; do
+    if mountpoint -q "$mp"; then
+        echo "    -> $mp montato correttamente."
+    else
+        # Una cartella vuota locale può sembrare valida a un semplice ls/exists
+        # senza esserlo davvero: controllare sempre con mountpoint, non solo ls.
+        echo "    !! $mp NON risulta montato (mountpoint -q fallito)."
+    fi
+done
 
 echo "==> [7/8] Permessi e installazione servizi systemd + nginx"
 chown -R "$SERVICE_USER":"$SERVICE_USER" "$APP_DIR/data"
 chown -R "$SERVICE_USER":"$SERVICE_USER" "$APP_DIR"
 
+# Solo le 5 unit base del repository. Le altre 22 unit runtime (bot, covers,
+# db-backup, errori, mensile, monitor, notte, pregen, rapporto, sentinella,
+# update, export-config) NON vengono ricreate qui: si ripristinano solo
+# dall'export su NAS (_backup_sito/configurazione/systemd/) in caso di
+# disaster recovery (vedi docs/DISASTER_RECOVERY.md §3.10). Questo script
+# serve per un'installazione da zero, non per un ripristino.
 cp "$APP_DIR/deploy/photocarcifo.service" /etc/systemd/system/photocarcifo.service
 cp "$APP_DIR/deploy/photocarcifo-scan.service" /etc/systemd/system/photocarcifo-scan.service
 cp "$APP_DIR/deploy/photocarcifo-scan.timer" /etc/systemd/system/photocarcifo-scan.timer
@@ -77,6 +93,9 @@ cp "$APP_DIR/deploy/photocarcifo-numeri.timer" /etc/systemd/system/photocarcifo-
 # un sito avviato viene perfezionata a mano (certificati HTTPS, upload senza
 # limite di dimensione, cache che salta i cookie degli album riservati):
 # copiarci sopra il modello del progetto farebbe cadere il sito.
+# Il file copiato qui e' solo un modello iniziale, non la configurazione di
+# produzione: quella si ripristina dall'export DR in caso di disaster
+# recovery (vedi docs/DISASTER_RECOVERY.md §3.12).
 if [ ! -f /etc/nginx/sites-available/photocarcifo ]; then
     cp "$APP_DIR/deploy/nginx.conf" /etc/nginx/sites-available/photocarcifo
     ln -sf /etc/nginx/sites-available/photocarcifo /etc/nginx/sites-enabled/photocarcifo
@@ -99,9 +118,8 @@ echo " Sito:       http://192.168.1.206"
 echo " Dashboard:  http://192.168.1.206/admin"
 echo ""
 echo " PROSSIMI PASSI:"
-echo "  1. Modifica /etc/photocarcifo-smb.cred con le credenziali NAS"
-echo "  2. Modifica ADMIN_PASSWORD in $APP_DIR/.env"
-echo "  3. systemctl restart photocarcifo"
-echo "  4. Lancia la prima scansione dalla dashboard o:"
+echo "  1. Modifica ADMIN_PASSWORD in $APP_DIR/.env"
+echo "  2. systemctl restart photocarcifo"
+echo "  3. Lancia la prima scansione dalla dashboard o:"
 echo "     sudo systemctl start photocarcifo-scan.service"
 echo "-------------------------------------------------------------"
