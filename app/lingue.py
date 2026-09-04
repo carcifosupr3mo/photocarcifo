@@ -1235,8 +1235,10 @@ TESTI.update({
         "de": "Die Bilder auf dieser Website stammen von Photocarcifo: für den persönlichen Gebrauch darfst du sie mit Nennung von @photocarcifo verwenden. Jede kommerzielle Nutzung oder Nutzung ohne Namensnennung braucht eine Erlaubnis. Die Website verwendet nur technische Cookies, ohne Werbung und ohne Tracking.",
         "es": "Las imágenes de este sitio son obra de Photocarcifo: puedes usarlas de forma personal citando a @photocarcifo. Cualquier uso comercial o sin crédito requiere autorización. El sitio usa solo cookies técnicas, sin publicidad ni seguimiento."},
     "js.cookie_leggi": {
-        "it": "Leggi tutto", "en": "Read more", "fr": "Tout lire",
-        "de": "Mehr lesen", "es": "Leer todo"},
+        "it": "Leggi l'informativa sulla privacy", "en": "Read our Privacy Policy",
+        "fr": "Lire notre politique de confidentialité",
+        "de": "Datenschutzerklärung lesen",
+        "es": "Leer nuestra política de privacidad"},
     "js.cookie_ok": {
         "it": "Accetto", "en": "I agree", "fr": "J'accepte",
         "de": "Einverstanden", "es": "Acepto"},
