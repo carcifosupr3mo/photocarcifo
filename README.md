@@ -5,9 +5,9 @@ Le foto restano SEMPRE sul NAS (montato in sola lettura); il sito le indicizza
 e le serve senza mai copiarle nel container.
 
 ## Infrastruttura
-- Container Ubuntu Server 22.04 LTS — `192.168.1.206`
+- Container Ubuntu Server 24.04 LTS — `192.168.1.206`
 - Synology (hostname `magazzino`) — `192.168.1.11`, cartella foto `/volume1/Foto`
-- Mount SMB read-only in `/mnt/magazzino`
+- Mount NFSv4 read-only in `/mnt/magazzino` (nessuna credenziale richiesta)
 - Nginx davanti a FastAPI (uvicorn)
 
 ## Installazione rapida (Copy & Paste)
@@ -21,21 +21,16 @@ sudo ./deploy/install.sh
 ```
 
 Lo script installa dipendenze, crea l'utente di servizio, il virtualenv,
-configura il mount SMB, i servizi systemd e Nginx.
+configura il mount NFS, i servizi systemd e Nginx.
 
 ## Dopo l'installazione
 
-1. Inserisci le credenziali del NAS:
-   ```bash
-   sudo nano /etc/photocarcifo-smb.cred
-   sudo mount -a
-   ```
-2. Imposta la password admin:
+1. Imposta la password admin:
    ```bash
    sudo nano /opt/photocarcifo/.env      # modifica ADMIN_PASSWORD
    sudo systemctl restart photocarcifo
    ```
-3. Prima scansione del NAS:
+2. Prima scansione del NAS:
    ```bash
    sudo systemctl start photocarcifo-scan.service
    ```

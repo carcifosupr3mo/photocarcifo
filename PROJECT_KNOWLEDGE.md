@@ -838,7 +838,7 @@ venv/bin/python -m pytest tests -q
 
 **NAS**: Synology `192.168.1.11`, montato via NFS come descritto in sezione 19.
 
-**Installazione da zero**: documentata in README/`deploy/install.sh`/`INSTALLA.sh` — carica il progetto sul container, esegue `deploy/install.sh` che installa dipendenze, crea utente di servizio, virtualenv, mount SMB/NFS, servizi systemd e Nginx. Non eseguita/testata in questa sessione (il sistema è già in produzione).
+**Installazione da zero**: documentata in README/`deploy/install.sh`/`INSTALLA.sh` — carica il progetto sul container, esegue `deploy/install.sh` che installa dipendenze, crea utente di servizio, virtualenv, mount NFS, servizi systemd e Nginx. Non eseguita/testata in questa sessione (il sistema è già in produzione).
 
 **Aggiornamento in produzione**: procedura descritta nel README — non si riavvia mai manualmente il servizio; si usa `script/photocarcifo-applica.sh`, che esegue nell'ordine: controllo sintassi Python, ricerca di codice morto (pyflakes), controllo sintassi JavaScript, tentativo di caricamento dell'app, l'intera suite di test, verifica configurazione Nginx — e solo se tutto passa riavvia e verifica dal vivo che dodici indirizzi rispondano correttamente. Motivazione esplicita: i template Jinja2 si rileggono ad ogni richiesta, il codice Python solo al riavvio — modificare un template prima del codice correlato romperebbe temporaneamente tutte le pagine.
 
@@ -1470,4 +1470,4 @@ Runbook completo, verificato sul sistema reale: `docs/DISASTER_RECOVERY.md`.
 
 **Verificato in questa sessione**: restore del database su path temporaneo (`integrity_check` ok, conteggi identici al live), `systemd-analyze verify` su tutte le unit, `nginx -t` sulla configurazione in uso, esecuzione reale dello script di export (idempotente, con lock contro esecuzioni concorrenti).
 
-**Gap noto**: `deploy/install.sh` e' disallineato con il sistema reale (monta il NAS via CIFS/SMB con credenziali, mentre in produzione e' NFSv4 senza credenziali; dichiara Ubuntu 22.04 mentre il container reale e' 24.04; non installa `nfs-common` ne' `ffmpeg`). Serve per una prima installazione, non per un ripristino: in caso di dubbio vale `docs/DISASTER_RECOVERY.md`, non quello script.
+**Gap chiuso (04/09/2026)**: `deploy/install.sh` era disallineato con il sistema reale (montava il NAS via CIFS/SMB con credenziali, dichiarava Ubuntu 22.04, non installava `nfs-common` ne' `ffmpeg`). Allineato nel commit 2a0fad1: ora monta via NFSv4 senza credenziali, dichiara Ubuntu 24.04, installa i pacchetti mancanti. Resta comunque per una prima installazione da zero (copia solo 5 unit su 27): per un ripristino vale `docs/DISASTER_RECOVERY.md`, non lo script.

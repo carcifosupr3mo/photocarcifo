@@ -109,9 +109,8 @@ proprietario root): l'elenco delle chiavi è in
 
 ### 3.7 Mount del NAS
 
-**Attenzione**: `deploy/install.sh` monta ancora via CIFS/SMB con un file
-di credenziali. Il sistema reale usa NFSv4 senza credenziali. Vale questo,
-non lo script:
+`deploy/install.sh` monta gia' via NFSv4, come il sistema reale (nessuna
+credenziale richiesta):
 
 ```bash
 mkdir -p /mnt/magazzino /mnt/magazzino-rw
@@ -303,7 +302,7 @@ configurazione nginx cresciuta a mano non si riscrivono a memoria.
   `/var/log/photocarcifo-export-config.log`.
 - Questo documento va riletto quando cambia il modo di montare il NAS,
   la versione di Ubuntu o l'elenco dei timer.
-- `deploy/install.sh` è **disallineato** (monta via CIFS/SMB, dichiara
-  Ubuntu 22.04, non installa `nfs-common` né `ffmpeg`, copia solo 5 unit
-  su 27): serve per una prima installazione da zero, non per un
-  ripristino. In caso di dubbio vale questo documento.
+- `deploy/install.sh` monta via NFSv4 e dichiara Ubuntu 24.04, allineato
+  al sistema reale (commit 2a0fad1): resta comunque per una prima
+  installazione da zero, copia solo 5 unit su 27. Per un ripristino vale
+  questo documento, non lo script.
