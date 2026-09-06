@@ -39,3 +39,6 @@ data/zip-lock/
 
 # Backup temporanei creati durante sviluppo assistito
 *.bak-*
+
+# Mappa interna riservata (IP privati, topologia sicurezza): mai versionata
+MAPPA/
