@@ -73,8 +73,10 @@ def _passati():
 def _album_pubblici(raduno_id: int) -> list:
     """Album collegati a un raduno, filtrati con le stesse regole di
     visibilita' pubblica usate nel resto del sito (tree.py): niente
-    privati, niente nascosti, niente scaduti. Collegare un album a un
-    raduno non gli cambia la visibilita'."""
+    privati, niente nascosti, niente scaduti. Esclusi anche gli album
+    ancora vuoti (total_media=0), cosi' si puo' collegare un album in
+    anticipo senza che compaia pubblicamente finche' non ha almeno una
+    foto. Collegare un album a un raduno non gli cambia la visibilita'."""
     from .tree import scaduto
     with get_db() as conn:
         righe = conn.execute(
@@ -82,6 +84,7 @@ def _album_pubblici(raduno_id: int) -> list:
             "n.expires_at "
             "FROM raduni_albums ra JOIN nodes n ON n.id = ra.node_id "
             "WHERE ra.raduno_id=? AND n.is_private=0 AND n.hidden=0 "
+            "AND n.total_media > 0 "
             "ORDER BY ra.sort_order, n.title", (raduno_id,)).fetchall()
         righe = [dict(r) for r in righe if not scaduto(r["expires_at"])]
         ids = [r["id"] for r in righe]

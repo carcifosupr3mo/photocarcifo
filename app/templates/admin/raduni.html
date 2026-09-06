@@ -80,6 +80,7 @@
             {% if a.is_private %}<span class="badge-private">privato</span>{% endif %}
             {% if a.hidden %}<span class="badge-private">nascosto</span>{% endif %}
             <span class="sub">{{ a.total_media }} foto</span>
+            {% if a.total_media == 0 and not a.is_private and not a.hidden %}<span class="badge-hidden">in attesa di foto</span>{% endif %}
             <button class="btn btn-ghost btn-sm" type="button"
                     data-rimuovi-album="{{ r.id }}" data-node="{{ a.id }}">
               Rimuovi dal raduno
