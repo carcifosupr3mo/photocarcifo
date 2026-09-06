@@ -58,4 +58,6 @@ Regole vincolanti per ridurre cache read/token/contesto ripetuto tra sessioni. N
 8. suite completa finale
 9. commit
 10. push (solo sul remote concordato, mai a caso)
+
+> **Remote concordato**: `origin` -> `git@github.com:carcifosupr3mo/photocarcifo.git` (repo pubblica ufficiale, branch `main`), collegato il 06/09/2026. Push automatico SOLO se: suite completa verde, nessun secret nel diff (mai `.env` reale, DB, credenziali, chiavi private), `MAPPA/` mai incluso (`.gitignore`), branch corretto. Se una di queste condizioni non è verificata: fermarsi e chiedere, non improvvisare push forzati o su branch diversi.
 11. nuova sessione se la macro-feature è conclusa
