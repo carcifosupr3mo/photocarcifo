@@ -57,7 +57,7 @@ if ! mountpoint -q /mnt/magazzino-rw; then
     exit 1
 fi
 
-mkdir -p "$DEST"/{systemd,nginx,script,runbook} || {
+mkdir -p "$DEST"/{systemd,nginx,fail2ban,script,runbook} || {
     echo "  impossibile creare $DEST"
     exit 1
 }
@@ -84,11 +84,37 @@ echo "▸ Configurazione nginx"
 # ha i certificati, i limiti di richiesta e le regole degli automi.
 cp /etc/nginx/sites-available/photocarcifo "$DEST/nginx/" 2>/dev/null \
     || fallito "copia di sites-available/photocarcifo"
+# Anche gli altri siti di questa macchina: dal 06/09/2026 includono lo
+# snippet che blocca gli indirizzi bannati (senza, un ban varrebbe solo
+# per la galleria e non per il pannello di amministrazione), quindi non
+# sono piu' configurazioni "di altri" che non ci riguardano.
+for altro in pannello meteo; do
+    [ -f "/etc/nginx/sites-available/$altro" ] || continue
+    cp "/etc/nginx/sites-available/$altro" "$DEST/nginx/" 2>/dev/null \
+        || fallito "copia di sites-available/$altro"
+done
 if [ -d /etc/nginx/snippets ]; then
     mkdir -p "$DEST/nginx/snippets"
     cp /etc/nginx/snippets/photocarcifo-*.conf "$DEST/nginx/snippets/" 2>/dev/null \
         || echo "  (nessuno snippet photocarcifo-* da copiare)"
 fi
+
+echo "▸ Configurazione fail2ban"
+# Dal 06/09/2026 fail2ban non e' piu' solo "blocca l'indirizzo": le jail
+# del sito passano da un'azione propria (photocarcifo-nginx) che fa vedere
+# la pagina /bloccato invece di chiudere la porta, e c'e' una jail che
+# esiste solo per i ban dati a mano dal bot. Nulla di tutto questo vive nel
+# repository — sono file in /etc/fail2ban — quindi senza questa copia,
+# perso il container, si perderebbe il disegno di come il sito blocca chi
+# blocca. Le jail di serie non si copiano: quelle tornano con il pacchetto.
+for sorgente in /etc/fail2ban/jail.d/photocarcifo.local \
+                /etc/fail2ban/action.d/photocarcifo-*.conf \
+                /etc/fail2ban/filter.d/photocarcifo-*.conf; do
+    [ -f "$sorgente" ] || continue
+    destinazione="$DEST/fail2ban/$(basename "$(dirname "$sorgente")")"
+    mkdir -p "$destinazione"
+    cp "$sorgente" "$destinazione/" || fallito "copia di $sorgente"
+done
 
 echo "▸ Script fuori repository"
 # Quasi tutti gli script in /usr/local/bin sono collegamenti al repository

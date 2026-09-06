@@ -1,0 +1,145 @@
+[DEFAULT]
+# Reti da non bloccare mai: la macchina stessa e la rete di casa. Senza
+# questa riga bastava sbagliare la propria password cinque volte per
+# restare chiusi fuori dal proprio sito.
+ignoreip = 127.0.0.1/8 ::1 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12
+backend  = polling
+banaction = iptables-multiport
+# Il ban vero (iptables-multiport) PIU' un avviso: due azioni separate,
+# eseguite entrambe a ogni ban. Se l'avviso fallisce o va lento, il ban
+# resta comunque applicato — sono indipendenti, fail2ban le esegue
+# entrambe senza che l'una dipenda dall'esito dell'altra.
+action = %(action_)s
+         photocarcifo-alert
+
+# Password sbagliate sul pannello e sulle gallerie riservate.
+#
+# Niente avviso Telegram dal 01/09/2026, richiesto esplicitamente: e' un
+# ban per volume (chi sbaglia la password troppe volte), non un tentativo
+# di intrusione da segnalare in tempo reale come le jail di scansione qui
+# sotto. Il ban vero (%(action_)s, solo iptables) resta invariato — cambia
+# solo che non arriva piu' un messaggio per ognuno.
+# Da qui in avanti il ban di questa jail NON tocca il firewall: passa da
+# photocarcifo-nginx, che mette l'indirizzo nell'elenco che nginx legge e
+# gli fa vedere la pagina /bloccato invece di un errore di rete (vedi
+# action.d/photocarcifo-nginx.conf). Chi decide, quando scade e dove e'
+# scritto lo stato resta fail2ban, esattamente come prima.
+[photocarcifo-login]
+enabled  = true
+filter   = photocarcifo-login
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 5
+findtime = 10m
+bantime  = 1h
+action   = photocarcifo-nginx
+
+# Chi supera il limite di richieste al secondo che nginx gia' impone.
+#
+# Niente avviso Telegram dal 01/09/2026, stesso motivo di photocarcifo-login
+# qui sopra: e' volume, non intrusione.
+[nginx-limit-req]
+enabled  = true
+port     = http,https
+logpath  = /var/log/nginx/error.log
+maxretry = 10
+findtime = 10m
+bantime  = 1h
+action   = photocarcifo-nginx
+
+# Scansioni alla ricerca di WordPress e simili: /wp-login.php, /wp-json/...
+# Non troveranno mai nulla, ma intasano i registri e consumano banda.
+[nginx-botsearch]
+enabled  = true
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 12
+findtime = 10m
+bantime  = 6h
+# L'avviso resta (lo ereditava dal DEFAULT), cambia solo il blocco:
+# pagina invece di firewall.
+action   = photocarcifo-nginx
+           photocarcifo-alert
+
+# Chi cerca credenziali, chiavi o un modo di eseguire codice sul server.
+#
+# Il 21/08/2026 quattro indirizzi avevano fatto 400 richieste in una
+# mattinata senza che nessuno li fermasse: due tentavano di eseguire
+# comandi sul server sfruttando un vecchio buco di Apache
+# (/cgi-bin/.%2e/.../bin/sh), uno cercava un plugin WordPress bucato, uno
+# passava in rassegna i file di configurazione. Il filtro di serie non li
+# vedeva perche' cerca un elenco fisso di indirizzi tipici, e questi ne
+# chiedono altri.
+#
+# Dal 29/08/2026 non conta piu' il volume ma il contenuto: un solo
+# tentativo su un path che rivela intenzione di intrusione (vedi il
+# filtro per l'elenco completo — credenziali, chiavi, RCE, path
+# traversal) e' gia' abbastanza, indipendentemente da quante altre volte
+# lo stesso indirizzo tenta.
+#
+# Dal 31/08/2026, richiesto esplicitamente: chi e' su un datacenter/
+# hosting pubblico (Google Cloud, Azure, AWS, OVH...) non viene mai
+# bloccato per davvero, nemmeno qui — solo l'avviso. E' una scelta
+# consapevole di ridurre la protezione, comunicata prima di applicarla:
+# la maggioranza degli attacchi visti su questo sito (RCE, furto
+# credenziali, webshell) partiva proprio da li'. Per questo l'azione non
+# e' piu' iptables-multiport ma photocarcifo-scansioni-decidi, che
+# chiama ip-api.com per ogni evento e decide lei se scrivere davvero la
+# regola — vedi script/photocarcifo-scansioni-decidi.py per i dettagli
+# tecnici e il motivo per cui non si puo' fare con un'azione fail2ban
+# normale. La protezione mirata per i crawler VERI dei motori di
+# ricerca (verifica reverse+forward DNS, non il tipo di rete) e'
+# un'altra cosa, invariata: photocarcifo-bot-whitelist.py.
+[photocarcifo-scansioni]
+enabled  = true
+filter   = photocarcifo-scansioni
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 1
+findtime = 10m
+bantime  = 6h
+# port="%(port)s" e' necessario: senza, l'azione userebbe il default
+# interno di iptables.conf (port=ssh) invece della porta di questa jail
+# — scoperto il 31/08/2026 quando la catena si e' ritrovata agganciata
+# alla porta ssh invece che http/https, stesso modo in cui %(action_)s
+# passa il parametro di serie (vedi jail.conf).
+action   = photocarcifo-scansioni-decidi[port="%(port)s", protocol="%(protocol)s", chain="%(chain)s"]
+
+# Chi bussa a molte porte chiuse ma senza mai toccare un path sensibile:
+# probing generico, spesso da hosting/datacenter, che non dimostra da
+# solo un'intenzione di intrusione. Nessun ban qui — niente
+# %(action_)s, solo l'avviso — perche' bloccare un data center per
+# volume vorrebbe dire bloccare anche crawler e servizi legittimi che ci
+# girano sopra: si preferisce sapere chi passa, non chiudergli la porta.
+# Stessa soglia della jail sorella (quindici "non trovato" in dieci
+# minuti, stessi path immagine/admin esclusi): un visitatore vero con un
+# link rotto non ci arriva.
+[photocarcifo-scansioni-attivita]
+enabled  = true
+filter   = photocarcifo-scansioni-attivita
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 15
+findtime = 10m
+bantime  = 1h
+action   = photocarcifo-alert
+
+# Ban manuali dal bot Telegram (/banip, /unbanip in script/photocarcifo-bot.py).
+#
+# Nessun log alimenta questa jail: il filtro (filter.d/photocarcifo-manuale.
+# conf) non puo' avere corrispondenza per costruzione, e logpath punta a un
+# file vuoto che nessuno scrive. L'unico modo di finire qui dentro e' il
+# comando esplicito dell'amministratore — stesso identico meccanismo di
+# blocco delle jail qui sopra (%(action_)s = iptables-multiport), non un
+# secondo sistema separato.
+#
+# bantime = -1: permanente, non scade da solo come i ban automatici. Resta
+# bloccato finche' non arriva /unbanip. Compare in /bloccati e viene
+# rilasciato anche da /sblocca (libera-tutti d'emergenza), come le altre.
+[photocarcifo-manuale]
+enabled  = true
+filter   = photocarcifo-manuale
+logpath  = /var/log/photocarcifo-manuale.log
+port     = http,https
+bantime  = -1
+action   = photocarcifo-nginx
