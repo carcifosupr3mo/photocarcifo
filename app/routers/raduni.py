@@ -76,31 +76,27 @@ def _album_pubblici(raduno_id: int) -> list:
     privati, niente nascosti, niente scaduti. Esclusi anche gli album
     ancora vuoti (total_media=0), cosi' si puo' collegare un album in
     anticipo senza che compaia pubblicamente finche' non ha almeno una
-    foto. Collegare un album a un raduno non gli cambia la visibilita'."""
-    from .tree import scaduto
+    foto. Collegare un album a un raduno non gli cambia la visibilita'.
+
+    La copertina usa la stessa logica a tre passi del resto del sito
+    (tree._cover_molteplici): copertina scelta a mano se ancora esiste,
+    altrimenti la prima fotografia dell'album. Prima qui si guardava solo
+    la copertina scelta a mano, cosi' un album appena collegato - che non
+    ne ha ancora una impostata - restava senza anteprima anche avendo gia'
+    centinaia di foto."""
+    from .tree import scaduto, _cover_molteplici
     with get_db() as conn:
         righe = conn.execute(
             "SELECT n.id, n.slug, n.title, n.cover_media_id, n.total_media, "
-            "n.expires_at "
+            "n.rel_path, n.expires_at "
             "FROM raduni_albums ra JOIN nodes n ON n.id = ra.node_id "
             "WHERE ra.raduno_id=? AND n.is_private=0 AND n.hidden=0 "
             "AND n.total_media > 0 "
             "ORDER BY ra.sort_order, n.title", (raduno_id,)).fetchall()
         righe = [dict(r) for r in righe if not scaduto(r["expires_at"])]
-        ids = [r["id"] for r in righe]
-        # Si verifica che il media di copertina esista ancora (non basta
-        # avercelo scritto in nodes: potrebbe essere stato rimosso), ma il
-        # template vuole l'id del media per /thumb/{id}, non il percorso.
-        esistenti = set()
-        if ids:
-            segnaposto = ",".join("?" * len(ids))
-            for r in conn.execute(
-                f"SELECT id FROM media WHERE id IN "
-                f"(SELECT cover_media_id FROM nodes WHERE id IN ({segnaposto}))",
-                ids):
-                esistenti.add(r["id"])
+        copertine = _cover_molteplici(conn, righe)
         for r in righe:
-            r["cover"] = r["cover_media_id"] if r["cover_media_id"] in esistenti else None
+            r["cover"] = copertine.get(r["id"])
         return righe
 
 
