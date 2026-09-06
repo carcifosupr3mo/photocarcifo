@@ -131,6 +131,7 @@ def _un_giro(bot, msg):
 @pytest.mark.parametrize("comando", [
     "start", "help", "aiuto", "stato", "errori", "visite", "spazio",
     "foto", "recensioni", "numeri", "diagnosi", "controlla", "bloccati",
+    "banip", "unbanip",
     "sblocca", "salva", "riavvia", "applica", "health",
 ])
 def test_estraneo_prova_ogni_comando_nessuno_funziona(bot, comando):

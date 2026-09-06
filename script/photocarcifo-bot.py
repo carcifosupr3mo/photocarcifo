@@ -25,6 +25,7 @@ Come e' fatto, e perche' cosi':
   conferma e la conferma scade dopo un minuto.
 """
 import html
+import ipaddress
 import json
 import os
 import re
@@ -692,7 +693,18 @@ def cmd_applica(argomento):
 
 
 CARCERI = ("photocarcifo-scansioni", "photocarcifo-login",
-           "nginx-botsearch", "nginx-limit-req", "sshd")
+           "nginx-botsearch", "nginx-limit-req", "sshd",
+           "photocarcifo-manuale")
+
+# La jail che /banip usa (vedi cmd_banip piu' sotto). E' nell'elenco
+# CARCERI qui sopra apposta: cosi' /bloccati la vede come tutte le altre
+# (stessa fonte centrale, non un elenco separato) e /sblocca — la via di
+# scampo d'emergenza — libera anche i ban manuali insieme al resto, che
+# e' esattamente cosa deve fare un "libero tutti" quando qualcosa va
+# storto. Definita in /etc/fail2ban/jail.d/photocarcifo.local: nessun
+# filtro di log la alimenta, solo questo comando; bantime=-1, permanente
+# finche' non arriva /unbanip.
+JAIL_MANUALE = "photocarcifo-manuale"
 
 
 _BLOCCATI_PER_PAGINA = 5
@@ -850,6 +862,87 @@ def cmd_sblocca(argomento):
             "ed e' giusto cosi'.")
 
 
+# Mai bannabile, qualunque cosa arrivi dalla chat: le stesse reti che
+# ignoreip esclude gia' da solo nelle jail automatiche (vedi jail.d/
+# photocarcifo.local) piu' ogni altro indirizzo non instradabile
+# pubblicamente. Necessario perche' fail2ban-client, verificato di
+# persona, NON applica ignoreip a un ban dato con banip da riga di
+# comando: bannerebbe anche 127.0.0.1 se glielo si chiedesse. is_private
+# di per se' include gia' loopback e link-local; le altre proprieta' sono
+# elencate per chiarezza, non perche' aggiungano una rete che is_private
+# non copra gia' — tranne "not is_global", che copre invece un caso reale
+# che nessuna delle altre tocca: 100.64.0.0/10 (RFC 6598, "CGNAT", lo
+# stesso intervallo che Tailscale usa di default per la sua rete privata).
+# Per quell'intervallo il modulo ipaddress stesso ha sia is_private che
+# is_global falsi (l'unico caso in cui non sono l'uno il contrario
+# dell'altro): un domani con una VPN mesh configurata per l'accesso da
+# remoto, il proprio indirizzo li' dentro sarebbe passato per "pubblico"
+# senza questo controllo. Resta comunque anche is_reserved: ::127.0.0.1
+# (forma deprecata dello stesso loopback, scritta come indirizzo IPv6) ha
+# is_global vero ma is_reserved vero, quindi va tenuto accanto e non al
+# posto di "not is_global".
+def _ip_protetto(ip_obj) -> bool:
+    return (ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local
+            or ip_obj.is_multicast or ip_obj.is_unspecified
+            or ip_obj.is_reserved or not ip_obj.is_global)
+
+
+def cmd_banip(argomento):
+    """Ban manuale e immediato di un indirizzo, dalla chat autorizzata.
+
+    Usa lo stesso meccanismo delle jail automatiche qui sopra (fail2ban +
+    iptables-multiport): non un secondo sistema di blocco, una jail in
+    piu' nello stesso — vedi JAIL_MANUALE. Nessuna conferma "SI" richiesta
+    (a differenza di /sblocca, che tocca tutti): qui l'effetto e' un solo
+    indirizzo, ed e' l'IP stesso — non un comando generico — a dover
+    essere scritto per intero, che gia' e' un freno naturale contro un
+    tocco per sbaglio."""
+    indirizzo = (argomento or "").strip()
+    if not indirizzo:
+        return "Serve un indirizzo: /banip 1.2.3.4"
+    try:
+        ip_obj = ipaddress.ip_address(indirizzo)
+    except ValueError:
+        return f"«{e(indirizzo)}» non e' un indirizzo IP valido."
+    if _ip_protetto(ip_obj):
+        return (f"🚫 {e(indirizzo)} e' un indirizzo protetto (rete interna, "
+                "locale o riservata): non lo banno.")
+    gia_bloccato = _bloccati_grezzi()
+    if indirizzo in gia_bloccato:
+        return f"{e(indirizzo)} e' gia' bloccato (jail: {e(gia_bloccato[indirizzo])})."
+    risultato = esegui(
+        ["fail2ban-client", "set", JAIL_MANUALE, "banip", indirizzo], 20)
+    # Senza questo, /bloccati mostrerebbe "dato storico non disponibile"
+    # per un ban di cui in realta' si sa benissimo il motivo: e' la
+    # stessa tabella che leggi_snapshot legge per i ban automatici, solo
+    # scritta a mano invece che da photocarcifo-ban-alert.py.
+    _modulo_ban_alert().salva_snapshot(
+        JAIL_MANUALE, indirizzo, None, "Ban manuale (bot Telegram)",
+        [], None, None, {}, {})
+    loga(f"BANIP {indirizzo}: {risultato}")
+    return f"🚫 IP {e(indirizzo)} bannato."
+
+
+def cmd_unbanip(argomento):
+    """Toglie il ban da un indirizzo, in qualunque jail si trovi — non
+    solo JAIL_MANUALE: un IP finito sotto ban automatico (login sbagliato,
+    scansione) si sblocca da qui esattamente come uno bannato a mano."""
+    indirizzo = (argomento or "").strip()
+    if not indirizzo:
+        return "Serve un indirizzo: /unbanip 1.2.3.4"
+    try:
+        ipaddress.ip_address(indirizzo)
+    except ValueError:
+        return f"«{e(indirizzo)}» non e' un indirizzo IP valido."
+    carcere = _bloccati_grezzi().get(indirizzo)
+    if not carcere:
+        return f"{e(indirizzo)} non risulta bloccato."
+    risultato = esegui(
+        ["fail2ban-client", "set", carcere, "unbanip", indirizzo], 20)
+    loga(f"UNBANIP {indirizzo} (jail: {carcere}): {risultato}")
+    return f"✅ IP {e(indirizzo)} sbloccato."
+
+
 def cmd_aiuto(_=None):
     return ("<b>Cosa so fare</b>\n\n"
             "/stato — come sta il sito, in un colpo\n"
@@ -860,6 +953,8 @@ def cmd_aiuto(_=None):
             "/recensioni — quelle in attesa di approvazione\n"
             "/numeri — a che punto e' la lettura dei numeri\n"
             "/bloccati — chi e' fuori adesso, e perche'\n"
+            "/banip &lt;ip&gt; — banna un indirizzo subito, a mano\n"
+            "/unbanip &lt;ip&gt; — lo sblocca di nuovo\n"
             "/health — stato salute in un colpo, dal monitor automatico\n"
             "/diagnosi — cerca i guasti e ripara quelli che sa riparare\n"
             "/controlla — come diagnosi, ma senza toccare niente\n"
@@ -892,13 +987,16 @@ COMANDI = {
     "spazio": cmd_spazio, "foto": cmd_foto, "recensioni": cmd_recensioni,
     "numeri": cmd_numeri, "diagnosi": cmd_diagnosi,
     "controlla": cmd_controlla, "bloccati": cmd_bloccati,
+    "banip": cmd_banip, "unbanip": cmd_unbanip,
     "sblocca": cmd_sblocca, "salva": cmd_salva,
     "riavvia": cmd_riavvia, "applica": cmd_applica,
     "health": cmd_health,
     "aiuto": cmd_aiuto, "start": cmd_aiuto, "help": cmd_aiuto,
 }
 CON_CONFERMA = {"salva", "riavvia", "applica", "sblocca"}
-CON_ARGOMENTO_LIBERO = {"bloccati"}  # pagina o filtro: "/bloccati 2", "/bloccati oggi"
+# Argomento libero, non ridotto a "SI"/"": pagina o filtro per /bloccati
+# ("/bloccati 2", "/bloccati oggi"), l'indirizzo per banip/unbanip.
+CON_ARGOMENTO_LIBERO = {"bloccati", "banip", "unbanip"}
 
 
 RICHIEDONO_TEMPO = {"diagnosi", "controlla", "salva", "riavvia", "applica"}
@@ -989,6 +1087,8 @@ def main():
             ("controlla", "Guarda senza toccare niente"),
             ("health", "Stato salute del sito"),
             ("bloccati", "Chi e' bloccato adesso"),
+            ("banip", "Banna un indirizzo a mano"),
+            ("unbanip", "Sblocca un indirizzo"),
             ("sblocca", "Libera tutti i bloccati"),
             ("salva", "Copia di sicurezza"),
             ("riavvia", "Riavvia il sito"),
