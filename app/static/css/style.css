@@ -1769,6 +1769,35 @@ body.menu-fermo{overflow:hidden;}
   .avviso{transition:none;transform:none;}
 }
 
+/* --- Riquadro del download dentro il browser interno di un'altra app ---
+   Compare solo su iPhone dentro Instagram e simili (vedi app.js,
+   percorsoWebview): accompagna il salvataggio attraverso il pannello di
+   condivisione di iOS, o spiega come aprire la pagina in Safari. Si chiude
+   sempre — dal bottone, toccando fuori o con Esc — perche' non deve mai
+   diventare un muro davanti alle fotografie. */
+/* z-index sotto .avvisi (1000): un avviso che finisse sotto il velo non
+   sarebbe ne' leggibile ne' selezionabile, e i tocchi se li prenderebbe il
+   fondo — che per tutta risposta chiuderebbe il riquadro. Sopra restano
+   comunque il visualizzatore (100) e il pannello di condivisione (110). */
+.iosdl-fondo{position:fixed;inset:0;z-index:900;display:flex;
+  align-items:flex-end;justify-content:center;padding:1rem;
+  background:rgba(0,0,0,.55);overflow-y:auto;}
+.iosdl{background:var(--card,#fff);color:var(--ink,#1a1a1a);
+  border-radius:var(--radius);padding:1.25rem;width:100%;
+  max-width:26rem;box-shadow:0 18px 48px rgba(0,0,0,.3);
+  margin:auto 0 0;}
+.iosdl-titolo{font-size:1.05rem;line-height:1.3;margin:0 0 .5rem;}
+.iosdl-testo{font-size:.92rem;line-height:1.55;margin:0 0 1.1rem;}
+/* In colonna: su uno schermo da 390 punti tre bottoni affiancati
+   diventerebbero tre etichette tagliate a meta'. */
+.iosdl-azioni{display:flex;flex-direction:column;gap:.5rem;}
+.iosdl-azioni .btn{width:100%;justify-content:center;text-align:center;}
+.iosdl-aperto{overflow:hidden;}
+@media (min-width:480px){
+  .iosdl-fondo{align-items:center;}
+  .iosdl{margin:0;}
+}
+
 /* --- Contrasto del testo bianco sui colori d'accento ------------------
    I due colori accesi sono nati per accenti, bordi e punti di colore, dove
    fanno il loro mestiere. Sotto una scritta bianca pero' non reggevano:

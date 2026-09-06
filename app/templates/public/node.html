@@ -129,7 +129,7 @@
         da solo non basta (chi lo ignora lo ignora), ma toglie di mezzo
         tutti quelli che le regole le rispettano.
       #}
-      <a class="btn" id="dlTutto" rel="nofollow" href="/zip/node/{{ node.id }}">{{ t('node.scarica_tutto') }} ({{ total_media }})</a>
+      <a class="btn" id="dlTutto" rel="nofollow" data-quante="{{ total_media }}" href="/zip/node/{{ node.id }}">{{ t('node.scarica_tutto') }} ({{ total_media }})</a>
       {% else %}
       <p class="dl-disattivi">{{ t('node.download_disattivi') }}</p>
       {% endif %}

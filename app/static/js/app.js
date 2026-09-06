@@ -174,29 +174,402 @@
   var ARCHIVI_IN_CORSO = {};
   var ARCHIVIO_MARGINE_MS = 180000;
 
-  /* Il download parte in un iframe invisibile, non con una vera
-     navigazione (window.location.href): quando l'archivio e' pronto va
-     bene lo stesso (Content-Disposition: attachment fa scaricare anche
-     dentro un iframe), ma quando il server risponde 409 la risposta e'
-     un JSON senza attachment, e window.location.href l'avrebbe mostrato
-     al posto della pagina — cancellando lo script che deve leggere il
-     biscottino del 409 proprio mentre arriva. Un solo iframe, riusato a
-     ogni download invece che ricreato: la pagina non ne accumula uno per
-     click. */
-  function iframeZip() {
-    var f = document.getElementById("pc-zip-iframe");
-    if (!f) {
-      f = document.createElement("iframe");
-      f.id = "pc-zip-iframe";
-      f.name = "pc-zip-iframe";
-      f.style.display = "none";
-      document.body.appendChild(f);
-    }
-    return f;
+  /* Il download partiva da un iframe invisibile (iframe.src = indirizzo),
+     per evitare che un 409 (risposta JSON senza attachment) navigasse via
+     dalla pagina mostrando il JSON al posto suo. Funzionava su Chrome, ma
+     Safari e le webview che ne condividono il motore (Instagram, Facebook,
+     sempre WebKit su iOS) non trattano come download una risposta arrivata
+     dentro un iframe: il file non si salva mai, anche se e' arrivato per
+     intero e il biscottino di conferma e' scattato.
+
+     Il rimedio, un <a download> vero cliccato da codice, basta su Android
+     anche dentro Instagram: quella webview non sa salvare file, ma il
+     sistema operativo se ne accorge da solo e offre di aprire Chrome, che
+     il file lo salva per davvero (verificato: lo zip arriva intero).
+
+     Su iOS non basta. Registrazione dello schermo alla mano: dentro
+     Instagram il tocco su "Scarica" fa comparire il nostro "Scaricamento
+     avviato" (il biscottino di conferma arriva regolarmente: il server ha
+     mandato tutto), ma li' si ferma tutto — nessun salvataggio, nessuna
+     Safari che si apre da sola. A differenza di Android, iOS non offre a
+     una app un modo automatico di passare un download a un browser vero:
+     e' Apple stessa a non prevederlo, quindi nessun trucco lato pagina puo'
+     bypassarlo dall'interno della webview.
+
+     La via che invece funziona e' il pannello di condivisione di iOS
+     (navigator.share con dei file): e' un'API web standard, non un tentativo
+     di scappare dall'app, e Instagram non ha motivo di bloccarla visto che
+     la usa anche lei. Il file si scarica in memoria e si passa al pannello,
+     dove "Salva in File" (o "Salva immagine") salva per davvero. Serve pero'
+     rispettare due vincoli di WebKit, ed e' per questo che il percorso ha
+     due tocchi invece di uno:
+
+     - navigator.share() vuole un gesto recente della persona, e la finestra
+       dura pochi secondi: dopo un fetch di decine di megabyte sarebbe gia'
+       scaduta. Quindi il primo tocco scarica e basta, il secondo (sul
+       bottone "Salva") apre il pannello dentro il proprio gesto.
+     - tenere l'archivio in memoria non e' gratis: oltre un certo peso non
+       vale la pena rischiare che la webview venga uccisa a meta' strada, e
+       si passa direttamente alle istruzioni per Safari.
+
+     Tutto questo vale solo per le webview: Safari vero, Chrome/Firefox per
+     iOS, Android e desktop continuano a passare dal percorso di sempre. */
+
+  // Oltre questi limiti si rinuncia a tenere l'archivio in memoria: meglio
+  // mandare la persona in Safari subito che scaricare cento megabyte di
+  // dati mobili per poi far morire la scheda. Il tetto e' sui byte
+  // scaricati, ma il picco vero e' quasi il doppio: nell'istante in cui si
+  // costruisce il Blob convivono i pezzi e la loro copia.
+  var TETTO_MEMORIA = 100 * 1024 * 1024;
+  var TETTO_FOTO = 30;
+
+  function suIos() {
+    var ua = navigator.userAgent;
+    // Da iPadOS 13 un iPad si presenta come "Macintosh": lo tradisce lo
+    // schermo tattile, che nessun Mac ha.
+    return /iPhone|iPad|iPod/.test(ua) ||
+      (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
   }
 
-  function avviaZip(indirizzo, bottone) {
+  function browserProprio(ua) {
+    // Safari vero mette sempre "Version/x.y". Chrome, Firefox, Edge e Opera
+    // per iOS sotto sono WebKit come tutti, ma hanno una propria gestione
+    // dei download e si riconoscono dalla loro sigla.
+    return /Version\/|CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+  }
+
+  function webviewLimitata() {
+    // Solo iOS: su Android la webview di Instagram non sa salvare file, ma
+    // il sistema operativo offre da solo di aprire Chrome, e il download
+    // arriva. Non c'e' niente da correggere li'.
+    return suIos() && !browserProprio(navigator.userAgent);
+  }
+
+  function appOspite() {
+    // Serve solo a scrivere "Instagram" invece di "questa app" nel
+    // messaggio: se non si riconosce, il testo generico va benissimo.
+    var ua = navigator.userAgent;
+    if (/Instagram/.test(ua)) return "Instagram";
+    if (/FBAN|FBAV|FB_IAB/.test(ua)) return "Facebook";
+    if (/Threads/.test(ua)) return "Threads";
+    if (/TikTok|BytedanceWebview/.test(ua)) return "TikTok";
+    if (/Snapchat/.test(ua)) return "Snapchat";
+    if (/LinkedInApp/.test(ua)) return "LinkedIn";
+    return "";
+  }
+
+  function apriInSafari(indirizzo) {
+    // "x-safari-https://..." e' un indirizzo speciale che iOS riconosce da
+    // qualunque app e dovrebbe aprire nel vero Safari. Si tenta comunque
+    // (costa niente), ma non e' su questo che si conta: verificato che
+    // dentro Instagram non parte quasi mai, perche' Instagram intercetta di
+    // proposito i tentativi di uscire verso un'altra app. Per questo il
+    // messaggio accanto al bottone spiega anche la strada a mano.
+    var assoluto = new URL(indirizzo, location.href).href;
+    location.href = assoluto.replace(/^https?:\/\//, "x-safari-$&");
+  }
+
+  function nomeDaRisposta(risposta, ripiego) {
+    var cd = risposta.headers.get("Content-Disposition") || "";
+    var m = /filename\*=UTF-8''([^;]+)/.exec(cd);
+    if (m) {
+      try { return decodeURIComponent(m[1]); } catch (e) { /* nome grezzo */ }
+    }
+    m = /filename="?([^";]+)"?/.exec(cd);
+    return m ? m[1] : ripiego;
+  }
+
+  /* Scarica in memoria fermandosi se supera il tetto, invece di scoprire
+     troppo tardi che l'archivio non ci sta. Chiama avanza(byte) mentre
+     procede, cosi' chi guarda vede che qualcosa sta succedendo. */
+  function scaricaConTetto(indirizzo, tetto, avanza, segnale) {
+    return fetch(indirizzo, {
+      credentials: "same-origin", signal: segnale
+    }).then(function (r) {
+      if (!r.ok) throw new Error("http " + r.status);
+      var nome = nomeDaRisposta(r, "foto.zip");
+      var tipo = r.headers.get("Content-Type") || "application/octet-stream";
+      if (!r.body || !r.body.getReader) {
+        // Browser senza stream: si prende tutto insieme, senza poter
+        // fermare a meta'. Il tetto lo si controlla comunque dopo.
+        return r.blob().then(function (b) {
+          if (b.size > tetto) throw new Error("troppo-grande");
+          return { blob: b, nome: nome };
+        });
+      }
+      var lettore = r.body.getReader();
+      var pezzi = [], totale = 0;
+      return (function leggi() {
+        return lettore.read().then(function (esito) {
+          if (esito.done) {
+            var insieme = new Blob(pezzi, { type: tipo });
+            // I pezzi sono stati copiati dentro il Blob: tenerli ancora
+            // raddoppierebbe la memoria occupata fino al prossimo giro di
+            // pulizia, proprio quando ce n'e' di meno.
+            pezzi.length = 0;
+            return { blob: insieme, nome: nome };
+          }
+          totale += esito.value.byteLength;
+          if (totale > tetto) {
+            lettore.cancel().catch(function () { /* si stava gia' mollando */ });
+            throw new Error("troppo-grande");
+          }
+          pezzi.push(esito.value);
+          if (avanza) avanza(totale);
+          return leggi();
+        });
+      })();
+    });
+  }
+
+  /* Apre il pannello di condivisione. Va chiamata dentro il gesto della
+     persona, non dopo un'attesa. Restituisce "condiviso", "annullato" (ha
+     chiuso il pannello: sua scelta, non un errore) o "non-supportato". */
+  function condividiFile(blob, nome) {
+    if (!(window.navigator && navigator.share && navigator.canShare &&
+          window.File)) {
+      return Promise.resolve("non-supportato");
+    }
+    var file;
+    try {
+      file = new File([blob], nome,
+        { type: blob.type || "application/octet-stream" });
+    } catch (e) {
+      return Promise.resolve("non-supportato");
+    }
+    var puo = false;
+    try { puo = navigator.canShare({ files: [file] }); } catch (e) { puo = false; }
+    if (!puo) return Promise.resolve("non-supportato");
+    return navigator.share({ files: [file] })
+      .then(function () { return "condiviso"; })
+      .catch(function (e) {
+        return (e && e.name === "AbortError") ? "annullato" : "non-supportato";
+      });
+  }
+
+  /* Il riquadro che accompagna il download dentro una webview. Ha tre
+     momenti — sto scaricando, e' pronto da salvare, non si puo' fare qui —
+     e si chiude sempre: non intrappola nessuno dentro una pagina bloccata. */
+  function riquadroScarico() {
+    var fondo = document.createElement("div");
+    fondo.className = "iosdl-fondo";
+    var scatola = document.createElement("div");
+    scatola.className = "iosdl";
+    scatola.setAttribute("role", "dialog");
+    scatola.setAttribute("aria-modal", "true");
+    var titolo = document.createElement("h2");
+    titolo.className = "iosdl-titolo";
+    titolo.id = "iosdl-titolo";
+    scatola.setAttribute("aria-labelledby", titolo.id);
+    var testo = document.createElement("p");
+    testo.className = "iosdl-testo";
+    // Lo stesso paragrafo racconta l'attesa e poi il risultato: senza
+    // questo, per un lettore di schermo il riquadro resterebbe muto per
+    // tutto lo scaricamento.
+    testo.setAttribute("role", "status");
+    testo.setAttribute("aria-live", "polite");
+    var azioni = document.createElement("div");
+    azioni.className = "iosdl-azioni";
+    scatola.appendChild(titolo);
+    scatola.appendChild(testo);
+    scatola.appendChild(azioni);
+    fondo.appendChild(scatola);
+
+    var attivoPrima = document.activeElement;
+    // Chi apre il riquadro puo' chiedere di essere avvisato quando si
+    // chiude, comunque lo si chiuda: dal bottone, con Esc o toccando fuori.
+    // Serve a fermare lo scaricamento in corso, non solo a togliere il
+    // riquadro dallo schermo.
+    var allaChiusura = null;
+    function chiudi() {
+      if (!fondo.parentNode) return;
+      document.removeEventListener("keydown", tasto);
+      fondo.parentNode.removeChild(fondo);
+      document.body.classList.remove("iosdl-aperto");
+      if (attivoPrima && attivoPrima.focus) attivoPrima.focus();
+      var avvisa = allaChiusura;
+      allaChiusura = null;   // mai due volte, nemmeno se rinuncia() richiama chiudi()
+      if (avvisa) avvisa();
+    }
+    function tasto(e) {
+      if (e.key !== "Escape") return;
+      // Il visualizzatore ascolta anch'esso Esc, e da sotto: senza
+      // fermare qui la propagazione un solo tasto chiuderebbe riquadro e
+      // fotografia insieme, lasciando il fuoco nel vuoto.
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      chiudi();
+    }
+    // Il fondo si chiude toccandolo fuori dal riquadro: chi non capisce
+    // cosa gli si sta chiedendo deve poter tornare alla pagina in un tocco.
+    fondo.addEventListener("click", function (e) {
+      if (e.target === fondo) chiudi();
+    });
+    document.addEventListener("keydown", tasto);
+    document.body.classList.add("iosdl-aperto");
+    document.body.appendChild(fondo);
+
+    function bottone(etichetta, classe, azione) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn " + classe;
+      b.textContent = etichetta;
+      b.addEventListener("click", azione);
+      azioni.appendChild(b);
+      return b;
+    }
+    function svuota() {
+      while (azioni.firstChild) azioni.removeChild(azioni.firstChild);
+    }
+    return {
+      chiudi: chiudi,
+      allaChiusura: function (f) { allaChiusura = f; },
+      titolo: function (t) { titolo.textContent = t; },
+      testo: function (t) { testo.textContent = t; },
+      azioni: function () { svuota(); return { bottone: bottone }; },
+      metteAFuoco: function (elemento) {
+        if (elemento && elemento.focus) elemento.focus();
+      }
+    };
+  }
+
+  /* La strada per chi non puo' scaricare da qui: si prova comunque ad
+     aprire Safari, e intanto si spiega come farlo a mano, perche' il
+     tentativo automatico Instagram lo blocca quasi sempre. */
+  function riquadroIstruzioni(riquadro, testoSpiegazione) {
+    var app = appOspite();
+    // Si manda a Safari la pagina, non l'indirizzo del file: l'archivio
+    // di un album riservato dipende dai biscottini di questa sessione, che
+    // Safari non ha: aprendolo di la' si otterrebbe un rifiuto. Ed e' anche
+    // quello che dice il messaggio ("apri questa pagina in Safari").
+    var pagina = location.href;
+    var a = riquadro.azioni();
+    riquadro.titolo(app ? T("ios_titolo_app", { app: app }) : T("ios_titolo"));
+    riquadro.testo(testoSpiegazione);
+    var primo = a.bottone(T("ios_apri_safari"), "btn-accent", function () {
+      apriInSafari(pagina);
+    });
+    a.bottone(T("ios_copia"), "btn-ghost", function (e) {
+      var bottone = e.currentTarget;
+      var riuscito = function () { bottone.textContent = T("ios_copiato"); };
+      // Se copiare non riesce si mostra l'indirizzo perche' si possa
+      // prendere a mano — ma dentro il riquadro, non in un avviso: gli
+      // avvisi stanno sotto il velo, dove non si selezionano nemmeno.
+      var aMano = function () { riquadro.testo(pagina); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(pagina).then(riuscito, aMano);
+      } else {
+        aMano();
+      }
+    });
+    a.bottone(T("ios_annulla"), "btn-ghost", riquadro.chiudi);
+    riquadro.metteAFuoco(primo);
+  }
+
+  /* Il percorso completo dentro una webview di iOS. Restituisce sempre
+     qualcosa di comprensibile: le foto salvate, oppure la strada per
+     salvarle altrove. */
+  function percorsoWebview(indirizzo, quante) {
+    // Un secondo tocco mentre il riquadro e' gia' aperto ne aprirebbe un
+    // altro sopra, e farebbe scaricare due volte lo stesso archivio.
+    if (document.querySelector(".iosdl-fondo")) return;
+    var riquadro = riquadroScarico();
+    if (quante && quante > TETTO_FOTO) {
+      riquadroIstruzioni(riquadro,
+        T("ios_troppe", { n: quante, max: TETTO_FOTO }));
+      return;
+    }
+    riquadro.titolo(T("ios_titolo_preparo"));
+    riquadro.testo(T("ios_preparo"));
+    var annulla = false;
+    // Chiudere il riquadro deve fermare davvero il traffico: senza questo,
+    // chi rinuncia dopo due secondi continuerebbe a scaricare in silenzio
+    // decine di megabyte di dati mobili.
+    var freno = window.AbortController ? new AbortController() : null;
+    function rinuncia() {
+      annulla = true;
+      if (freno) freno.abort();
+      riquadro.chiudi();
+    }
+    riquadro.allaChiusura(rinuncia);
+    var a = riquadro.azioni();
+    // Il fuoco entra nel riquadro fin dall'attesa: aprire un dialogo e
+    // lasciare il fuoco dietro significa, per chi usa un lettore di
+    // schermo, non sentire niente e non trovare nemmeno l'unico "Annulla".
+    riquadro.metteAFuoco(a.bottone(T("ios_annulla"), "btn-ghost", rinuncia));
+    scaricaConTetto(indirizzo, TETTO_MEMORIA, function (byte) {
+      if (!annulla) {
+        riquadro.testo(T("ios_avanzamento",
+          { mb: Math.round(byte / 1048576) }));
+      }
+    }, freno ? freno.signal : undefined).then(function (o) {
+      if (annulla) return;
+      riquadro.titolo(T("ios_titolo_pronto"));
+      riquadro.testo(T("ios_pronto"));
+      var b = riquadro.azioni();
+      var salva = b.bottone(T("ios_salva"), "btn-accent", function () {
+        // Un secondo tocco mentre il pannello e' gia' aperto: WebKit
+        // rifiuta la seconda condivisione, e senza questo blocco il
+        // rifiuto verrebbe scambiato per "questo browser non sa salvare"
+        // — le istruzioni di ripiego comparirebbero mentre il pannello
+        // sta funzionando benissimo davanti agli occhi di chi salva.
+        if (salva.disabled) return;
+        salva.disabled = true;
+        // Dentro il gesto: e' l'unico momento in cui WebKit lascia
+        // aprire il pannello di condivisione.
+        condividiFile(o.blob, o.nome).then(function (esito) {
+          salva.disabled = false;
+          // Il riquadro puo' essere stato chiuso nel frattempo (tocco
+          // fuori, Esc): riscriverlo ora vorrebbe dire parlare a un
+          // pezzo di pagina che non e' piu' attaccato a niente.
+          if (annulla) return;
+          if (esito === "condiviso") {
+            riquadro.chiudi();
+            PC.avviso(T("ios_salvato"), "ok");
+          } else if (esito === "non-supportato") {
+            riquadroIstruzioni(riquadro, T("ios_testo"));
+          }
+          // "annullato": ha chiuso il pannello, il riquadro resta com'e'
+          // cosi' puo' riprovare senza riscaricare niente.
+        });
+      });
+      b.bottone(T("ios_annulla"), "btn-ghost", riquadro.chiudi);
+      riquadro.metteAFuoco(salva);
+    }, function (errore) {
+      if (annulla) return;
+      var messaggio = (errore && errore.message === "troppo-grande")
+        ? T("ios_troppo_grande") : T("ios_testo");
+      riquadroIstruzioni(riquadro, messaggio);
+    });
+  }
+
+  function scaricaVero(indirizzo) {
+    // Chi chiama si e' gia' tolto di mezzo il caso iOS-dentro-una-webview
+    // (avviaZip, sotto): qui arriva solo chi un vero download lo sa fare
+    // davvero. L'attributo download forza il browser a salvare la
+    // risposta qualunque sia il suo contenuto (stesso dominio), quindi
+    // copre anche il caso 409: si salva un piccolo file invece di
+    // navigare via, la pagina resta quella di prima e il biscottino
+    // racconta comunque cos'e' successo.
+    var a = document.createElement("a");
+    a.href = indirizzo;
+    a.download = "";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  function avviaZip(indirizzo, bottone, quante) {
     if (bottone && bottone.disabled) return;
+    if (webviewLimitata()) {
+      // Tutto il resto della funzione gira intorno al biscottino "e'
+      // arrivato l'archivio": qui non serve a niente, perche' il
+      // salvataggio avverra' nel pannello di condivisione, che la pagina
+      // non puo' osservare con un biscottino.
+      percorsoWebview(indirizzo, quante);
+      return;
+    }
     var partito = ARCHIVI_IN_CORSO[indirizzo];
     // "partito !== undefined" e non "partito": zero e' un istante valido
     // (Date.now() nel test lo restituisce davvero), il controllo deve
@@ -251,7 +624,7 @@
       clearInterval(spia);
       chiudi();
     }, 30000);
-    iframeZip().src = indirizzo + "&segnale=" + segno;
+    scaricaVero(indirizzo + "&segnale=" + segno);
   }
 
   function leggiBiscotto(nome) {
@@ -350,14 +723,17 @@
         e.preventDefault();
         var ids = selIds();
         if (!ids.length) return;
-        avviaZip("/zip/select?ids=" + ids.join(","), btnDl);
+        avviaZip("/zip/select?ids=" + ids.join(","), btnDl, ids.length);
       });
       // "Scarica tutto l'album": e' il pacco piu' pesante di tutti, quello
-      // per cui l'attesa si fa sentire davvero.
+      // per cui l'attesa si fa sentire davvero. Il numero di fotografie sta
+      // in data-quante: dentro una webview di iOS decide se conviene
+      // tenerle in memoria o mandare la persona in Safari.
       var btnTutto = document.getElementById("dlTutto");
       if (btnTutto) btnTutto.addEventListener("click", function (e) {
         e.preventDefault();
-        avviaZip(btnTutto.getAttribute("href") + "?", btnTutto);
+        avviaZip(btnTutto.getAttribute("href") + "?", btnTutto,
+                 parseInt(btnTutto.getAttribute("data-quante"), 10) || 0);
       });
       if (btnTutte) btnTutte.addEventListener("click", function (e) {
         e.preventDefault(); tutteQuestaPagina();
@@ -844,6 +1220,18 @@
     dl.className = "btn btn-accent";
     dl.textContent = T("scarica_orig");
     dl.setAttribute("download", "");
+    // Una fotografia sola pesa pochi megabyte: dentro una webview di iOS
+    // si passa dallo stesso percorso dello zip (l'unico che li' salva
+    // davvero), ma senza mai anticipare istruzioni a chi non ne ha
+    // bisogno — il riquadro compare solo quando serve. Fuori dalle
+    // webview non cambia niente: l'attributo download e il click nativo
+    // del browser bastano da soli, come hanno sempre fatto.
+    dl.addEventListener("click", function (e) {
+      if (webviewLimitata()) {
+        e.preventDefault();
+        percorsoWebview(dl.href, 1);
+      }
+    });
     actions.appendChild(dl);
     // Il bottone "Condividi questa foto" (sotto la foto) e il suo gemello
     // piccolo in alto a sinistra (solo da tablet in su) sono pubblici,
@@ -886,8 +1274,26 @@
     return e;
   }
 
+  /* Gli altri collegamenti che chiedono un archivio: quelli delle
+     fotografie preferite, uno per album piu' quello della barra, che non
+     hanno un identificativo fisso da agganciare uno per uno. Marcati con
+     data-zip, passano da qui e quindi dallo stesso percorso di tutti gli
+     altri — avviso di attesa compreso, e riquadro del pannello di
+     condivisione dentro il browser interno delle app su iPhone, dove
+     altrimenti resterebbero link che non salvano niente. */
+  function agganciaAltriArchivi() {
+    document.addEventListener("click", function (e) {
+      var a = e.target.closest ? e.target.closest("a[data-zip]") : null;
+      if (!a || !a.getAttribute("href")) return;
+      e.preventDefault();
+      avviaZip(a.getAttribute("href") + "&",
+               a, parseInt(a.getAttribute("data-quante"), 10) || 0);
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     initLazyLoad();
     initGrid();
+    agganciaAltriArchivi();
   });
 })();

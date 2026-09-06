@@ -392,16 +392,23 @@ def _risposta_zip_occupato(messaggio: str, segnale: str) -> JSONResponse:
     stesso archivio.
 
     Lo status resta 409 per davvero (una richiesta diretta all'endpoint,
-    fuori dal sito, lo vede correttamente): ma il download parte da una
-    navigazione del browser (window.location.href), non da una fetch, e
-    una navigazione non lascia al JavaScript il modo di leggere il codice
-    di stato della pagina a cui e' appena andata. La pagina che ha chiesto
-    lo ZIP se ne accorge percio' con lo stesso meccanismo che gia' usa per
-    sapere quando l'archivio e' pronto: un biscottino, con un valore
-    diverso da quello del successo, che la spia gia' in ascolto riconosce
-    subito senza bisogno di un secondo meccanismo."""
+    fuori dal sito, lo vede correttamente): ma il download parte dal click
+    su un collegamento, non da una fetch, e una navigazione non lascia al
+    JavaScript il modo di leggere il codice di stato. La pagina che ha
+    chiesto lo ZIP se ne accorge percio' con lo stesso meccanismo che gia'
+    usa per sapere quando l'archivio e' pronto: un biscottino, con un
+    valore diverso da quello del successo, che la spia gia' in ascolto
+    riconosce subito senza bisogno di un secondo meccanismo.
+
+    Il nome del file serve a chi scarica, non al programma: il collegamento
+    ha l'attributo download, quindi il browser salva qualunque cosa arrivi,
+    anche questa risposta. Senza un nome dichiarato finirebbe fra le
+    fotografie un "select.json" che non spiega niente; cosi' almeno il nome
+    dice cos'e'."""
     risposta = JSONResponse({"ok": False, "detail": messaggio},
                             status_code=409)
+    risposta.headers["Content-Disposition"] = (
+        "attachment; filename=\"archivio-gia-in-preparazione.json\"")
     if segnale:
         risposta.set_cookie("pc_zip", "occupato:" + segnale, max_age=60,
                             path="/", samesite="lax", secure=True)

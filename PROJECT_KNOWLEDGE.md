@@ -310,6 +310,16 @@ Tutte le route GET rispondono anche a HEAD (aggiunto esplicitamente in `main.py`
 - `/zip/select` — scarica una selezione di foto come ZIP.
 - Generato in streaming con `zipstream-new`, senza tenere l'intero archivio in memoria (necessario per album da diversi gigabyte).
 
+**Lato browser** (`app/static/js/app.js`, aggiornato 06/09/2026 — il backend non è stato toccato):
+- Il download parte da un `<a download>` vero, cliccato da codice (`scaricaVero`). Prima partiva da un iframe invisibile: nessun motore WebKit tratta come download una risposta arrivata dentro un iframe, quindi su iPhone il file non si salvava mai pur arrivando intero (il biscottino `pc_zip` scattava lo stesso e la pagina diceva "Scaricamento avviato").
+- **Browser interno delle app su iOS** (Instagram, Facebook, Threads, TikTok…): sono WKWebView senza gestore di download, e a differenza di Android iOS non offre alle app un modo automatico di passare il file a un browser vero. Verificati come inutili sia il `<a download>` sia l'indirizzo speciale `x-safari-https://` (Instagram intercetta di proposito i tentativi di uscire verso un'altra app). La via che funziona è il **pannello di condivisione di iOS** (`navigator.share` con dei file): API web standard, non un tentativo di fuga, e "Salva su File"/"Salva immagine" salva davvero.
+- Percorso in due tocchi (`percorsoWebview`): il primo scarica l'archivio in memoria, il secondo apre il pannello. Serve perché `navigator.share()` vuole un gesto recente della persona e la finestra di WebKit dura pochi secondi: dopo un fetch di decine di megabyte sarebbe già scaduta.
+- Limiti prudenziali: oltre 30 fotografie o 200 MB non si tiene niente in memoria e si va direttamente alle istruzioni per Safari, invece di rischiare che la webview venga uccisa a metà.
+- Riconoscimento del contesto: iOS (`iPhone|iPad|iPod`, più iPadOS che si spaccia per Macintosh con `maxTouchPoints > 1`) **e** assenza dei segni di un browser proprio (`Version/` di Safari, `CriOS`, `FxiOS`, `EdgiOS`, `OPiOS`). Solo iOS: su Android la webview di Instagram non sa salvare file ma il sistema operativo offre da solo di aprire Chrome, e il download arriva — lì non c'è niente da correggere.
+- Ripiego quando il pannello non c'è: riquadro `.iosdl` con "Apri in Safari" (tentativo `x-safari-`), "Copia link" e "Annulla", più la strada a mano (menu ⋯ → Apri in Safari). Mai un errore generico.
+- Vale anche per la condivisione multipla `/fs/{token}`: il suo "Scarica tutte" era un semplice link e ora ha `id="dlTutto"`, quindi passa dallo stesso percorso.
+- Test: `tests/browser/test_ios_webview.js` — sette scenari su WebKit (desktop, Android, Android+Instagram, Safari iOS, Chrome iOS, Instagram iOS, Facebook iOS, foto singola, `/fs/{token}`) più la verifica del riquadro a 390x844 e 430x932.
+
 **Sicurezza**:
 - Tutte le route di download passano da `_can_access()` prima di servire qualunque file.
 - Rate limiting dedicato lato Nginx: zona `pcfile` (120 richieste/minuto, burst 40, con "delay" per non respingere bruscamente) per i download singoli; zona `pczip` (12 richieste/minuto, burst 6) e limite di connessioni concorrenti (`pczipconn`, 3 per IP) per gli ZIP, che sono l'operazione più costosa del sistema.

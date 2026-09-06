@@ -69,6 +69,11 @@
       b.textContent = T("pref_scarica", {n: totale});
       var ids = Object.keys(scelte).filter(function (k) { return scelte[k]; });
       b.href = "/zip/select?ids=" + ids.join(",");
+      // data-zip: lo raccoglie app.js, che porta il download sullo stesso
+      // percorso di tutti gli altri — dentro il browser interno delle app
+      // su iPhone un collegamento normale non salverebbe niente.
+      b.setAttribute("data-zip", "");
+      b.setAttribute("data-quante", String(ids.length));
     } else {
       b.style.display = "none";
     }

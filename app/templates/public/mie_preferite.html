@@ -21,7 +21,7 @@
         <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
           <a class="btn btn-ghost" href="{% if a.is_private and a.token %}/p/{{ a.token }}{% else %}/n/{{ a.slug }}{% endif %}">{{ t('pref.torna_album') }}</a>
           {# nofollow: e' un ordine di lavoro, non una pagina. Vedi node.html. #}
-          <a class="btn btn-accent" rel="nofollow" href="/zip/select?ids={{ a.foto|join(',') }}">{{ t('pref.scarica').format(n=a.foto|length) }}</a>
+          <a class="btn btn-accent" rel="nofollow" data-zip data-quante="{{ a.foto|length }}" href="/zip/select?ids={{ a.foto|join(',') }}">{{ t('pref.scarica').format(n=a.foto|length) }}</a>
         </div>
       </div>
       <div class="photo-grid">

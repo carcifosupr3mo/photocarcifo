@@ -1188,6 +1188,122 @@ TESTI.update({
         "fr": "Cette archive est deja en preparation : attendez qu'elle se termine.",
         "de": "Dieses Archiv wird bereits vorbereitet: bitte warten.",
         "es": "Este archivo ya se esta preparando: espera a que termine."},
+    # Scaricamento dentro il browser interno di un'altra app su iPhone: la
+    # webview non sa salvare file, si passa dal pannello di condivisione di
+    # iOS e, se nemmeno quello c'e', si spiega come aprire la pagina in
+    # Safari. Vedi app/static/js/app.js, percorsoWebview().
+    "js.ios_titolo_preparo": {
+        "it": "Preparo le fotografie…",
+        "en": "Getting the photos ready…",
+        "fr": "Preparation des photos…",
+        "de": "Fotos werden vorbereitet…",
+        "es": "Preparando las fotografias…"},
+    "js.ios_preparo": {
+        "it": "Un momento: sto scaricando le fotografie.",
+        "en": "One moment: downloading the photos.",
+        "fr": "Un instant : telechargement des photos.",
+        "de": "Einen Moment: die Fotos werden geladen.",
+        "es": "Un momento: descargando las fotografias."},
+    "js.ios_avanzamento": {
+        "it": "{mb} MB scaricati…", "en": "{mb} MB downloaded…",
+        "fr": "{mb} Mo telecharges…", "de": "{mb} MB geladen…",
+        "es": "{mb} MB descargados…"},
+    "js.ios_titolo_pronto": {
+        "it": "Fotografie pronte", "en": "Photos ready",
+        "fr": "Photos pretes", "de": "Fotos bereit",
+        "es": "Fotografias listas"},
+    "js.ios_pronto": {
+        "it": "Tocca Salva e scegli \"Salva su File\" (o \"Salva immagine\") "
+              "per tenerle sul telefono.",
+        "en": "Tap Save and choose \"Save to Files\" (or \"Save Image\") to "
+              "keep them on your phone.",
+        "fr": "Touchez Enregistrer et choisissez \"Enregistrer dans Fichiers\" "
+              "(ou \"Enregistrer l'image\") pour les garder sur le telephone.",
+        "de": "Tippe auf Speichern und waehle \"In Dateien sichern\" (oder "
+              "\"Bild sichern\"), um sie auf dem Telefon zu behalten.",
+        "es": "Toca Guardar y elige \"Guardar en Archivos\" (o \"Guardar "
+              "imagen\") para tenerlas en el telefono."},
+    "js.ios_salva": {
+        "it": "Salva sul telefono", "en": "Save to phone",
+        "fr": "Enregistrer sur le telephone", "de": "Auf dem Telefon sichern",
+        "es": "Guardar en el telefono"},
+    "js.ios_salvato": {
+        "it": "Fotografie salvate.", "en": "Photos saved.",
+        "fr": "Photos enregistrees.", "de": "Fotos gesichert.",
+        "es": "Fotografias guardadas."},
+    "js.ios_titolo_app": {
+        "it": "Il browser di {app} non salva i file",
+        "en": "The {app} browser can't save files",
+        "fr": "Le navigateur de {app} n'enregistre pas les fichiers",
+        "de": "Der Browser von {app} kann keine Dateien speichern",
+        "es": "El navegador de {app} no guarda archivos"},
+    "js.ios_titolo": {
+        "it": "Questo browser non salva i file",
+        "en": "This browser can't save files",
+        "fr": "Ce navigateur n'enregistre pas les fichiers",
+        "de": "Dieser Browser kann keine Dateien speichern",
+        "es": "Este navegador no guarda archivos"},
+    "js.ios_testo": {
+        "it": "Su iPhone il browser interno delle app non puo' salvare i "
+              "file. Apri questa pagina in Safari — tocca i tre puntini in "
+              "alto e scegli \"Apri in Safari\" — e riprova a scaricare.",
+        "en": "On iPhone, the browser built into apps cannot save files. "
+              "Open this page in Safari - tap the three dots at the top and "
+              "choose \"Open in Safari\" - then download again.",
+        "fr": "Sur iPhone, le navigateur integre aux applications ne peut "
+              "pas enregistrer de fichiers. Ouvrez cette page dans Safari - "
+              "touchez les trois points en haut et choisissez \"Ouvrir dans "
+              "Safari\" - puis retelechargez.",
+        "de": "Auf dem iPhone kann der in Apps eingebaute Browser keine "
+              "Dateien speichern. Oeffne diese Seite in Safari - tippe oben "
+              "auf die drei Punkte und waehle \"In Safari oeffnen\" - und "
+              "lade dann erneut herunter.",
+        "es": "En iPhone, el navegador integrado en las aplicaciones no "
+              "puede guardar archivos. Abre esta pagina en Safari - toca los "
+              "tres puntos arriba y elige \"Abrir en Safari\" - y vuelve a "
+              "descargar."},
+    "js.ios_troppe": {
+        "it": "Sono {n} fotografie: troppe per il browser interno, che ne "
+              "regge al massimo {max}. Apri la pagina in Safari per "
+              "scaricarle tutte insieme.",
+        "en": "That's {n} photos: too many for the built-in browser, which "
+              "handles at most {max}. Open the page in Safari to download "
+              "them all at once.",
+        "fr": "Cela fait {n} photos : trop pour le navigateur integre, qui "
+              "en supporte {max} au maximum. Ouvrez la page dans Safari pour "
+              "les telecharger toutes ensemble.",
+        "de": "Das sind {n} Fotos: zu viele fuer den eingebauten Browser, "
+              "der hoechstens {max} schafft. Oeffne die Seite in Safari, um "
+              "alle auf einmal zu laden.",
+        "es": "Son {n} fotografias: demasiadas para el navegador integrado, "
+              "que aguanta {max} como maximo. Abre la pagina en Safari para "
+              "descargarlas todas juntas."},
+    "js.ios_troppo_grande": {
+        "it": "L'archivio e' troppo pesante per il browser interno. Apri la "
+              "pagina in Safari per scaricarlo.",
+        "en": "The archive is too heavy for the built-in browser. Open the "
+              "page in Safari to download it.",
+        "fr": "L'archive est trop lourde pour le navigateur integre. Ouvrez "
+              "la page dans Safari pour la telecharger.",
+        "de": "Das Archiv ist zu gross fuer den eingebauten Browser. Oeffne "
+              "die Seite in Safari, um es zu laden.",
+        "es": "El archivo es demasiado pesado para el navegador integrado. "
+              "Abre la pagina en Safari para descargarlo."},
+    "js.ios_apri_safari": {
+        "it": "Apri in Safari", "en": "Open in Safari",
+        "fr": "Ouvrir dans Safari", "de": "In Safari oeffnen",
+        "es": "Abrir en Safari"},
+    "js.ios_copia": {
+        "it": "Copia link", "en": "Copy link",
+        "fr": "Copier le lien", "de": "Link kopieren",
+        "es": "Copiar enlace"},
+    "js.ios_copiato": {
+        "it": "Link copiato", "en": "Link copied",
+        "fr": "Lien copie", "de": "Link kopiert",
+        "es": "Enlace copiado"},
+    "js.ios_annulla": {
+        "it": "Annulla", "en": "Cancel", "fr": "Annuler",
+        "de": "Abbrechen", "es": "Cancelar"},
     "js.copertina_metti": {
         "it": "Metti in copertina", "en": "Set as cover",
         "fr": "Definir comme couverture", "de": "Als Titelbild setzen",
