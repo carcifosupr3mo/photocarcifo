@@ -318,7 +318,8 @@ Tutte le route GET rispondono anche a HEAD (aggiunto esplicitamente in `main.py`
 - Riconoscimento del contesto: iOS (`iPhone|iPad|iPod`, più iPadOS che si spaccia per Macintosh con `maxTouchPoints > 1`) **e** assenza dei segni di un browser proprio (`Version/` di Safari, `CriOS`, `FxiOS`, `EdgiOS`, `OPiOS`). Solo iOS: su Android la webview di Instagram non sa salvare file ma il sistema operativo offre da solo di aprire Chrome, e il download arriva — lì non c'è niente da correggere.
 - Ripiego quando il pannello non c'è: riquadro `.iosdl` con "Apri in Safari" (tentativo `x-safari-`), "Copia link" e "Annulla", più la strada a mano (menu ⋯ → Apri in Safari). Mai un errore generico.
 - Vale anche per la condivisione multipla `/fs/{token}`: il suo "Scarica tutte" era un semplice link e ora ha `id="dlTutto"`, quindi passa dallo stesso percorso.
-- Test: `tests/browser/test_ios_webview.js` — sette scenari su WebKit (desktop, Android, Android+Instagram, Safari iOS, Chrome iOS, Instagram iOS, Facebook iOS, foto singola, `/fs/{token}`) più la verifica del riquadro a 390x844 e 430x932.
+- Test: `tests/browser/test_ios_webview.js` — sette scenari su WebKit (desktop, Android, Android+Instagram, Safari iOS, Chrome iOS, Instagram iOS, Facebook iOS, foto singola, `/fs/{token}`) più la verifica del riquadro a 390x844 e 430x932. Nei test il pannello di condivisione è simulato: è un'API di sistema, WebKit su Linux non ce l'ha. I test dimostrano che il percorso ci arriva e gli consegna l'archivio giusto e integro, non che iOS lo salvi.
+- **Verifica su dispositivo reale, 06/09/2026**: iPhone dentro Instagram, download multiplo funzionante attraverso il pannello di condivisione di iOS. È la prova che mancava ai test qui sopra, e chiude la questione: la funzione è confermata sul campo, non solo in laboratorio.
 
 **Sicurezza**:
 - Tutte le route di download passano da `_can_access()` prima di servire qualunque file.
