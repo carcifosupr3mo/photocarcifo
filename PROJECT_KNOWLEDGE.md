@@ -223,6 +223,7 @@ Elenco delle route registrate nell'applicazione (estratte da `app/routers/*.py`;
 | POST | `/admin/maintenance/scan`, `/clear-cache`, `/aggiunta-foto`, `/numeri`, `/numeri-reset` | admin.py | Operazioni di manutenzione dal pannello |
 | GET | `/admin/numeri/{node_id}` / POST | admin.py | Correzione manuale numeri di gara |
 | GET | `/admin/ricerche`, `/admin/logs`, `/admin/richieste`, `/admin/condivisioni` | admin.py | Viste diagnostiche/gestionali |
+| GET | `/admin/stato-sistema` | admin.py | Dashboard salute sistema (NAS lettura/scrittura, scanner, monitor, backup, restore check, export config, spazio disco CT, servizi) — vedi sezione 18 (aggiunto 2026-09-07) |
 | GET | `/admin/statistiche` | statistiche.py | Dashboard analytics: top album per apertura/download/zip (storico), andamento mensile, ricerche più frequenti/senza risultati, totale preferiti. Legge solo `node_stats`/`ricerche`/`preferiti`, nessuna tabella nuova (aggiunto 2026-09-02) |
 | GET | `/admin/tree` (prefix `/admin/tree`) + `/api/children`, `/api/cerca`, `/api/node`, `/api/media`, `/{id}/qr` | admin_nodes.py | Navigazione e gestione alberatura |
 | POST | `/admin/tree/{id}/rename`, `/hide`, `/privacy`, `/bulk`, `/regen-link`, `/password`, `/downloads`, `/copertina`, `/scadenza` | admin_nodes.py | Modifica proprietà album |
@@ -748,6 +749,8 @@ Elenco completo dei servizi/timer `photocarcifo*` rilevati (`systemctl list-unit
 | `photocarcifo-rapporto.service` | Rapporto settimanale (via Telegram, dal 31/08/2026) | `photocarcifo-rapporto.timer` (lunedì 08:00) |
 | `photocarcifo-mensile.service` | Controllo mensile di salute generale e sicurezza | `photocarcifo-mensile.timer` (1° del mese, 08:30) |
 | `photocarcifo-bot.service` | Bot Telegram interattivo (in esecuzione continua) | — (`WantedBy=multi-user.target`) |
+
+**Dashboard di stato `/admin/stato-sistema`** (aggiunto 2026-09-07): pagina admin (stessa autenticazione delle altre pagine `/admin/*`, `Depends(require_admin_user)`) che mostra lo stato di NAS lettura/scrittura, ultimo scanner, ultimo monitor, backup DB, restore check, export configurazione, spazio disco del container (`/opt/photocarcifo`, via `shutil.disk_usage`) e lo stato (`systemctl is-active`, sola lettura) dei 7 servizi/timer principali. Non rifà mai controlli pesanti ad ogni apertura: legge solo lo stato già calcolato dal timer `photocarcifo-monitor.service` (ogni 5 minuti) dal file `/var/lib/photocarcifo/monitor-stato.json` — quindi i dati mostrati possono avere fino a ~5 minuti di ritardo rispetto alla realtà, per design. Quel file, scritto da root, è ora leggibile anche dal gruppo `photocarcifo` (permessi `640`, invece di `600`) perché la pagina web (che gira come utente `photocarcifo`, non root) possa leggerlo senza bisogno di privilegi nuovi — nessun `sudo` concesso all'applicazione, nessuna scrittura sul NAS, nessun mount/unmount, nessun restart di servizi da questa pagina. Nessun endpoint JSON pubblico: solo questa pagina HTML, dietro la stessa autenticazione admin di tutto il resto del pannello.
 
 **Dettaglio `photocarcifo.service`** (verificato con `systemctl cat`, unit + drop-in):
 - `WorkingDirectory=/opt/photocarcifo`
@@ -1398,6 +1401,7 @@ Elenco esplicito, da usare come filtro per evitare proposte ridondanti:
 - ✅ Compatibilità con vecchi indirizzi di una galleria precedente (`index.php`, `picture.php`)
 - ✅ HTTP/3 (QUIC) attivo, certificati TLS automatici
 - ✅ Protezione anti-bot e rate limiting differenziato per tipo di risorsa a livello Nginx, più fail2ban con jail dedicate
+- ✅ Dashboard admin di stato sistema (`/admin/stato-sistema`, aggiunta 2026-09-07): NAS lettura/scrittura, scanner, monitor, backup, restore check, export config, spazio disco CT, stato servizi — legge lo stato già raccolto dal monitor, nessun controllo pesante ad ogni apertura
 
 ---
 

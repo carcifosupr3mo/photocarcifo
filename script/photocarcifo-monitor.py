@@ -17,6 +17,7 @@ di pochi secondi): serve 3 fallimenti consecutivi. Tutti gli altri controlli
 (systemd, disco, DB) sono gia' affidabili al primo giro: se systemctl dice
 che nginx e' fermo, e' fermo davvero, non serve riprovare.
 """
+import grp
 import json
 import os
 import re
@@ -125,7 +126,19 @@ def scrivi_stato(stato):
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(stato, f)
         os.replace(tmp, STATO)
-        os.chmod(STATO, 0o600)
+        os.chmod(STATO, 0o640)
+        # Leggibile anche dal gruppo dell'applicazione web (utente
+        # "photocarcifo", stesso nome del gruppo): serve alla dashboard di
+        # stato in /admin, che legge questo file invece di rifare i
+        # controlli o chiedere privilegi nuovi. Nessun segreto qui dentro
+        # — solo booleani, percentuali, timestamp e brevi diagnosi ("200
+        # in 0.1s", nomi di file di backup). Se il gruppo non esiste
+        # (sviluppo locale, macchina diversa) il file resta leggibile solo
+        # da root come prima: non e' un errore da far notare.
+        try:
+            os.chown(STATO, -1, grp.getgrnam("photocarcifo").gr_gid)
+        except (KeyError, PermissionError, OSError):
+            pass
     except Exception:
         pass
 
@@ -725,6 +738,7 @@ def esegui_controlli(config=None, adesso=None):
         "backup_db_ok": backup_ok, "backup_db_dettaglio": backup_dettaglio,
         "backup_db_integrity_quando": stato.get("backup_db_integrity_quando"),
         "backup_db_integrity_ok": stato.get("backup_db_integrity", {}).get("ok"),
+        "nas_ok": nas_ok,
         "nas_backup_ok": nas_backup_ok,
         "export_config_ok": export_ok, "export_config_dettaglio": export_dettaglio,
         "disco_livello": livello_disco, "disco_liberi_pct": liberi_pct,

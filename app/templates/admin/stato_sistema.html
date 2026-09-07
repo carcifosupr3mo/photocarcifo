@@ -1,0 +1,104 @@
+{% extends "admin/base.html" %}
+{% set active = 'stato-sistema' %}
+{% block title %}Stato del sistema — {{ site_name() }}{% endblock %}
+
+{% block content %}
+<h1>Stato del sistema</h1>
+<p style="color:var(--ink-soft);margin-bottom:.5rem;">
+  Letto dall'ultimo giro del controllo automatico (ogni 5 minuti), non da un
+  controllo rifatto adesso — questa pagina si apre subito, senza aspettare
+  verifiche pesanti.
+</p>
+<p style="color:var(--ink-soft);font-size:.85rem;margin-bottom:2rem;">
+  Ultimo controllo: {% if ultimo_check %}{{ ultimo_check_fa }}{% else %}mai — il timer
+  photocarcifo-monitor potrebbe essere fermo{% endif %}
+</p>
+
+<h2>NAS</h2>
+<div class="stato-grid">
+  <div class="stato-card">
+    <div class="stato-nome">NAS lettura</div>
+    <span class="stato-pill {{ nas_lettura.classe }}">{{ nas_lettura.etichetta_stato }}</span>
+    <div class="stato-dettaglio">{{ nas_lettura.percorso }}</div>
+    <div class="stato-quando">{{ ultimo_check_fa }}</div>
+  </div>
+  <div class="stato-card">
+    <div class="stato-nome">NAS scrittura</div>
+    <span class="stato-pill {{ nas_scrittura.classe }}">{{ nas_scrittura.etichetta_stato }}</span>
+    <div class="stato-dettaglio">{{ nas_scrittura.percorso }}</div>
+    <div class="stato-quando">{{ ultimo_check_fa }}</div>
+  </div>
+</div>
+
+<h2>Backup e ripristino</h2>
+<div class="stato-grid">
+  <div class="stato-card">
+    <div class="stato-nome">Backup DB</div>
+    <span class="stato-pill {{ backup.classe }}">{{ backup.etichetta_stato }}</span>
+    <div class="stato-dettaglio">{{ backup.dettaglio }}</div>
+    <div class="stato-quando">verificato {{ ultimo_check_fa }}</div>
+  </div>
+  <div class="stato-card">
+    <div class="stato-nome">Restore check</div>
+    <span class="stato-pill {{ restore_check.classe }}">{{ restore_check.etichetta_stato }}</span>
+    <div class="stato-dettaglio">
+      {% if restore_check.quando %}Copia, apertura e integrity_check completi
+      {% else %}Non ancora eseguito{% endif %}
+    </div>
+    <div class="stato-quando">
+      {% if restore_check.quando %}ultimo controllo: {{ restore_check.quando_fa }}
+      {% else %}—{% endif %}
+    </div>
+  </div>
+  <div class="stato-card">
+    <div class="stato-nome">Export configurazione</div>
+    <span class="stato-pill {{ export_config.classe }}">{{ export_config.etichetta_stato }}</span>
+    <div class="stato-dettaglio">{{ export_config.dettaglio }}</div>
+    <div class="stato-quando">verificato {{ ultimo_check_fa }}</div>
+  </div>
+</div>
+
+<h2>Scanner e monitor</h2>
+<div class="stato-grid">
+  <div class="stato-card">
+    <div class="stato-nome">Ultimo scanner</div>
+    <span class="stato-pill {{ scan.classe }}">{{ scan.etichetta_stato }}</span>
+    <div class="stato-dettaglio">{{ scan.dettaglio }}</div>
+    <div class="stato-quando">{{ scan.quando_fa }}</div>
+  </div>
+  <div class="stato-card">
+    <div class="stato-nome">Monitor automatico</div>
+    <span class="stato-pill {{ monitor.classe }}">{{ monitor.etichetta_stato }}</span>
+    <div class="stato-dettaglio">
+      {% if monitor.etichetta_stato == 'OK' %}Gira ogni 5 minuti
+      {% else %}Nessun controllo registrato — verificare il timer{% endif %}
+    </div>
+    <div class="stato-quando">{{ monitor.quando_fa }}</div>
+  </div>
+</div>
+
+<h2>Spazio disco (container)</h2>
+<div class="stato-grid">
+  <div class="stato-card">
+    <div class="stato-nome">/opt/photocarcifo</div>
+    <span class="stato-pill {{ disco_ct.classe }}">{{ disco_ct.etichetta_stato }}</span>
+    <div class="stato-dettaglio">
+      {{ disco_ct.used|human_size }} usati di {{ disco_ct.total|human_size }}
+      {% if disco_ct.pct_usato is not none %}({{ disco_ct.pct_usato }}% usato){% endif %}
+    </div>
+    <div class="stato-quando">{{ disco_ct.free|human_size }} liberi — {{ ultimo_check_fa }}</div>
+  </div>
+</div>
+
+<h2>Servizi</h2>
+<div class="stato-grid">
+  {% for s in servizi %}
+  <div class="stato-card">
+    <div class="stato-nome">{{ s.nome }}</div>
+    <span class="stato-pill {{ s.classe }}">{{ s.etichetta_stato }}</span>
+    <div class="stato-dettaglio">{{ s.unita }}</div>
+    <div class="stato-quando">adesso</div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

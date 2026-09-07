@@ -499,8 +499,26 @@ body.is-admin{background:var(--bg-soft);}
 .nas-banner{border-radius:var(--radius);}
 .nas-ok{background:#e8fbf4;color:#00795c;}
 .nas-err{background:#fff1f4;color:#c22d55;}
+/* Le stesse due varianti di sempre (nas-ok/nas-err), qui estese a quattro
+   stati per la pagina di stato del sistema: nas-unknown riusa le variabili
+   di palette già esistenti (--bg-soft/--ink-soft), nas-warn segue lo stesso
+   schema tinta chiara/testo scuro delle altre due ma con una coppia di
+   colori ambra nuova — nessun sistema di colori nuovo, solo una variante
+   in più dello stesso pattern a due tonalità. */
+.nas-warn{background:#fff6e0;color:#8a5a00;}
+.nas-unknown{background:var(--bg-soft);color:var(--ink-soft);}
 .table{background:#fff;border-radius:var(--radius);overflow:hidden;}
 .table th{background:var(--bg-soft);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);}
+
+/* Pagina /admin/stato-sistema: card compatte NOME/STATO/DETTAGLIO/QUANDO.
+   Stesso linguaggio visivo di .stat-card (bordo, radius, sfondo bianco),
+   solo con una pillola di stato colorata invece di un numero grande. */
+.stato-grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));margin:1rem 0 2rem;}
+.stato-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem 1.2rem;}
+.stato-card .stato-nome{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);margin-bottom:.5rem;}
+.stato-pill{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 10px;border-radius:999px;margin-bottom:.6rem;}
+.stato-card .stato-dettaglio{font-size:.85rem;color:var(--ink);margin-bottom:.4rem;word-break:break-word;overflow-wrap:anywhere;}
+.stato-card .stato-quando{font-size:.75rem;color:var(--ink-soft);}
 
 @media (max-width:860px){
   .admin-shell{grid-template-columns:1fr;}

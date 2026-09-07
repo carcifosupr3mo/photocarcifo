@@ -1,6 +1,8 @@
 """Dashboard amministratore - versione base compatibile col modello ad albero."""
+import json
 import shutil
 import subprocess
+from datetime import datetime
 
 from fastapi import APIRouter, Request, Form, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -285,6 +287,216 @@ def logs_page(request: Request, user: dict = Depends(require_admin_user)):
     with get_db() as conn:
         rows = conn.execute("SELECT ts,level,category,message FROM logs ORDER BY id DESC LIMIT 200").fetchall()
     return templates.TemplateResponse(request, "admin/logs.html", {"user": user, "logs": [dict(r) for r in rows]})
+
+
+# ---------------- Stato del sistema ----------------
+
+# Lo stesso file che il timer photocarcifo-monitor.py scrive ogni 5 minuti
+# (vedi script/photocarcifo-monitor.py, scrivi_stato()): questa pagina lo
+# LEGGE soltanto, non rifà nessun controllo — nessun integrity_check,
+# nessuna scansione NAS, nessun restore ad ogni apertura. Il file è
+# leggibile dal gruppo "photocarcifo" (permesso 640) apposta per questa
+# pagina: non contiene segreti, solo booleani/percentuali/timestamp.
+_STATO_MONITOR = "/var/lib/photocarcifo/monitor-stato.json"
+
+# Il mount in scrittura (backup/export sul NAS) non ha un proprio campo in
+# config.py: lo usano solo script fuori dal processo web (photocarcifo-
+# db-backup.sh, deploy/photocarcifo-export-config.sh, il monitor). Stessa
+# costante duplicata li', non c'è un meccanismo di configurazione
+# condiviso fra gli script di sistema e l'applicazione FastAPI.
+_NAS_SCRITTURA = "/mnt/magazzino-rw"
+
+# I soli servizi/timer di cui ha senso mostrare lo stato qui: l'app stessa,
+# i due che il monitor già sorveglia (bot, nginx), e i quattro timer dietro
+# a scanner/monitor/backup/export — esattamente quello che questa pagina
+# racconta. Non fail2ban, non il pannello: fuori tema.
+_SERVIZI_MOSTRATI = [
+    ("photocarcifo.service", "Applicazione"),
+    ("photocarcifo-bot.service", "Bot Telegram"),
+    ("nginx.service", "Nginx"),
+    ("photocarcifo-scan.timer", "Scanner (timer)"),
+    ("photocarcifo-monitor.timer", "Monitor (timer)"),
+    ("photocarcifo-db-backup.timer", "Backup DB (timer)"),
+    ("photocarcifo-export-config.timer", "Export config (timer)"),
+]
+
+
+def _leggi_stato_monitor() -> dict:
+    """Non deve mai far fallire la pagina: se il file manca, è illeggibile
+    o è un JSON rotto a metà scrittura (raro: scrivi_stato() sposta con
+    os.replace, ma un lettore nel millisecondo sbagliato può ancora
+    incontrare il file appena creato), si torna un dizionario vuoto e la
+    pagina mostra "sconosciuto" ovunque invece di un errore 500."""
+    try:
+        with open(_STATO_MONITOR, encoding="utf-8") as f:
+            dati = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    # json.load riesce anche su un file che contiene solo "null" o una
+    # lista: sintatticamente valido ma non e' il dizionario che ci si
+    # aspetta. Meglio un dizionario vuoto (-> "sconosciuto" in pagina) che
+    # un AttributeError piu' avanti su stato.get(...).
+    return dati if isinstance(dati, dict) else {}
+
+
+def _stato_servizio(nome: str) -> str:
+    """systemctl is-active, sola lettura: nessun privilegio nuovo, è la
+    stessa identica chiamata che il monitor fa già da solo ogni 5 minuti
+    (controlla_servizio in photocarcifo-monitor.py) — verificato che
+    l'utente con cui gira l'app (photocarcifo, non root) può eseguirla
+    senza bisogno di sudo. Timeout breve: se systemd/dbus fosse lento, la
+    pagina non deve restare ferma ad aspettarlo."""
+    try:
+        r = subprocess.run(["systemctl", "is-active", nome],
+                           capture_output=True, text=True, timeout=3)
+        return r.stdout.strip() or "sconosciuto"
+    except Exception:
+        return "sconosciuto"
+
+
+def _pillola(ok) -> tuple[str, str]:
+    """True/False/None -> (etichetta, classe CSS). Le classi sono le
+    stesse nas-ok/nas-err già in uso nel resto del pannello (vedi
+    dashboard.html), qui estese a quattro stati invece di due — nessun
+    sistema di colori nuovo, solo due varianti in più dello stesso."""
+    if ok is True:
+        return "OK", "nas-ok"
+    if ok is False:
+        return "ERRORE", "nas-err"
+    return "SCONOSCIUTO", "nas-unknown"
+
+
+def _pillola_servizio(stato_testo: str) -> tuple[str, str]:
+    if stato_testo == "active":
+        return "ATTIVO", "nas-ok"
+    if stato_testo in ("inactive", "dead"):
+        return "INATTIVO", "nas-warn"
+    if stato_testo == "failed":
+        return "FALLITO", "nas-err"
+    return "SCONOSCIUTO", "nas-unknown"
+
+
+def _pillola_export(ok) -> tuple[str, str]:
+    """Come _pillola, ma per l'export configurazione: None qui non vuol
+    dire "non ancora controllato", vuol dire specificamente "NAS-scrittura
+    giu', impossibile dire se l'export sia aggiornato" (vedi
+    controlla_export_config nel monitor) — l'etichetta lo dice esplicito
+    invece del generico SCONOSCIUTO usato altrove."""
+    if ok is True:
+        return "OK", "nas-ok"
+    if ok is False:
+        return "ERRORE", "nas-err"
+    return "NON VERIFICABILE", "nas-unknown"
+
+
+def _pillola_disco(livello: str) -> tuple[str, str]:
+    if livello == "ok":
+        return "OK", "nas-ok"
+    if livello == "warning":
+        return "ATTENZIONE", "nas-warn"
+    if livello == "critical":
+        return "CRITICO", "nas-err"
+    return "SCONOSCIUTO", "nas-unknown"
+
+
+def _fa(quando_iso, adesso=None) -> str:
+    """'Xm fa'/'Xh fa'/'Xg fa' a partire da un timestamp ISO — lo stesso
+    tipo di calcolo che il bot fa per /health (_eta_check), qui solo per
+    la scritta, non per decidere uno stato."""
+    if not quando_iso:
+        return "mai"
+    try:
+        quando = datetime.fromisoformat(quando_iso)
+    except (ValueError, TypeError):
+        return "data sconosciuta"
+    ora = adesso or (datetime.now(quando.tzinfo) if quando.tzinfo else datetime.now())
+    minuti = (ora - quando).total_seconds() / 60
+    if minuti < 0:
+        return "adesso"
+    if minuti < 60:
+        return f"{minuti:.0f}m fa"
+    if minuti < 60 * 24:
+        return f"{minuti / 60:.0f}h fa"
+    return f"{minuti / 60 / 24:.0f}g fa"
+
+
+@router.get("/stato-sistema", response_class=HTMLResponse)
+def stato_sistema(request: Request, user: dict = Depends(require_admin_user)):
+    stato = _leggi_stato_monitor()
+    d = stato.get("dettagli_ultimo", {})
+    ultimo_check = stato.get("ultimo_check")
+
+    # L'ultima scansione: stessa tabella che /admin/logs già mostra,
+    # filtrata alla sola categoria "scan" e limitata a una riga — non una
+    # query nuova e pesante, la stessa identica fonte con un WHERE in più.
+    with get_db() as conn:
+        ultima_scan = conn.execute(
+            "SELECT ts, level, message FROM logs WHERE category='scan' "
+            "ORDER BY id DESC LIMIT 1").fetchone()
+    scan_ok, scan_dettaglio, scan_quando = None, "nessuna scansione registrata", None
+    if ultima_scan:
+        scan_ok = ultima_scan["level"] == "INFO"
+        scan_dettaglio = ultima_scan["message"][:140]
+        scan_quando = ultima_scan["ts"]
+
+    # Byte reali dello stesso filesystem che il monitor già misura
+    # (/opt/photocarcifo/data — un semplice statvfs, non costoso), ma lo
+    # stato (ok/attenzione/critico) è quello che il monitor ha già deciso
+    # con le sue soglie: niente doppie soglie da tenere allineate a mano.
+    disco = {"total": 0, "used": 0, "free": 0}
+    try:
+        u = shutil.disk_usage("/opt/photocarcifo")
+        disco = {"total": u.total, "used": u.used, "free": u.free}
+    except OSError:
+        pass
+    disco["pct_usato"] = round(100 - d.get("disco_liberi_pct", 0), 1) \
+        if d.get("disco_liberi_pct") is not None else None
+
+    servizi = []
+    for unita, etichetta in _SERVIZI_MOSTRATI:
+        stato_testo = _stato_servizio(unita)
+        etichetta_stato, classe = _pillola_servizio(stato_testo)
+        servizi.append({"nome": etichetta, "unita": unita,
+                        "stato_testo": stato_testo,
+                        "etichetta_stato": etichetta_stato, "classe": classe})
+
+    def card(ok, **extra):
+        etichetta_stato, classe = _pillola(ok)
+        return {"etichetta_stato": etichetta_stato, "classe": classe, **extra}
+
+    etichetta_disco, classe_disco = _pillola_disco(d.get("disco_livello"))
+    disco["etichetta_stato"], disco["classe"] = etichetta_disco, classe_disco
+
+    etichetta_export, classe_export = _pillola_export(d.get("export_config_ok"))
+    export_config = {"etichetta_stato": etichetta_export, "classe": classe_export,
+                     "dettaglio": d.get("export_config_dettaglio") or "—"}
+
+    contesto = {
+        "user": user,
+        "ultimo_check": ultimo_check, "ultimo_check_fa": _fa(ultimo_check),
+
+        "nas_lettura": card(d.get("nas_ok"), percorso=str(get_settings().photo_root_path)),
+        "nas_scrittura": card(d.get("nas_backup_ok"), percorso=_NAS_SCRITTURA),
+
+        "scan": card(scan_ok, dettaglio=scan_dettaglio,
+                    quando=scan_quando, quando_fa=_fa(scan_quando)),
+
+        "monitor": card(ultimo_check is not None,
+                        quando=ultimo_check, quando_fa=_fa(ultimo_check)),
+
+        "backup": card(d.get("backup_db_ok"), dettaglio=d.get("backup_db_dettaglio") or "—"),
+
+        "restore_check": card(d.get("backup_db_integrity_ok"),
+                              quando=d.get("backup_db_integrity_quando"),
+                              quando_fa=_fa(d.get("backup_db_integrity_quando"))),
+
+        "export_config": export_config,
+
+        "disco_ct": disco,
+
+        "servizi": servizi,
+    }
+    return templates.TemplateResponse(request, "admin/stato_sistema.html", contesto)
 
 
 # ---------------- Richieste di contatto ----------------
