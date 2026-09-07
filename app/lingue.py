@@ -642,23 +642,6 @@ TESTI = {
     "rad.passati": {
         "it": "Già passati", "en": "Past meet-ups", "fr": "Déjà passés",
         "de": "Bereits vorbei", "es": "Ya pasadas"},
-    "rad.acc_titolo": {
-        "it": "Calendario riservato", "en": "Private calendar",
-        "fr": "Calendrier réservé", "de": "Interner Kalender",
-        "es": "Calendario reservado"},
-    "rad.acc_pagina": {
-        "it": "Accesso riservato", "en": "Restricted access",
-        "fr": "Accès réservé", "de": "Zugang beschränkt",
-        "es": "Acceso restringido"},
-    "rad.acc_int": {
-        "it": "Questa pagina è accessibile solo a chi conosce la risposta.",
-        "en": "This page is only open to those who know the answer.",
-        "fr": "Cette page n'est accessible qu'à ceux qui connaissent la réponse.",
-        "de": "Diese Seite ist nur zugänglich, wer die Antwort kennt.",
-        "es": "Esta página solo es accesible para quien conoce la respuesta."},
-    "rad.acc_entra": {
-        "it": "Entra", "en": "Enter", "fr": "Entrer", "de": "Eintreten",
-        "es": "Entrar"},
 
     # Recensioni
     "rec.titolo": {
