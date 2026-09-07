@@ -57,7 +57,7 @@ def _dominio_consentito(url: str, base: str) -> bool:
 _SEGMENTI_ESCLUSI = (
     "/admin", "/api/", "/login", "/logout", "/2fa", "/p/", "/f/", "/fs/",
     "/download/", "/zip/", "/video/", "/thumb/", "/thumb2x/", "/cover/",
-    "/preview/", "/preferiti/", "/mie-preferite", "/radunimoto",
+    "/preview/", "/preferiti/", "/mie-preferite",
     "/lingua/", "/healthz", "/search",
 )
 

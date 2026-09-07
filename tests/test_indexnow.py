@@ -66,7 +66,12 @@ class _RispostaFinta:
     ("https://photocarcifo.ch/preview/1", False),
     ("https://photocarcifo.ch/preferiti/x", False),
     ("https://photocarcifo.ch/mie-preferite", False),
-    ("https://photocarcifo.ch/radunimoto", False),
+    # Fino al 07/09/2026 era False: retaggio di quando /radunimoto era
+    # protetta da un gate mai collegato dal sito (rimosso il 02/09/2026,
+    # commit e0f2cbf). E' una pagina pubblica vera da allora, quindi ora
+    # e' indicizzabile come le altre - stesso bug, stessa correzione gia'
+    # fatta in _SEGMENTI_ESCLUSI e nel Disallow di robots.txt (seo.py).
+    ("https://photocarcifo.ch/radunimoto", True),
     ("https://photocarcifo.ch/lingua/en", False),
     ("https://photocarcifo.ch/healthz", False),
     ("https://photocarcifo.ch/search", False),

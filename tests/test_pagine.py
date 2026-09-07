@@ -98,6 +98,21 @@ def test_indirizzi_di_servizio(client):
         assert tipo in r.headers["content-type"], percorso
 
 
+def test_robots_radunimoto_indicizzabile_search_no(client):
+    """"/radunimoto" e' una pagina pubblica vera dal 02/09/2026 (commit
+    e0f2cbf) e non deve piu' comparire tra i Disallow di robots.txt, in
+    nessuna delle cinque lingue. "/search" resta invece chiuso (e' solo un
+    rimando storico verso "/?q=..."), sia in italiano sia con i prefissi di
+    lingua, e i risultati di ricerca veri ("/?q=...") restano fuori
+    dall'indicizzazione uno per uno con "Disallow: /*?q=" (vedi
+    app/routers/seo.py:robots)."""
+    corpo = client.get("/robots.txt").text
+    assert "Disallow: /radunimoto" not in corpo
+    for prefisso in ["", "en/", "fr/", "de/", "es/"]:
+        assert f"Disallow: /{prefisso}search" in corpo
+    assert "Disallow: /*?q=" in corpo
+
+
 def test_sitemap_non_contiene_pagine_riservate(client, dati):
     """Un album privato o nascosto nella sitemap sarebbe un invito a
     indicizzarlo: e' il contrario di cio' per cui e' riservato."""

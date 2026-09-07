@@ -32,17 +32,26 @@ def robots():
     # si scrivesse solo "Disallow: /search", la versione inglese della
     # ricerca resterebbe aperta e tornerebbero le segnalazioni di Search
     # Console che avevamo appena chiuso.
-    chiusi = ["/admin", "/p/", "/download/", "/zip/", "/video/",
-              "/preferiti/", "/mie-preferite", "/radunimoto", "/lingua/",
-              "/healthz"]
+    # "/radunimoto" e' uscito da questa lista il 02/09/2026 (commit
+    # e0f2cbf): prima era protetta da un gate domanda/risposta mai
+    # collegato dal sito, ora e' una pagina pubblica vera raggiungibile
+    # dalla barra di navigazione, con contenuto proprio (eventi + album
+    # pubblici collegati) — bloccarla ai motori di ricerca non aveva piu'
+    # motivo, restava solo perche' nessuno l'aveva tolta. Trovato con un
+    # audit Lighthouse SEO (is-crawlable) sulla pagina reale.
+    chiusi = ["/admin", "/p/", "/download/", "/zip/", "/video/", "/search",
+              "/preferiti/", "/mie-preferite", "/lingua/", "/healthz"]
     righe = ["User-agent: *"]
     for voce in chiusi:
         righe.append(f"Disallow: {voce}")
         for codice in lingue.PREFISSI:
             righe.append(f"Disallow: /{codice}{voce}")
     # I quattro ordinamenti danno la stessa pagina in sequenza diversa:
-    # quattro copie da far scartare una per una.
-    righe += ["Disallow: /*?ordine=", "Allow: /"]
+    # quattro copie da far scartare una per una. "/search" stesso e' solo
+    # un rimando storico (redirect 302 verso "/", vedi tree.py:search): i
+    # risultati veri vivono su "/?q=..." con lo stesso meccanismo, stessa
+    # ragione per non farli indicizzare uno per uno.
+    righe += ["Disallow: /*?ordine=", "Disallow: /*?q=", "Allow: /"]
 
     # Raccoglitori che prendono e non portano nessuno: strumenti di analisi
     # commerciale e raccolte di immagini per addestrare modelli. Il 17/08/2026
