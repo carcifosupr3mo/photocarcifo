@@ -24,6 +24,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -57,6 +58,27 @@ SOGLIA_5XX = 5             # errori nella finestra
 FINESTRA_5XX_MIN = 5       # minuti
 
 INTEGRITY_CHECK_OGNI_ORE = 24   # controllo pesante del DB una volta al giorno
+
+# Il backup gira ogni notte alle 03:00 (photocarcifo-db-backup.timer). 30
+# ore e non 24: RandomizedDelaySec, un riavvio della macchina proprio in
+# quella finestra o un giro in ritardo non devono far scattare un allarme
+# per un backup che in realta' e' solo di qualche ora piu' vecchio del
+# solito — 30 ore lasciano un margine di sei ore oltre il giro
+# successivo previsto, abbastanza per assorbire un ritardo senza
+# nascondere un backup davvero saltato (che a quel punto avrebbe quasi
+# due giorni).
+BACKUP_DIR = "/opt/photocarcifo-db-backup"
+BACKUP_MAX_ETA_ORE = 30
+BACKUP_CHECK_OGNI_ORE = 24   # apertura+integrity_check+conteggi: pesante come sopra
+
+# L'export della configurazione (nginx, fail2ban, systemd, e l'ultima copia
+# del backup DB) gira alle 03:30, appena dopo il backup: stessa soglia.
+NAS_BACKUP_PATH = "/mnt/magazzino-rw"          # mount in scrittura, diverso
+                                                # da /mnt/magazzino (sola
+                                                # lettura) gia' controllato
+                                                # sotto per lo scanner
+EXPORT_CONFIG_DIR = NAS_BACKUP_PATH + "/_backup_sito/configurazione"
+EXPORT_MAX_ETA_ORE = 30
 
 
 # --------------------------------------------------------------- config/log
@@ -224,6 +246,159 @@ def controlla_nas(percorso="/mnt/magazzino"):
         return False
 
 
+def _ultimo_backup_db(cartella=BACKUP_DIR):
+    """Il file di backup piu' recente nella cartella, o None se non ce ne
+    sono. Solo metadata (nome dei file), nessuna apertura: usata sia dal
+    controllo leggero sia da quello pesante, cosi' i due concordano
+    sempre su QUALE file stanno giudicando."""
+    try:
+        candidati = sorted(Path(cartella).glob("photocarcifo-*.sqlite"),
+                           key=lambda p: p.stat().st_mtime, reverse=True)
+    except OSError:
+        return None
+    return candidati[0] if candidati else None
+
+
+def controlla_backup_db_recente(cartella=BACKUP_DIR, adesso=None):
+    """Solo filesystem — un giro su una cartella con 14 file al massimo,
+    nessuna apertura del database: costa un attimo, va bene ad ogni giro
+    di monitor, a differenza della verifica pesante sotto."""
+    adesso = adesso or datetime.now(timezone.utc)
+    ultimo = _ultimo_backup_db(cartella)
+    if ultimo is None:
+        return False, "nessun file di backup trovato"
+    try:
+        info = ultimo.stat()
+    except OSError as errore:
+        return False, str(errore)
+    if info.st_size == 0:
+        return False, f"{ultimo.name} e' vuoto"
+    eta_ore = (adesso - datetime.fromtimestamp(
+        info.st_mtime, tz=timezone.utc)).total_seconds() / 3600
+    if eta_ore > BACKUP_MAX_ETA_ORE:
+        return False, f"{ultimo.name} ha {eta_ore:.0f} ore"
+    return True, f"{ultimo.name}, {eta_ore:.0f}h fa"
+
+
+def _ripulisci_copie_orfane():
+    """Il 'finally' dentro controlla_backup_db_integrita cancella sempre
+    la sua copia — ma solo se il processo Python arriva a girarlo: un
+    OOM-killer, un 'systemctl kill' o un riavvio della macchina a meta'
+    della copia di 23 MB non lasciano a nessuno la possibilita' di
+    ripulire. Con un controllo giornaliero non e' un disastro, ma si
+    accumulerebbe zitto — 23 MB alla volta — fino a farsi notare solo
+    quando scattasse controlla_disco, che e' proprio uno dei controlli di
+    questo file. Un'ora di margine: piu' del previsto anche per un
+    backup molto piu' grande di adesso, poco per confondersi con una
+    copia che un altro giro ha appena iniziato."""
+    UN_ORA = 3600
+    adesso = time.time()
+    try:
+        for percorso in Path(tempfile.gettempdir()).glob(
+                "photocarcifo-restore-check-*.sqlite*"):
+            try:
+                if adesso - percorso.stat().st_mtime > UN_ORA:
+                    percorso.unlink()
+            except OSError:
+                pass
+    except OSError:
+        pass
+
+
+def controlla_backup_db_integrita(cartella=BACKUP_DIR, percorso_produzione=DB_PATH):
+    """Il test di restore non distruttivo: copia il backup piu' recente
+    in un file temporaneo (mai il file di backup originale, mai la
+    produzione), lo apre, controlla l'integrita', verifica che le
+    tabelle principali esistano e non siano vuote in modo anomalo — poi
+    cancella la copia. Se questi passi riescono, il backup non e' solo
+    "un file che esiste": e' un database che si puo' davvero riaprire.
+
+    Il confronto con la produzione e' un extra molto prudente (un
+    crollo netto dei conteggi, non un limite preciso): serve a
+    prendere un backup di un database svuotato per errore, non la
+    normale oscillazione quotidiana del numero di foto."""
+    ultimo = _ultimo_backup_db(cartella)
+    if ultimo is None:
+        return False, "nessun file di backup trovato"
+    tmp = Path(tempfile.gettempdir()) / f"photocarcifo-restore-check-{os.getpid()}.sqlite"
+    try:
+        shutil.copy2(ultimo, tmp)
+        conn = sqlite3.connect(f"file:{tmp}?mode=ro", uri=True, timeout=10.0)
+        try:
+            righe = [r[0] for r in conn.execute("PRAGMA integrity_check").fetchall()]
+            if righe != ["ok"]:
+                return False, f"integrity_check: {'; '.join(righe[:3])}"
+            tabelle = {r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}
+            mancanti = [t for t in ("nodes", "media") if t not in tabelle]
+            if mancanti:
+                return False, f"tabelle assenti nel backup: {', '.join(mancanti)}"
+            nodes = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
+            media = conn.execute("SELECT COUNT(*) FROM media").fetchone()[0]
+            if nodes == 0 or media == 0:
+                return False, f"backup vuoto in modo anomalo (nodes={nodes} media={media})"
+        finally:
+            conn.close()
+    except Exception as errore:
+        return False, str(errore)
+    finally:
+        # Se il backup e' in WAL (come il database di produzione da cui
+        # nasce), aprirlo crea anche -wal e -shm accanto al file: senza
+        # cancellare anche quelli, ogni giro lascia due file in piu' in
+        # /tmp — trovato provando il test, non a lettura del codice.
+        for suffisso in ("", "-wal", "-shm"):
+            try:
+                Path(str(tmp) + suffisso).unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    try:
+        conn_prod = sqlite3.connect(f"file:{percorso_produzione}?mode=ro",
+                                    uri=True, timeout=5.0)
+        try:
+            media_prod = conn_prod.execute("SELECT COUNT(*) FROM media").fetchone()[0]
+        finally:
+            conn_prod.close()
+        if media_prod > 0 and media < media_prod * 0.5:
+            return False, (f"media nel backup ({media}) molto inferiore "
+                           f"alla produzione ({media_prod})")
+    except Exception:
+        pass  # il confronto e' un extra prudente: se fallisce non e' un motivo di allarme
+
+    return True, f"nodes={nodes} media={media}"
+
+
+def controlla_export_config(nas_raggiungibile, cartella=EXPORT_CONFIG_DIR, adesso=None):
+    """Solo metadata, come il controllo leggero del backup: guarda quando
+    e' stato scritto per l'ultima volta env-chiavi.txt (riscritto ad ogni
+    esecuzione riuscita dell'export, quindi la sua data e' la data
+    dell'ultimo export completato). Se il NAS non risponde il controllo
+    non ha niente di attendibile da dire: si salta, cosi' non si manda un
+    secondo allarme sopra a quello gia' dedicato al NAS.
+
+    "Saltato" torna None e non True: chi chiama deve poter distinguere
+    "verificato, va bene" da "non verificabile ora", altrimenti un export
+    gia' scaduto (stato "critico", alert gia' inviato) che smette di
+    essere controllabile perche' nel frattempo cade anche il NAS
+    produrrebbe un falso "tornato operativo" al giro successivo — il
+    problema originale non si e' risolto, si e' solo smesso di vederlo.
+    Trovato dalla code review, non da un test."""
+    if not nas_raggiungibile:
+        return None, "NAS non raggiungibile: controllo saltato"
+    adesso = adesso or datetime.now(timezone.utc)
+    chiave = Path(cartella) / "env-chiavi.txt"
+    try:
+        if not chiave.exists():
+            return False, "nessun export di configurazione trovato"
+        mtime = chiave.stat().st_mtime
+    except OSError as errore:
+        return False, str(errore)
+    eta_ore = (adesso - datetime.fromtimestamp(mtime, tz=timezone.utc)).total_seconds() / 3600
+    if eta_ore > EXPORT_MAX_ETA_ORE:
+        return False, f"ultimo export ha {eta_ore:.0f} ore"
+    return True, f"{eta_ore:.0f}h fa"
+
+
 def controlla_disco(percorso=DISCO_PATH):
     try:
         uso = shutil.disk_usage(percorso)
@@ -342,6 +517,15 @@ def esegui_controlli(config=None, adesso=None):
     stato = leggi_stato()
     adesso = adesso or datetime.now(timezone.utc)
 
+    # Ad ogni giro (ogni 5 minuti) e non solo quando gira il controllo
+    # pesante sul backup: legarla al throttle giornaliero significava che
+    # in un giorno tranquillo — quello throttled, senza un vero controllo
+    # — un residuo lasciato da un processo ucciso a meta' copia poteva
+    # restare fino a 24 ore invece del margine di un'ora previsto. Costa
+    # un giro su una cartella temp, non un'apertura di database: resta
+    # comunque leggero.
+    _ripulisci_copie_orfane()
+
     def avvisa(testo):
         inviato = invia_telegram(config, testo)
         loga(f"notifica inviata={inviato}: {testo.splitlines()[0]}")
@@ -421,6 +605,66 @@ def esegui_controlli(config=None, adesso=None):
         lambda: avvisa(costruisci_messaggio_recovery("NAS")),
     )
 
+    # ---- backup database: eta' e dimensione ad ogni giro (solo filesystem)
+    backup_ok, backup_dettaglio = controlla_backup_db_recente(adesso=adesso)
+    _transizione(
+        stato, "backup_db",
+        backup_ok,
+        lambda: avvisa(costruisci_messaggio_critical(
+            "Backup database non valido", backup_dettaglio)),
+        lambda: avvisa(costruisci_messaggio_recovery("Backup database")),
+    )
+
+    # ---- backup database: apertura + integrity_check + conteggi, una
+    # volta al giorno (stesso principio dell'integrity_check di produzione
+    # qui sopra: e' un test di restore vero e proprio, non solo uno stat)
+    ultimo_backup_integrity = stato.get("backup_db_integrity_quando")
+    fai_backup_integrity = True
+    if ultimo_backup_integrity:
+        try:
+            passate_ore = (adesso - datetime.fromisoformat(ultimo_backup_integrity)
+                           ).total_seconds() / 3600
+            fai_backup_integrity = passate_ore >= BACKUP_CHECK_OGNI_ORE
+        except Exception:
+            fai_backup_integrity = True
+    if fai_backup_integrity:
+        integ_backup_ok, integ_backup_dettaglio = controlla_backup_db_integrita()
+        stato["backup_db_integrity_quando"] = adesso.isoformat(timespec="seconds")
+        _transizione(
+            stato, "backup_db_integrity",
+            integ_backup_ok,
+            lambda: avvisa(costruisci_messaggio_critical(
+                "Backup database non ripristinabile", integ_backup_dettaglio)),
+            lambda: avvisa(costruisci_messaggio_recovery("Backup database (restore test)")),
+        )
+
+    # ---- NAS di scrittura (backup/export): mount diverso da quello sopra,
+    # quindi uno stato/allarme separato — puo' cadere anche quando l'altro
+    # e' su, e viceversa
+    nas_backup_ok = controlla_nas(NAS_BACKUP_PATH)
+    _transizione(
+        stato, "nas_backup",
+        nas_backup_ok,
+        lambda: avvisa(costruisci_messaggio_critical(
+            "NAS backup non raggiungibile",
+            f"{NAS_BACKUP_PATH} non e' montato o non risponde")),
+        lambda: avvisa(costruisci_messaggio_recovery("NAS backup")),
+    )
+
+    # ---- export configurazione: eta' dell'ultimo export riuscito sul NAS.
+    # None (non verificabile, NAS giu') non va a _transizione: lo stato
+    # precedente resta esattamente com'era, ne' un falso OK ne' un
+    # secondo alert sopra a quello gia' dedicato al NAS.
+    export_ok, export_dettaglio = controlla_export_config(nas_backup_ok, adesso=adesso)
+    if export_ok is not None:
+        _transizione(
+            stato, "export_config",
+            export_ok,
+            lambda: avvisa(costruisci_messaggio_critical(
+                "Export configurazione non aggiornato", export_dettaglio)),
+            lambda: avvisa(costruisci_messaggio_recovery("Export configurazione")),
+        )
+
     # ---- disco
     livello_disco, liberi_pct = controlla_disco()
     disco_ok = livello_disco not in ("critical", "warning")
@@ -478,6 +722,11 @@ def esegui_controlli(config=None, adesso=None):
         "db_ok": db_ok, "db_dettaglio": db_dettaglio,
         "db_integrity_quando": stato.get("db_integrity_check_quando"),
         "db_integrity_ok": stato.get("db_integrity", {}).get("ok"),
+        "backup_db_ok": backup_ok, "backup_db_dettaglio": backup_dettaglio,
+        "backup_db_integrity_quando": stato.get("backup_db_integrity_quando"),
+        "backup_db_integrity_ok": stato.get("backup_db_integrity", {}).get("ok"),
+        "nas_backup_ok": nas_backup_ok,
+        "export_config_ok": export_ok, "export_config_dettaglio": export_dettaglio,
         "disco_livello": livello_disco, "disco_liberi_pct": liberi_pct,
         "ram_pct": ram_pct, "ram_ok": ram_ok,
         "quanti_5xx": quanti_5xx, "5xx_ok": errori_5xx_ok,
