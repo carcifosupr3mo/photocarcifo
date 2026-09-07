@@ -143,3 +143,57 @@ logpath  = /var/log/photocarcifo-manuale.log
 port     = http,https
 bantime  = -1
 action   = photocarcifo-nginx
+
+# Quando la pagina di blocco non basta piu': si passa al firewall vero.
+#
+# Il buco che chiude, trovato dalla security review. Da quando un indirizzo
+# bloccato riceve 302 invece del 404 che riceveva prima, i filtri che
+# leggono i codici di stato non lo vedono piu' (photocarcifo-scansioni
+# cerca "404|410", nginx-botsearch "404"). Un programma gia' bloccato
+# poteva quindi continuare a provare /.env, wp-config, id_rsa e simili per
+# tutta la durata del ban: non otteneva niente, ma nessuno lo cacciava
+# davvero e nessun avviso partiva. Prima quel comportamento finiva nel
+# firewall.
+#
+# Qui non si guardano i codici di stato ma un registro che nginx riempie
+# con le sole richieste gia' fermate, escluse quelle che non vogliono dire
+# niente (la pagina di blocco ricaricata, la favicon, le miniature che il
+# browser continua a chiedere per un album gia' aperto). Vedi
+# $pc_sondaggio in config/nginx/snippets/photocarcifo-bloccati.conf.
+#
+# La soglia, scelta sul traffico vero di questo sito e non a intuito:
+# nel registro degli accessi un indirizzo qualunque fa 1 richiesta ogni
+# due minuti (mediana), 3 al novantacinquesimo percentile. Venti richieste
+# contate in due minuti sono quasi sette volte tanto, e visto che le
+# richieste automatiche del browser non contano vogliono dire venti
+# tentativi deliberati — uno ogni sei secondi — che non e' piu' qualcuno
+# che non ha capito, e' qualcuno che sta provando. Uno scanner ci arriva
+# in pochi secondi.
+#
+# Ventiquattro ore e non sei: questo non e' il primo blocco, e' il secondo
+# dato a chi ha insistito dopo il primo.
+[photocarcifo-ban-escalation]
+enabled  = true
+filter   = photocarcifo-ban-escalation
+logpath  = /var/log/nginx/photocarcifo-bloccati.log
+port     = http,https
+maxretry = 20
+findtime = 2m
+bantime  = 24h
+# name=pc-escalation e non il nome della jail: iptables non accetta catene
+# oltre i 28 caratteri, e "f2b-photocarcifo-ban-escalation" ne fa 31. Senza
+# questo, fail2ban considerava l'indirizzo bannato ma la regola non veniva
+# mai scritta — "Failed to execute ban ... Script error" nel suo registro, e
+# nessun blocco vero. Scoperto provandolo: la jail diceva di aver bannato,
+# nftables non aveva niente.
+# Due regole e non una: il sito ascolta anche in HTTP/3, che viaggia su
+# UDP/443, e una regola sul solo TCP lo lascerebbe passare di li'. Non e'
+# un caso di scuola — il sito manda "Alt-Svc: h3" anche sulla pagina di
+# blocco, quindi ogni richiesta fermata rinnova nel browser la preferenza
+# per HTTP/3 per ventiquattro ore, cioe' esattamente la durata di questo
+# ban: senza la riga UDP, chi e' stato appena escalato continuerebbe a
+# navigare come se niente fosse. Il primo test era passato solo perche'
+# curl usava TCP. Trovato dalla security review.
+action   = iptables-multiport[name=pc-escalation, port="%(port)s", protocol="tcp", chain="%(chain)s"]
+           iptables-multiport[name=pc-escalation-udp, port="443", protocol="udp", chain="%(chain)s"]
+           photocarcifo-alert
