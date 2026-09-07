@@ -694,7 +694,7 @@ def cmd_applica(argomento):
 
 CARCERI = ("photocarcifo-scansioni", "photocarcifo-login",
            "nginx-botsearch", "nginx-limit-req", "sshd",
-           "photocarcifo-manuale")
+           "photocarcifo-manuale", "photocarcifo-ban-escalation")
 
 # La jail che /banip usa (vedi cmd_banip piu' sotto). E' nell'elenco
 # CARCERI qui sopra apposta: cosi' /bloccati la vede come tutte le altre
@@ -705,6 +705,16 @@ CARCERI = ("photocarcifo-scansioni", "photocarcifo-login",
 # filtro di log la alimenta, solo questo comando; bantime=-1, permanente
 # finche' non arriva /unbanip.
 JAIL_MANUALE = "photocarcifo-manuale"
+
+# Le jail del SITO: quelle che /unbanip puo' toccare. sshd e pannello-login
+# restano fuori di proposito. Sbloccare un indirizzo dal sito e' una cosa;
+# riaprirgli la porta di casa perche' per caso stava tentando anche le
+# password SSH e' un'altra, e non deve succedere per sbaglio mentre si
+# rimedia a un blocco della galleria. /bloccati continua a mostrarle tutte
+# (CARCERI qui sopra): quello che cambia e' solo cosa il comando modifica.
+CARCERI_SITO = ("photocarcifo-scansioni", "photocarcifo-login",
+                "nginx-botsearch", "nginx-limit-req",
+                "photocarcifo-manuale", "photocarcifo-ban-escalation")
 
 
 _BLOCCATI_PER_PAGINA = 5
@@ -734,6 +744,49 @@ def _bloccati_grezzi():
         for ip in (m.group(1).split() if m else []):
             per_ip[ip] = carcere
     return per_ip
+
+
+def _jail_che_tengono(ip_obj):
+    """TUTTE le jail DEL SITO in cui un indirizzo risulta bloccato.
+
+    Serve a /unbanip. Un indirizzo puo' stare in piu' jail
+    contemporaneamente, e da quando esiste photocarcifo-ban-escalation e'
+    il caso normale e non piu' l'eccezione: chi insiste dopo il blocco
+    con la pagina finisce anche nel firewall, quindi sta in due. Togliendo
+    il ban da una sola — come faceva _bloccati_grezzi(), che tiene una
+    jail per indirizzo perche' gliene serve una da mostrare — la persona
+    resterebbe fuori lo stesso, e il comando sembrerebbe non funzionare.
+
+    Il confronto e' fra indirizzi, non fra stringhe: 2001:db8:0:0::1 e
+    2001:db8::1 sono lo stesso indirizzo scritto in due modi, e
+    confrontandoli come testo un IPv6 bloccato sarebbe risultato libero."""
+    dentro, mute = [], []
+    for carcere in CARCERI_SITO:
+        r = esegui(["fail2ban-client", "status", carcere], 20)
+        m = re.search(r"Banned IP list:\s*(.*)", r)
+        if not m:
+            # Una jail ferma, non caricata o lenta risponde con un errore
+            # che qui somiglia a "nessun bannato". Non e' la stessa cosa:
+            # se la jail dell'escalation non risponde, il ban nel firewall
+            # potrebbe essere ancora li' mentre il comando dice di aver
+            # finito. Chi legge deve saperlo.
+            mute.append(carcere)
+            continue
+        for pezzo in m.group(1).split():
+            try:
+                if ipaddress.ip_address(pezzo) == ip_obj:
+                    dentro.append((carcere, pezzo))
+                    break
+            except ValueError:
+                # Puo' essere un ban di sottorete (fail2ban li accetta):
+                # allora conta se l'indirizzo ci sta dentro.
+                try:
+                    if ip_obj in ipaddress.ip_network(pezzo, strict=False):
+                        dentro.append((carcere, pezzo))
+                        break
+                except ValueError:
+                    continue
+    return dentro, mute
 
 
 def _riga_bloccato(numero, ip, jail):
@@ -907,9 +960,16 @@ def cmd_banip(argomento):
     if _ip_protetto(ip_obj):
         return (f"🚫 {e(indirizzo)} e' un indirizzo protetto (rete interna, "
                 "locale o riservata): non lo banno.")
+    # Confronto fra indirizzi e non fra stringhe, come in /unbanip: lo
+    # stesso IPv6 scritto in due modi non deve risultare "nuovo" e farsi
+    # bannare due volte.
     gia_bloccato = _bloccati_grezzi()
-    if indirizzo in gia_bloccato:
-        return f"{e(indirizzo)} e' gia' bloccato (jail: {e(gia_bloccato[indirizzo])})."
+    for scritto_cosi, carcere in gia_bloccato.items():
+        try:
+            if ipaddress.ip_address(scritto_cosi) == ip_obj:
+                return f"{e(indirizzo)} e' gia' bloccato (jail: {e(carcere)})."
+        except ValueError:
+            continue
     risultato = esegui(
         ["fail2ban-client", "set", JAIL_MANUALE, "banip", indirizzo], 20)
     # Senza questo, /bloccati mostrerebbe "dato storico non disponibile"
@@ -924,23 +984,57 @@ def cmd_banip(argomento):
 
 
 def cmd_unbanip(argomento):
-    """Toglie il ban da un indirizzo, in qualunque jail si trovi — non
-    solo JAIL_MANUALE: un IP finito sotto ban automatico (login sbagliato,
-    scansione) si sblocca da qui esattamente come uno bannato a mano."""
+    """Toglie il ban da un indirizzo, da TUTTE le jail che lo tengono —
+    non solo JAIL_MANUALE, e non solo una.
+
+    Un IP finito sotto ban automatico (password sbagliata, scansione) si
+    sblocca da qui come uno bannato a mano. E chi ha insistito dopo il
+    blocco con la pagina sta in due jail insieme (quella che l'ha
+    bloccato e photocarcifo-ban-escalation, che l'ha messo nel firewall):
+    toglierlo da una sola vorrebbe dire lasciarlo fuori comunque, con un
+    messaggio che dice il contrario."""
     indirizzo = (argomento or "").strip()
     if not indirizzo:
         return "Serve un indirizzo: /unbanip 1.2.3.4"
     try:
-        ipaddress.ip_address(indirizzo)
+        ip_obj = ipaddress.ip_address(indirizzo)
     except ValueError:
         return f"«{e(indirizzo)}» non e' un indirizzo IP valido."
-    carcere = _bloccati_grezzi().get(indirizzo)
-    if not carcere:
+    carceri, mute = _jail_che_tengono(ip_obj)
+    if not carceri and not mute:
         return f"{e(indirizzo)} non risulta bloccato."
-    risultato = esegui(
-        ["fail2ban-client", "set", carcere, "unbanip", indirizzo], 20)
-    loga(f"UNBANIP {indirizzo} (jail: {carcere}): {risultato}")
-    return f"✅ IP {e(indirizzo)} sbloccato."
+    if not carceri:
+        return (f"⚠️ Non ho potuto controllare {e(indirizzo)}: "
+                f"{e(', '.join(mute))} non ha risposto. "
+                "Riprova, o guarda /bloccati.")
+
+    tolti, falliti = [], []
+    for carcere, scritto_cosi in carceri:
+        # Si passa a fail2ban la forma con cui LUI l'ha memorizzato, non
+        # quella digitata: per gli IPv6 possono essere scritture diverse
+        # dello stesso indirizzo, e fail2ban confronta il testo.
+        risultato = esegui(
+            ["fail2ban-client", "set", carcere, "unbanip", scritto_cosi], 20)
+        loga(f"UNBANIP {scritto_cosi} (jail: {carcere}): {risultato}")
+        # fail2ban risponde con il numero di indirizzi tolti: se non e'
+        # andata, dirlo, invece di mettere una spunta verde su un ban che
+        # e' ancora al suo posto.
+        (tolti if risultato.strip().startswith("1") else falliti).append(carcere)
+
+    # Le jail si dicono SEMPRE, anche quando e' una sola: chi legge deve
+    # sapere che cosa ha appena tolto, non fidarsi di una spunta verde.
+    righe = []
+    if tolti:
+        righe.append("<i>Tolto da:</i>\n" + "\n".join(f"• {e(c)}" for c in tolti))
+    if falliti:
+        righe.append("⚠️ <i>NON riuscito su:</i>\n"
+                     + "\n".join(f"• {e(c)}" for c in falliti))
+    if mute:
+        righe.append("⚠️ <i>Non ho potuto controllare:</i>\n"
+                     + "\n".join(f"• {e(c)}" for c in mute))
+    testa = (f"✅ IP {e(indirizzo)} sbloccato." if not falliti and not mute
+             else f"IP {e(indirizzo)}: sblocco parziale.")
+    return testa + "\n\n" + "\n\n".join(righe)
 
 
 def cmd_aiuto(_=None):
