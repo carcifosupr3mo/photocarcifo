@@ -93,7 +93,12 @@ action   = photocarcifo-nginx
 [photocarcifo-scansioni]
 enabled  = true
 filter   = photocarcifo-scansioni
-port     = http,https
+# Porte in cifre e non "http,https": i nomi li risolve /etc/services solo
+# per il TCP, e da quando questa jail blocca anche l'UDP (vedi sotto)
+# iptables rifiutava la regola con "invalid port/service 'http'" — la jail
+# smetteva di scrivere qualunque regola, TCP compreso. Fallimento
+# silenzioso: fail2ban diceva "Banned" e nel firewall non c'era niente.
+port     = 80,443
 logpath  = /var/log/nginx/access.log
 maxretry = 1
 findtime = 10m
@@ -103,7 +108,28 @@ bantime  = 6h
 # — scoperto il 31/08/2026 quando la catena si e' ritrovata agganciata
 # alla porta ssh invece che http/https, stesso modo in cui %(action_)s
 # passa il parametro di serie (vedi jail.conf).
-action   = photocarcifo-scansioni-decidi[port="%(port)s", protocol="%(protocol)s", chain="%(chain)s"]
+# protocol="tcp,udp" e non il protocollo della jail: il sito parla anche
+# HTTP/3, che viaggia su UDP/443, e lo annuncia a ogni risposta
+# ("Alt-Svc: h3=\":443\"; ma=86400", cioe' "per le prossime ventiquattro ore
+# preferisci HTTP/3"). Con il solo TCP un indirizzo bannato qui restava
+# bloccato per meta' e continuava a navigare in QUIC — e proprio i browser
+# che c'erano gia' passati, quelli che il suggerimento se l'erano tenuto,
+# erano i piu' pronti a farlo. La stessa lacuna era nella jail
+# dell'escalation ed e' gia' chiusa li'.
+#
+# Due protocolli alla STESSA azione, e non una seconda azione: iptables.conf
+# gia' cicla su un elenco separato da virgole (_ipt_for_proto-iter), quindi
+# si ottengono due ingressi nella stessa catena con avvio, arresto,
+# controllo e riparazione automatica per entrambi. Una seconda azione di ban
+# separata, invece, avrebbe scritto la regola da sola per ogni indirizzo,
+# scavalcando la decisione di photocarcifo-scansioni-decidi.py (che per gli
+# indirizzi di datacenter avvisa soltanto, senza bloccare): avrebbe cambiato
+# la semantica della jail, non solo le porte.
+#
+# La regola vera continua a scriverla solo decidi.py, che non guarda affatto
+# il protocollo: mette "-s <ip> -j REJECT" dentro la catena, e da li' vale
+# per tutto cio' che nella catena entra.
+action   = photocarcifo-scansioni-decidi[port="%(port)s", protocol="tcp,udp", chain="%(chain)s"]
 
 # Chi bussa a molte porte chiuse ma senza mai toccare un path sensibile:
 # probing generico, spesso da hosting/datacenter, che non dimostra da
