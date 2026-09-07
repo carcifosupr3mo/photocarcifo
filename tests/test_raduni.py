@@ -33,6 +33,25 @@ def _db_isolato(tmp_path, monkeypatch):
 
     from app import database as database_mod
     import app.routers.raduni as raduni_mod
+    # _album_pubblici() importa tree.py "in ritardo" (lazy, dentro la
+    # funzione: from .tree import scaduto, _cover_molteplici). Se questo
+    # test e' il primo, in tutta la sessione, a far girare quella riga -
+    # cosa che succede quando test_raduni.py gira prima di test_pagine.py,
+    # perche' nessun test qui sopra chiede mai la fixture "client"/"app" -
+    # l'import di tree.py avviene per la prima volta MENTRE get_db e'
+    # gia' stato sostituito qui sotto: tree.py legge "from ..database
+    # import get_db" in quel momento e si tiene per sempre la versione
+    # finta, perche' un modulo si importa una volta sola. monkeypatch
+    # allora smonta correttamente database_mod.get_db e raduni_mod.get_db
+    # a fine test, ma di tree.py non sa nulla - non l'ha mai toccato lui.
+    # Il risultato si vede solo dopo, in un altro file: /n/<slug> risponde
+    # 404 perche' tree.py continua a interrogare per sempre un database
+    # temporaneo ormai cancellato. Bastano queste due righe, PRIMA del
+    # monkeypatch: forzano l'importazione vera di tree.py adesso, quando
+    # get_db e' ancora quello vero, cosi' la cattura in ritardo di
+    # _album_pubblici() non trova piu' nulla da importare per la prima
+    # volta (il modulo e' gia' in sys.modules) e usa la copia gia' corretta.
+    import app.routers.tree  # noqa: F401
     monkeypatch.setattr(database_mod, "get_db", get_db_isolato)
     monkeypatch.setattr(raduni_mod, "get_db", get_db_isolato)
     database_mod.init_db()
@@ -191,3 +210,44 @@ def test_album_con_foto_solo_in_sottocartella_appare(tmp_path, monkeypatch):
     pubblici = raduni_mod._album_pubblici(raduno_id)
     assert [a["id"] for a in pubblici] == [padre_id]
     assert pubblici[0]["total_media"] == 3
+
+
+# --- TEST 6: isolamento fra file di test -------------------------------------
+
+def test_non_contamina_tree_py_se_mai_importato_prima(tmp_path, monkeypatch):
+    """Regressione esatta del bug di ordine fra test_raduni.py e
+    test_pagine.py: se tree.py non e' MAI stato importato in tutta la
+    sessione (vero quando nessun test sopra chiede "client"/"app", com'e'
+    il caso di questo file), l'import in ritardo dentro _album_pubblici()
+    ("from .tree import scaduto, _cover_molteplici") lo importa lui per la
+    prima volta - e se cio' avviene mentre get_db e' gia' sostituito, tree.py
+    si tiene per sempre la versione finta (un modulo si importa una volta
+    sola). Dopo, ogni pagina album (/n/<slug>) rispondeva 404 anche in
+    test_pagine.py, eseguito pero' PIU' TARDI nella stessa sessione: e'
+    esattamente cosi' che e' stato scoperto.
+
+    Si simula qui la condizione esatta - "tree.py non ancora importato" -
+    togliendolo da sys.modules se un test precedente lo avesse gia'
+    caricato, cosi' il test resta valido indipendentemente dall'ordine con
+    cui gira il resto della suite."""
+    import sys
+    tree_gia_importato = sys.modules.pop("app.routers.tree", None)
+    try:
+        dbfile, raduni_mod = _db_isolato(tmp_path, monkeypatch)
+        raduno_id = _crea_raduno(dbfile)
+        node_id = _crea_album(dbfile, "raduno-xyz-controllo", total_media=1)
+        _collega(dbfile, raduno_id, node_id)
+        raduni_mod._album_pubblici(raduno_id)  # innesca l'import in ritardo
+
+        from app import database as database_mod
+        from app.routers import tree as tree_mod
+        # In questo momento database_mod.get_db E' ancora quello finto
+        # (il monkeypatch non e' ancora stato smontato): se tree.py ha
+        # catturato la stessa cosa per sbaglio, i due coincidono.
+        assert tree_mod.get_db is not database_mod.get_db, (
+            "tree.py ha catturato la versione finta di get_db durante "
+            "l'import in ritardo di _album_pubblici(): vedi il commento "
+            "in _db_isolato()")
+    finally:
+        if tree_gia_importato is not None:
+            sys.modules["app.routers.tree"] = tree_gia_importato
