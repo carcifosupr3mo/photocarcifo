@@ -153,7 +153,19 @@
         #}
         {% set qui = request.url.path ~ ('?' ~ request.url.query if request.url.query else '') %}
         <details class="lingua-menu">
-          <summary title="{{ t('nav.lingua') }}" aria-label="{{ t('nav.lingua') }}">
+          {#
+            Sotto i 700px lingua-nome sparisce e resta visibile solo la
+            sigla (es. "IT"): l'aria-label era sempre e solo "Lingua" (o
+            l'equivalente tradotto), che non la contiene mai come
+            sottostringa - un elemento con testo visibile deve avere un
+            nome accessibile che lo includa (WCAG 2.5.3), altrimenti chi
+            usa il riconoscimento vocale dice "clicca IT" e non trova
+            nulla. Trovato da Lighthouse (label-content-name-mismatch).
+            La sigla aggiunta in coda risolve per tutte e cinque le lingue
+            senza cambiare cosa si vede.
+          #}
+          <summary title="{{ t('nav.lingua') }}"
+                   aria-label="{{ t('nav.lingua') }}: {{ lingua()|upper }}">
             {#
               Bandiera e nome della lingua per esteso. Il nome fa capire che
               e' una lingua e non un simbolo qualsiasi; su schermi stretti

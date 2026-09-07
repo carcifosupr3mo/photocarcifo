@@ -31,7 +31,13 @@
     {% for r in recensioni %}
     <article class="rec-voce">
       <div class="rec-testa">
-        <span class="rec-stelle" aria-label="{{ t('rec.stelle').format(n=r.voto) }}">{% for i in range(1, 6) %}<span
+        {# role="img": senza un ruolo valido aria-label su uno <span> viene
+           ignorato da chi legge lo schermo (le 5 stelline, aria-hidden
+           una per una, restano l'unico contenuto - silenzio). Con un
+           ruolo, il gruppo si comporta come un'unica immagine con il suo
+           testo alternativo, che e' esattamente l'intenzione: "5 stelle
+           su 5", non ★★★★★. Trovato da Lighthouse (aria-prohibited-attr). #}
+        <span class="rec-stelle" role="img" aria-label="{{ t('rec.stelle').format(n=r.voto) }}">{% for i in range(1, 6) %}<span
           class="{% if i <= r.voto %}piena{% endif %}" aria-hidden="true">★</span>{% endfor %}</span>
         <span class="rec-data">{{ r.creato_at[:10] }}</span>
       </div>

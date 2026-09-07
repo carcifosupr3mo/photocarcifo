@@ -61,7 +61,14 @@ h3{font-size:clamp(.95rem,2vw,1.15rem);}
 .breadcrumb{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:var(--sp2);}
 .breadcrumb a:hover{color:var(--ink);}
 .breadcrumb .current{color:var(--ink);font-weight:600;}
+/* Il separatore "/" resta discreto (opacity .4 sul <span> generico), ma
+   .current e' anche uno <span> e la ereditava per sbaglio: il nome della
+   pagina corrente, in grassetto e gia' scuro, arrivava a schermo sbiadito
+   a un contrasto di 2.67:1 (sotto la soglia AA 4.5:1) invece che leggibile
+   - trovato da Lighthouse (color-contrast), verificato che l'intenzione
+   del grassetto era proprio l'opposto: farlo risaltare, non spegnerlo. */
 .breadcrumb span{opacity:.4;}
+.breadcrumb .current{opacity:1;}
 .hero{padding:clamp(1.5rem,5vw,3rem) 0 clamp(1rem,3vw,1.5rem);}
 .hero h1{font-size:clamp(1.7rem,6vw,3.5rem);text-transform:uppercase;}
 
@@ -1201,8 +1208,15 @@ h2.card-titolo{font-family:var(--font-display);font-size:1rem;
 
 .rad-avviso{background:var(--bg-soft);border-left:3px solid var(--accent-2);
   border-radius:8px;padding:1rem 1.2rem;margin-bottom:clamp(1.5rem,4vw,2.5rem);}
+/* --accent-2 "puro" e' tarato per bordi/pallini, non per il testo: su
+   --bg-soft dava 3.16:1 (serve 4.5:1), e nemmeno su bianco basterebbe
+   (3.42:1) - stesso motivo per cui esistono gia' le varianti *-testo piu'
+   scure (vedi "THEME 2.0" sopra). --accent-2-testo e' nato per il bianco
+   sopra uno sfondo acceso, ma il contrasto e' simmetrico: sul chiaro
+   funziona altrettanto bene (5.01:1 su --bg-soft). Nessun colore nuovo,
+   solo la variante gia' pensata per restare leggibile. */
 .rad-avviso strong{display:block;font-size:.78rem;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--accent-2);margin-bottom:.4rem;}
+  text-transform:uppercase;color:var(--accent-2-testo);margin-bottom:.4rem;}
 .rad-avviso p{font-size:.88rem;line-height:1.65;color:var(--ink-soft);margin:0;}
 
 .rad-tit{font-size:clamp(1.1rem,2.5vw,1.4rem);margin:0 0 1rem;}
@@ -1222,7 +1236,16 @@ h2.card-titolo{font-family:var(--font-display);font-size:1rem;
   letter-spacing:0;}
 .rad-ora{font-size:.82rem;color:var(--accent);margin:0;font-weight:500;}
 .rad-note{font-size:.82rem;color:var(--ink-soft);margin:.2rem 0 0;}
-.rad-passati{opacity:.6;}
+/* Un raduno passato si distingue gia' dal colore del giorno (sotto: da
+   --accent a --ink-soft). Fino al 07/09/2026 c'era anche un opacity:.6 su
+   tutta la sezione: ridondante con quel cambio di colore, e dannoso,
+   perche' diluiva ulteriormente un testo gia' in --ink-soft (contrasto
+   5.37:1 pieno) fino a 2.4-2.7:1 - sotto la soglia AA sia per il mese/
+   sottotitolo "foto del raduno" (serve 4.5:1) sia per il numero del
+   giorno stesso (serve comunque 3:1) di ogni raduno passato. Trovato da
+   Lighthouse (color-contrast) su /radunimoto, confermato calcolando la
+   luminanza risultante: a quella dimensione di testo la sezione non aveva
+   margine per un'ulteriore trasparenza. */
 .rad-passati .rad-giorno{color:var(--ink-soft);}
 .rad-x{flex:0 0 auto;font-size:.72rem;padding:.5rem .8rem;}
 .rad-form{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;}

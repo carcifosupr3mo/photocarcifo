@@ -20,7 +20,12 @@
   <div class="acard-body">
     <div class="acard-txt">
       <h3>{{ r.nome }}
-        <span class="rec-stelle" aria-label="{{ r.voto }} stelle su 5">{% for i in range(1, 6) %}<span
+        {# role="img": stesso bug dello stesso componente lato pubblico
+           (recensioni.html), trovato dalla code review durante l'audit
+           SEO/Lighthouse del 07/09/2026 — senza un ruolo valido
+           l'aria-label su uno <span> viene ignorato da chi legge lo
+           schermo. #}
+        <span class="rec-stelle" role="img" aria-label="{{ r.voto }} stelle su 5">{% for i in range(1, 6) %}<span
           class="{% if i <= r.voto %}piena{% endif %}" aria-hidden="true">★</span>{% endfor %}</span>
       </h3>
       <p style="font-size:.76rem;color:var(--ink-soft);">
