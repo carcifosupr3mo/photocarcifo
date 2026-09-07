@@ -166,15 +166,6 @@ def conteggi(conn) -> dict:
     }
 
 
-def piu_frequenti(conn, quanti: int = 40) -> list[dict]:
-    """Numeri piu' presenti in archivio, per un colpo d'occhio nel pannello."""
-    righe = conn.execute(
-        "SELECT numero, COUNT(*) AS quante FROM media_numeri "
-        "GROUP BY numero ORDER BY quante DESC, CAST(numero AS INTEGER) LIMIT ?",
-        (quanti,)).fetchall()
-    return [dict(r) for r in righe]
-
-
 # ---------------- Scrittura ----------------
 def imposta_manuali(conn, media_id: int, valori: list[str]) -> None:
     """Sostituisce i numeri MANUALI di una foto con quelli indicati.

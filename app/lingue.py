@@ -127,20 +127,6 @@ def lingua_di(request) -> str:
     return PREDEFINITA
 
 
-def nome_lingua(codice: str) -> str:
-    for c, nome, _ in LINGUE:
-        if c == codice:
-            return nome
-    return LINGUE[0][1]
-
-
-def bandiera(codice: str) -> str:
-    for c, _, segno in LINGUE:
-        if c == codice:
-            return segno
-    return LINGUE[0][2]
-
-
 # --- I testi ---------------------------------------------------------------
 # Chiave simbolica, poi una riga per lingua. L'italiano e' sempre presente:
 # e' quello che si vede se una traduzione manca.
@@ -219,56 +205,6 @@ TESTI = {
         "fr": "Bonjour, je suis Photocarcifo. Photos motorsport, mais aussi portraits et moments plus calmes",
         "de": "Hallo, ich bin Photocarcifo. Motorsport-Fotos, aber auch Porträts und ruhigere Momente",
         "es": "Hola, soy Photocarcifo. Fotos de motorsport, pero también retratos y momentos más tranquilos"},
-    "home.lead": {
-        "it": "Ho 18 anni e la fotografia è il mio modo di raccontare ciò che mi ispira.",
-        "en": "I'm 18, and photography is how I tell the story of what inspires me.",
-        "fr": "J'ai 18 ans et la photographie est ma façon de raconter ce qui m'inspire.",
-        "de": "Ich bin 18, und die Fotografie ist meine Art zu erzählen, was mich begeistert.",
-        "es": "Tengo 18 años y la fotografía es mi manera de contar lo que me inspira."},
-    "home.p1": {
-        "it": "Tutto è iniziato come una passione, ma con il tempo è diventata una vera attività che porto avanti con impegno e tanta voglia di migliorarmi.",
-        "en": "It started as a passion, and over time it has become real work that I pursue with commitment and a constant urge to get better.",
-        "fr": "Tout a commencé comme une passion, puis c'est devenu une véritable activité que je mène avec sérieux et une grande envie de progresser.",
-        "de": "Angefangen hat alles als Leidenschaft, mit der Zeit ist daraus eine richtige Tätigkeit geworden, die ich mit Einsatz und viel Lust am Besserwerden verfolge.",
-        "es": "Todo empezó como una pasión, pero con el tiempo se ha convertido en una actividad real que llevo adelante con dedicación y muchas ganas de mejorar."},
-    "home.p2": {
-        "it": "Il mio stile è dinamico, pulito e cinematografico. Mi piace creare immagini che abbiano carattere e che facciano rivivere le emozioni di quel momento, non semplicemente scattare una foto.",
-        "en": "My style is dynamic, clean and cinematic. I like making images with character, images that bring back the feeling of the moment, rather than just taking a picture.",
-        "fr": "Mon style est dynamique, épuré et cinématographique. J'aime créer des images qui ont du caractère et qui font revivre l'émotion de l'instant, pas simplement prendre une photo.",
-        "de": "Mein Stil ist dynamisch, klar und filmisch. Ich mache gerne Bilder mit Charakter, die das Gefühl des Moments zurückbringen, statt einfach nur ein Foto zu schiessen.",
-        "es": "Mi estilo es dinámico, limpio y cinematográfico. Me gusta crear imágenes con carácter, que hagan revivir la emoción de ese momento, no simplemente hacer una foto."},
-    "home.p3": {
-        "it": "Lavoro principalmente con moto e auto, ma realizzo anche servizi per eventi, sport, ritratti e contenuti per social media. Ogni shooting è diverso, perché ogni persona e ogni storia meritano qualcosa di unico.",
-        "en": "I work mainly with motorbikes and cars, but I also shoot events, sport, portraits and social media content. Every shoot is different, because every person and every story deserves something of their own.",
-        "fr": "Je travaille surtout avec des motos et des voitures, mais je réalise aussi des reportages d'événements, de sport, des portraits et des contenus pour les réseaux sociaux. Chaque séance est différente, parce que chaque personne et chaque histoire méritent quelque chose d'unique.",
-        "de": "Ich arbeite vor allem mit Motorrädern und Autos, fotografiere aber auch Events, Sport, Porträts und Inhalte für Social Media. Jedes Shooting ist anders, weil jeder Mensch und jede Geschichte etwas Eigenes verdienen.",
-        "es": "Trabajo sobre todo con motos y coches, pero también hago reportajes de eventos, deporte, retratos y contenido para redes sociales. Cada sesión es distinta, porque cada persona y cada historia merecen algo único."},
-    "home.p4": {
-        "it": "Se cerchi il classico fotografo che ti mette in posa e basta, non sono la persona giusta. Se invece vuoi divertirti durante lo shooting e ottenere foto che sembrano uscite da un video cinematografico, allora ci siamo.",
-        "en": "If you're after the classic photographer who just puts you in a pose, I'm not your man. If you want to enjoy the shoot and end up with photos that look like stills from a film, then we'll get along.",
-        "fr": "Si vous cherchez le photographe classique qui se contente de vous mettre en pose, je ne suis pas la bonne personne. Si en revanche vous voulez vous amuser pendant la séance et obtenir des photos dignes d'un film, alors nous sommes faits pour nous entendre.",
-        "de": "Wenn du den klassischen Fotografen suchst, der dich nur in Pose stellt, bin ich der Falsche. Wenn du beim Shooting Spass haben und Fotos bekommen willst, die aussehen wie aus einem Film, dann passt es.",
-        "es": "Si buscas al fotógrafo clásico que solo te pone en pose, no soy la persona indicada. Pero si quieres divertirte durante la sesión y conseguir fotos que parezcan salidas de una película, entonces nos entenderemos."},
-    "home.chiusura": {
-        "it": "Le migliori storie iniziano sempre con un semplice scatto.",
-        "en": "The best stories always begin with a single frame.",
-        "fr": "Les plus belles histoires commencent toujours par un simple déclic.",
-        "de": "Die besten Geschichten beginnen immer mit einer einzigen Aufnahme.",
-        "es": "Las mejores historias siempre empiezan con un simple disparo."},
-    "home.cta.testo": {
-        "it": "Vuoi prenotare uno shooting? Scrivimi:",
-        "en": "Want to book a shoot? Get in touch:",
-        "fr": "Vous voulez réserver une séance ? Écrivez-moi :",
-        "de": "Du möchtest ein Shooting buchen? Schreib mir:",
-        "es": "¿Quieres reservar una sesión? Escríbeme:"},
-    "home.cta.instagram": {
-        "it": "Scrivimi su Instagram", "en": "Message me on Instagram",
-        "fr": "Écrivez-moi sur Instagram", "de": "Schreib mir auf Instagram",
-        "es": "Escríbeme en Instagram"},
-    "home.cta.email": {
-        "it": "Scrivimi via email", "en": "Email me",
-        "fr": "Écrivez-moi par email", "de": "Schreib mir per E-Mail",
-        "es": "Escríbeme por email"},
     "home.vuoto": {
         "it": "Nessun album disponibile.", "en": "No albums available.",
         "fr": "Aucun album disponible.", "de": "Keine Alben verfügbar.",
@@ -401,12 +337,6 @@ TESTI = {
         "es": "Fotos {a} a {b} de {tot}"},
 
     # Ricerca
-    "src.titolo": {
-        "it": "Cerca", "en": "Search", "fr": "Rechercher", "de": "Suchen",
-        "es": "Buscar"},
-    "src.eyebrow": {
-        "it": "Ricerca", "en": "Search", "fr": "Recherche", "de": "Suche",
-        "es": "Búsqueda"},
     "src.btn": {
         "it": "Cerca", "en": "Search", "fr": "Rechercher", "de": "Suchen",
         "es": "Buscar"},
@@ -420,12 +350,6 @@ TESTI = {
         "fr": "Numéro de course, événement, année…",
         "de": "Startnummer, Event, Jahr…",
         "es": "Dorsal, evento, año…"},
-    "src.aiuto": {
-        "it": "Cerca quello che ti interessa: il numero della tua tabella, il nome di un evento, una categoria o un anno.",
-        "en": "Search for whatever you need: your plate number, the name of an event, a category or a year.",
-        "fr": "Cherchez ce que vous voulez : votre numéro de plaque, le nom d'un événement, une catégorie ou une année.",
-        "de": "Suche, was du brauchst: deine Startnummer, den Namen eines Events, eine Kategorie oder ein Jahr.",
-        "es": "Busca lo que necesites: tu número de placa, el nombre de un evento, una categoría o un año."},
     "src.numero": {
         "it": "Numero {n}", "en": "Number {n}", "fr": "Numéro {n}",
         "de": "Nummer {n}", "es": "Número {n}"},
@@ -445,24 +369,6 @@ TESTI = {
         "it": "pagina {p} di {n}", "en": "page {p} of {n}",
         "fr": "page {p} sur {n}", "de": "Seite {p} von {n}",
         "es": "página {p} de {n}"},
-    "src.nessuna": {
-        "it": "Nessuna fotografia con il numero {n}.",
-        "en": "No photos showing number {n}.",
-        "fr": "Aucune photo avec le numéro {n}.",
-        "de": "Keine Fotos mit der Nummer {n}.",
-        "es": "No hay fotos con el número {n}."},
-    "src.attesa": {
-        "it": "Le foto caricate da poco potrebbero non essere ancora state analizzate. Riprova più tardi, oppure sfoglia le cartelle dalla home.",
-        "en": "Photos uploaded recently may not have been analysed yet. Try again later, or browse the folders from the home page.",
-        "fr": "Les photos ajoutées récemment n'ont peut-être pas encore été analysées. Réessayez plus tard ou parcourez les dossiers depuis l'accueil.",
-        "de": "Kürzlich hochgeladene Fotos sind vielleicht noch nicht ausgewertet. Versuche es später noch einmal oder stöbere von der Startseite aus durch die Ordner.",
-        "es": "Puede que las fotos subidas hace poco aún no se hayan analizado. Inténtalo más tarde o explora las carpetas desde el inicio."},
-    "src.anche": {
-        "it": "Album che contengono «{q}»",
-        "en": "Albums matching “{q}”",
-        "fr": "Albums contenant « {q} »",
-        "de": "Alben mit „{q}“",
-        "es": "Álbumes que contienen «{q}»"},
     "src.risultati": {
         "it": "{n} risultati per «{q}»", "en": "{n} results for “{q}”",
         "fr": "{n} résultats pour « {q} »", "de": "{n} Ergebnisse für „{q}“",
@@ -471,12 +377,6 @@ TESTI = {
         "it": "Nessun risultato per «{q}».", "en": "No results for “{q}”.",
         "fr": "Aucun résultat pour « {q} ».", "de": "Keine Ergebnisse für „{q}“.",
         "es": "Sin resultados para «{q}»."},
-    "src.invito": {
-        "it": "Scrivi il numero della tua tabella, il nome di un evento, una categoria o un anno.",
-        "en": "Type your plate number, the name of an event, a category or a year.",
-        "fr": "Saisissez votre numéro de plaque, le nom d'un événement, une catégorie ou une année.",
-        "de": "Gib deine Startnummer, den Namen eines Events, eine Kategorie oder ein Jahr ein.",
-        "es": "Escribe tu número de placa, el nombre de un evento, una categoría o un año."},
 
     # Album protetto da password
     "pwd.titolo": {
