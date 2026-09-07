@@ -118,19 +118,6 @@ def _is_unlocked(request, node_id) -> bool:
         return False
 
 
-def _grant_unlock(request, node_id) -> str:
-    nodes = []
-    token = request.cookies.get(_UNLOCK_COOKIE)
-    if token:
-        try:
-            nodes = _unlock_serializer().loads(token, max_age=86400).get("nodes", [])
-        except Exception:
-            nodes = []
-    if node_id not in nodes:
-        nodes.append(node_id)
-    return _unlock_serializer().dumps({"nodes": nodes})
-
-
 def _sotto_nodi(conn, rel_path):
     """Identificativi dell'album e di tutte le sue sottocartelle.
 
@@ -148,22 +135,6 @@ def _lasciapassare_solo(ids):
     Non accumula gli accessi precedenti: chi apre il link dell'album A
     deve vedere A e nient'altro, anche dopo aver visitato altri link."""
     return _unlock_serializer().dumps({"nodes": [int(i) for i in ids]})
-
-
-def _grant_unlock_subtree(request, ids):
-    """Aggiunge al lasciapassare tutti gli album indicati."""
-    nodes = []
-    token = request.cookies.get(_UNLOCK_COOKIE)
-    if token:
-        try:
-            nodes = _unlock_serializer().loads(token, max_age=86400).get("nodes", [])
-        except Exception:
-            nodes = []
-    for i in ids:
-        if i not in nodes:
-            nodes.append(i)
-    # tengo gli ultimi 200 per non far crescere il cookie all'infinito
-    return _unlock_serializer().dumps({"nodes": nodes[-200:]})
 
 
 def _cover(conn, node):
