@@ -11,7 +11,7 @@ import secrets
 from fastapi import APIRouter, Request, Form, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
-from ..database import get_db
+from ..database import get_db, MAX_SQLITE_INT
 from ..deps import get_current_user, require_admin_api
 from ..templating import templates
 from ..security import verify_csrf
@@ -65,6 +65,11 @@ def _nuovo_ospite() -> str:
 def _puo_vedere(request: Request, node_id: int) -> bool:
     """Solo chi ha accesso all'album puo' segnare le sue fotografie."""
     from .tree import _is_unlocked, scaduto
+    # Un identificativo che il database non sa contenere non e' un album:
+    # senza questo controllo la query si spezzava e la risposta diventava
+    # un 500 (vedi MAX_SQLITE_INT in database.py).
+    if not 0 < node_id <= MAX_SQLITE_INT:
+        return False
     u = get_current_user(request)
     if u and u.get("is_admin"):
         return True
@@ -84,6 +89,8 @@ def _puo_vedere(request: Request, node_id: int) -> bool:
 @router.post("/preferiti/{media_id}")
 def segna(request: Request, media_id: int):
     """Aggiunge o toglie una fotografia dai preferiti del visitatore."""
+    if not 0 < media_id <= MAX_SQLITE_INT:
+        raise HTTPException(status_code=404, detail="Fotografia non trovata")
     with get_db() as conn:
         m = conn.execute("SELECT node_id FROM media WHERE id=?", (media_id,)).fetchone()
     if not m:

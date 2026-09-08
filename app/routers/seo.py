@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Response
 
 from .. import lingue
 from ..config import get_settings
-from ..database import get_db
+from ..database import get_db, MAX_SQLITE_INT
 from .tree import _ultime_gallerie
 
 router = APIRouter()
@@ -239,6 +239,13 @@ def sitemap_immagini(pagina: int):
     """Una pagina della sitemap delle immagini, al massimo 1000 foto."""
     settings = get_settings()
     base = settings.site_url.rstrip("/")
+    # Numero di pagina cosi' grande che l'OFFSET calcolato uscirebbe dagli
+    # interi di SQLite: quella pagina non esiste (vedi MAX_SQLITE_INT in
+    # database.py). Le pagine oltre l'ultima vera continuano a rispondere
+    # con una sitemap vuota, come prima: qui si respinge solo cio' che
+    # farebbe fallire la query.
+    if not 0 < pagina <= MAX_SQLITE_INT // IMG_PER_SITEMAP:
+        raise HTTPException(status_code=404, detail="Pagina non trovata")
     offset = max(0, (pagina - 1)) * IMG_PER_SITEMAP
     with get_db() as conn:
         rows = conn.execute(

@@ -295,6 +295,19 @@ CREATE INDEX IF NOT EXISTS idx_richieste_stato ON richieste_contatto(stato, crea
 """
 
 
+# Il numero piu' grande che SQLite sa tenere in un intero. Oltre questo
+# Python regge (i suoi interi non hanno tetto) ma il database no: la query
+# si spezza con OverflowError, e chi guarda da fuori riceve un errore di
+# servizio invece di una risposta ordinata. Chi manda un identificativo
+# assurdo ha sbagliato richiesta, non ha rotto il sito.
+#
+# Sta qui e non nei singoli router perche' e' un fatto del database, e
+# perche' lo stesso tetto serve in piu' punti: rotte dei media, preferiti,
+# pagine della sitemap. Duplicarlo in tre file era il modo sicuro per
+# dimenticarsene nel quarto.
+MAX_SQLITE_INT = 2 ** 63 - 1
+
+
 @contextmanager
 def get_db() -> Iterator[sqlite3.Connection]:
     settings = get_settings()

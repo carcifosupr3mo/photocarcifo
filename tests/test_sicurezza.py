@@ -773,3 +773,69 @@ def test_bulk_propaga_al_sottoalbero_come_lendpoint_singolo(client_admin):
             for riga in stato_originale:
                 conn.execute("UPDATE nodes SET is_private=? WHERE id=?",
                             (riga["is_private"], riga["id"]))
+
+
+# --- Identificativi assurdi: risposta ordinata, non un guasto -------------
+#
+# Prima del 08/09/2026 un numero piu' grande di quanto SQLite sappia
+# contenere faceva sollevare OverflowError dentro la query, e la risposta
+# diventava un 500. Ogni 500 finisce in photocarcifo-5xx.log, che il
+# controllo automatico legge ogni quarto d'ora per mandare un avviso:
+# chiunque, senza autenticarsi, poteva riempire di allarmi finti quel
+# canale con un ciclo di richieste e seppellire gli avvisi veri. Il tetto
+# era gia' applicato agli elenchi di id (_ids_da_elenco), era stato
+# dimenticato su tutte le rotte che ricevono un id singolo.
+
+# Il primo numero che SQLite NON sa contenere, e il suo opposto: sono
+# questi due che prima del fix producevano il 500, non 0 o -1 (che il
+# database accetta senza fiatare e che davano gia' 404 da soli).
+FUORI_PORTATA = [2 ** 63, -(2 ** 63) - 1, 10 ** 26, -(10 ** 26)]
+
+
+@pytest.mark.parametrize("percorso", [
+    "/thumb/{n}", "/thumb2x/{n}", "/preview/{n}", "/cover/{n}",
+    "/social/{n}", "/download/{n}", "/video/{n}", "/zip/node/{n}",
+    "/sitemap-immagini-{n}.xml",
+])
+@pytest.mark.parametrize("n", FUORI_PORTATA)
+def test_id_fuori_portata_sqlite_non_da_mai_500(client, percorso, n):
+    """Nessuna rotta pubblica deve rispondere 500 a un identificativo che
+    il database non sa contenere."""
+    r = client.get(percorso.format(n=n))
+    assert r.status_code != 500, f"{percorso.format(n=n)} -> 500"
+    assert r.status_code == 404, \
+        f"{percorso.format(n=n)}: atteso 404, ricevuto {r.status_code}"
+
+
+@pytest.mark.parametrize("n", FUORI_PORTATA)
+def test_preferiti_id_fuori_portata_non_da_500(client, n):
+    """Anche le due rotte dei preferiti, che interrogano il database con
+    l'identificativo ricevuto: POST segna la foto, GET elenca l'album."""
+    assert client.post(f"/preferiti/{n}").status_code == 404
+    r = client.get(f"/preferiti/album/{n}",
+                   cookies={"pc_ospite": "regressione-audit"})
+    # L'elenco risponde sempre 200 con una lista vuota a chi non ha
+    # accesso: qui conta solo che non sia piu' un 500.
+    assert r.status_code == 200
+
+
+@pytest.mark.parametrize("n", FUORI_PORTATA)
+def test_condividi_id_fuori_portata_non_da_500(client, n):
+    """POST /condividi/{id} passa dallo stesso _get_media() delle altre."""
+    assert client.post(f"/condividi/{n}").status_code == 404
+
+
+@pytest.mark.parametrize("n", [0, -1, 2 ** 63 - 1])
+def test_id_ai_bordi_restano_404(client, n):
+    """Zero, negativo piccolo e l'ultimo numero che SQLite accetta: erano
+    gia' 404 prima del fix e devono restarlo (il controllo non deve aver
+    cambiato il loro comportamento)."""
+    assert client.get(f"/thumb/{n}").status_code == 404
+
+
+def test_sitemap_immagini_pagine_vere_e_vuote_restano_200(client):
+    """Il tetto non deve toccare le pagine legittime: la prima esiste, e
+    una oltre l'ultima continua a rispondere con una sitemap vuota come
+    faceva prima, non con un 404."""
+    assert client.get("/sitemap-immagini-1.xml").status_code == 200
+    assert client.get("/sitemap-immagini-99.xml").status_code == 200

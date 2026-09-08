@@ -14,7 +14,8 @@ from fastapi import APIRouter, Form, HTTPException, Request, Query
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
 
 from ..config import get_settings
-from ..database import get_db, record_node_stat, record_stat
+from ..database import (get_db, record_node_stat, record_stat,
+                        MAX_SQLITE_INT)
 from ..deps import get_current_user
 from ..security import generate_access_token
 from ..templating import templates
@@ -34,6 +35,14 @@ def _is_admin(request: Request) -> bool:
 
 
 def _get_media(media_id: int):
+    # Identificativo fuori dalla portata di SQLite: e' una richiesta
+    # sbagliata, non un guasto (vedi il commento di MAX_SQLITE_INT in
+    # database.py). Senza questo controllo la query sollevava OverflowError e la
+    # risposta diventava un 500, che finisce nel registro degli errori e fa
+    # partire un avviso: chiunque poteva cosi' riempire di allarmi finti il
+    # controllo automatico, semplicemente chiedendo /thumb/999...9.
+    if not 0 < media_id <= MAX_SQLITE_INT:
+        raise HTTPException(status_code=404, detail="Media non trovato")
     with get_db() as conn:
         row = conn.execute(
             "SELECT m.id, m.rel_path, m.filename, m.mtime, m.kind, m.node_id, "
@@ -87,14 +96,6 @@ def _formato_per(request: Request) -> str:
     return FORMATO_JPEG
 
 
-# Il numero piu' grande che SQLite sa tenere in un intero. Oltre questo
-# Python regge (i suoi interi non hanno tetto) ma il database no, e la
-# query si spezzava con un errore di servizio invece di una risposta
-# ordinata: chi manda un identificativo assurdo ha sbagliato richiesta,
-# non ha rotto il sito.
-_MAX_SQLITE_INT = 2 ** 63 - 1
-
-
 def _ids_da_elenco(ids: str, tetto: int = 2000) -> list:
     """Trasforma un elenco "1,2,3" nell'elenco di numeri buoni per il
     database: scarta cio' che non e' cifra e cio' che il database non sa
@@ -105,7 +106,7 @@ def _ids_da_elenco(ids: str, tetto: int = 2000) -> list:
         if not x.isdigit():
             continue
         n = int(x)
-        if 0 < n <= _MAX_SQLITE_INT:
+        if 0 < n <= MAX_SQLITE_INT:
             fuori.append(n)
         if len(fuori) >= tetto:
             break
@@ -464,6 +465,10 @@ def _risposta_zip(files, nome_file: str, segnale: str = "",
 @router.get("/zip/node/{node_id}")
 def zip_node(node_id: int, request: Request, segnale: str = Query("")):
     settings = get_settings()
+    # Stesso motivo di _get_media(): un numero che SQLite non sa contenere
+    # e' una cartella che non esiste, non un errore del sito.
+    if not 0 < node_id <= MAX_SQLITE_INT:
+        raise HTTPException(status_code=404, detail="Cartella non trovata")
     with get_db() as conn:
         node = conn.execute(
             "SELECT id, title, downloads_enabled, is_private, hidden, expires_at "
