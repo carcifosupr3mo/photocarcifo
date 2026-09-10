@@ -181,6 +181,7 @@
     var badges = "";
     if (n.is_private) badges += "<span class='badge-private'>Privato</span>";
     if (n.hidden) badges += "<span class='badge-hidden'>Nascosto</span>";
+    if (n.sales_enabled) badges += "<span class='badge-private'>Vendita attiva</span>";
     el.innerHTML =
       "<div class='acard-cover'>" + cover +
         "<label class='acard-sel-wrap' title='Seleziona'>" +
@@ -196,6 +197,7 @@
           "<button data-a='rename' type='button'>Rinomina</button>" +
           "<button data-a='share' type='button'>" + (n.is_private ? "Condivisione" : "Rendi privato") + "</button>" +
           "<button data-a='dl' type='button'>" + (n.downloads_enabled ? "Blocca download" : "Permetti download") + "</button>" +
+          "<button data-a='vendita' type='button'>" + (n.sales_enabled ? "Disattiva vendita foto" : "Attiva vendita foto") + "</button>" +
           "<button data-a='hide' type='button'>" + (n.hidden ? "Mostra sul sito" : "Nascondi dal sito") + "</button>" +
           "<button data-a='cover' type='button'>Copertina</button>" +
           "<button data-a='qr' type='button'>QR code</button>" +
@@ -237,6 +239,7 @@
         else if (a === "cover") doCover(n);
         else if (a === "qr") doQr(n);
         else if (a === "dl") post(n.id + "/downloads", { downloads_enabled: n.downloads_enabled ? "0" : "1" });
+        else if (a === "vendita") doVendita(n);
         else if (a === "pref") {
           fetch("/admin/preferiti/" + n.id)
             .then(function (r) { return r.json(); })
@@ -272,6 +275,21 @@
   function doRename(n) {
     var t = prompt("Nome mostrato sul sito (i file sul NAS non cambiano):", n.title);
     if (t !== null && t.trim()) post(n.id + "/rename", { title: t.trim() });
+  }
+
+  function doVendita(n) {
+    if (n.sales_enabled) {
+      if (confirm("Disattivare la vendita foto per \"" + n.title + "\"? L'album torna normale.")) {
+        post(n.id + "/vendita", { sales_enabled: "0", photo_price_cents: String(n.photo_price_cents || 0) });
+      }
+      return;
+    }
+    var chf = prompt("Prezzo per foto singola in CHF (es. 10.00):", "10.00");
+    if (chf === null) return;
+    var valore = parseFloat(chf.replace(",", "."));
+    if (isNaN(valore) || valore <= 0) { PC.avviso("Prezzo non valido."); return; }
+    var cent = Math.round(valore * 100);
+    post(n.id + "/vendita", { sales_enabled: "1", photo_price_cents: String(cent) });
   }
 
   function doShare(n) {

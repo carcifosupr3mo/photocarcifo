@@ -182,7 +182,8 @@
       b=[page * page_size, total_media]|min, tot=total_media) }}</p>
     {% endif %}
 
-    <div class="photo-grid" data-node-id="{{ node.id }}" data-selectable="{{ '1' if (node.downloads_enabled or is_admin) else '0' }}">
+    <div class="photo-grid" data-node-id="{{ node.id }}" data-selectable="{{ '1' if (node.downloads_enabled or is_admin) else '0' }}"
+         {% if node.sales_enabled %}data-sales="1" data-price-cents="{{ node.photo_price_cents }}"{% endif %}>
       {% for m in media %}
       <div class="photo" data-id="{{ m.id }}" data-kind="{{ m.kind }}"
            {% if m.kind == 'video' %}data-video="/video/{{ m.id }}"{% else %}data-preview="/preview/{{ m.id }}"{% endif %}

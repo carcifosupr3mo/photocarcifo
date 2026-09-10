@@ -1019,6 +1019,14 @@ TESTI.update({
         "it": "Scarica originale", "en": "Download original",
         "fr": "Télécharger l'original", "de": "Original herunterladen",
         "es": "Descargar original"},
+    "js.acquista_foto": {
+        "it": "Acquista foto", "en": "Buy photo", "fr": "Acheter la photo",
+        "de": "Foto kaufen", "es": "Comprar foto"},
+    "js.acquisto_in_arrivo": {
+        "it": "Acquisto online in arrivo", "en": "Online purchase coming soon",
+        "fr": "Achat en ligne bientôt disponible",
+        "de": "Online-Kauf demnächst verfügbar",
+        "es": "Compra en línea próximamente"},
     "js.condividi_foto": {
         "it": "Condividi questa foto", "en": "Share this photo",
         "fr": "Partager cette photo", "de": "Dieses Foto teilen",

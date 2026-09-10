@@ -1233,6 +1233,19 @@
       }
     });
     actions.appendChild(dl);
+
+    // "Acquista foto": solo se l'album ha la vendita attiva (Fase 1,
+    // solo informativo — nessun pagamento reale ancora).
+    var grid = document.querySelector(".photo-grid");
+    if (grid && grid.dataset.sales === "1") {
+      var acquista = mk("button", "btn btn-ghost", "", T("acquista_foto"));
+      acquista.textContent = T("acquista_foto");
+      acquista.addEventListener("click", function () {
+        alert(T("acquisto_in_arrivo"));
+      });
+      actions.appendChild(acquista);
+    }
+
     // Il bottone "Condividi questa foto" (sotto la foto) e il suo gemello
     // piccolo in alto a sinistra (solo da tablet in su) sono pubblici,
     // come il loro equivalente nella griglia (.share-box): chiamano
