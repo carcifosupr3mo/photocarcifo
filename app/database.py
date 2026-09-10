@@ -265,6 +265,9 @@ MIGRAZIONI: list[tuple[str, str, str]] = [
     # di nodes.expires_at per gli album privati.
     ("media", "share_expires_at", "TEXT"),
     ("condivisioni", "expires_at", "TEXT"),
+    # Feature "vendita foto" abbandonata (mai attivata su nessun album,
+    # sales_enabled=0 ovunque): colonne lasciate per non rischiare una
+    # migrazione distruttiva, non piu' lette da nessun codice applicativo.
     ("nodes", "sales_enabled", "INTEGER NOT NULL DEFAULT 0"),
     ("nodes", "photo_price_cents", "INTEGER NOT NULL DEFAULT 0"),
 ]

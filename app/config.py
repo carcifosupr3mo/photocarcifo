@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     site_name: str = "Photocarcifo"
     site_url: str = "http://192.168.1.206"
 
+    # Contatti per supporto volontario (donazioni): dati intenzionalmente
+    # pubblici, non segreti. Vuoti finche' non configurati: il banner di
+    # supporto non mostra un metodo di pagamento non ancora impostato.
+    twint_support_number: str = ""
+    iban_support: str = ""
+
     # Credenziali admin iniziali (usate solo al primo avvio per il seed)
     admin_username: str = "admin"
     admin_password: str = "changeme"

@@ -287,6 +287,7 @@
     vietano il codice scritto dentro la pagina.
   #}
   <script id="pcTesti" type="application/json">{{ testi_js()|safe }}</script>
+  <script id="pcSupporto" type="application/json">{"twint": {{ twint_support_number()|tojson }}, "iban": {{ iban_support()|tojson }}}</script>
   {#
     Tutti con defer, compresi questi due.
 
@@ -305,6 +306,7 @@
   <script src="{{ asset('/static/js/menu.js') }}" defer></script>
   <script src="{{ asset('/static/js/ospite-nav.js') }}" defer></script>
   <script src="{{ asset('/static/js/cookie-avviso.js') }}" defer></script>
+  <script src="{{ asset('/static/js/supporto-banner.js') }}" defer></script>
   <script src="{{ asset('/static/js/moduli-invio.js') }}" defer></script>
 </body>
 </html>

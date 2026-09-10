@@ -1012,6 +1012,11 @@ body.selecting .cuore{display:none;}
   .cookie-azioni .btn{flex:1;justify-content:center;}
 }
 @media (prefers-reduced-motion:reduce){.cookie-avviso{transition:none;}}
+.supporto-contatti{display:flex;flex-direction:column;gap:.4rem;margin-top:.5rem;}
+.supporto-contatto{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;font-size:.85rem;}
+.supporto-contatto strong{color:var(--ink);}
+.supporto-contatto .btn{min-width:5.5rem;}
+.btn.ok{background:var(--accent);color:#fff;}
 
 /* --- Pagina delle condizioni --- */
 .testo-legale{max-width:70ch;margin:0 auto;}

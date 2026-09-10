@@ -90,8 +90,6 @@ def _serialize(conn, r, cover=None, has_children=None):
         "cover": cover if cover is not None else _cover_id(conn, r),
         "is_private": bool(r["is_private"]), "hidden": bool(r["hidden"]),
         "downloads_enabled": bool(r["downloads_enabled"]),
-        "sales_enabled": bool(r["sales_enabled"]),
-        "photo_price_cents": r["photo_price_cents"],
         "has_password": bool(r["password_hash"]),
         "access_token": r["access_token"], "total_media": r["total_media"],
         "direct_media": r["direct_media"], "depth": r["depth"],
@@ -396,22 +394,6 @@ def downloads(request: Request, node_id: int, csrf_token: str = Form(...),
     with get_db() as conn:
         conn.execute("UPDATE nodes SET downloads_enabled=?, updated_at=? WHERE id=?", (en, _now(), node_id))
     return JSONResponse({"ok": True, "downloads_enabled": bool(en)})
-
-
-@router.post("/{node_id}/vendita")
-def vendita(request: Request, node_id: int, csrf_token: str = Form(...),
-            sales_enabled: str = Form("0"), photo_price_cents: str = Form("0"),
-            user: dict = Depends(require_admin_api)):
-    _check_csrf(user, csrf_token)
-    en = 1 if sales_enabled == "1" else 0
-    try:
-        prezzo = max(0, int(photo_price_cents))
-    except ValueError:
-        prezzo = 0
-    with get_db() as conn:
-        conn.execute("UPDATE nodes SET sales_enabled=?, photo_price_cents=?, updated_at=? WHERE id=?",
-                     (en, prezzo, _now(), node_id))
-    return JSONResponse({"ok": True, "sales_enabled": bool(en), "photo_price_cents": prezzo})
 
 
 @router.post("/{node_id}/copertina")

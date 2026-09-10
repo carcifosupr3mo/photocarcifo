@@ -26,6 +26,8 @@ templates.env.filters["human_size"]=_human_size
 templates.env.filters["fmt_date"]=_fmt_date
 templates.env.globals["site_name"]=lambda:get_settings().site_name
 templates.env.globals["site_url"]=lambda:get_settings().site_url
+templates.env.globals["twint_support_number"] = lambda: get_settings().twint_support_number
+templates.env.globals["iban_support"] = lambda: get_settings().iban_support
 templates.env.globals["now_year"]=lambda:datetime.now().year
 
 def _richieste_nuove():
