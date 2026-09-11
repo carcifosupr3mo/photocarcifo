@@ -79,7 +79,8 @@ def test_traduzioni_supporto_presenti_5_lingue():
     chiavi = ["js.supporto_titolo", "js.supporto_testo",
               "js.supporto_twint_label", "js.supporto_iban_label",
               "js.supporto_causale_label", "js.supporto_causale_valore",
-              "js.supporto_copia", "js.supporto_copiato", "js.supporto_chiudi"]
+              "js.supporto_twint_copiato", "js.supporto_iban_copiato",
+              "js.supporto_chiudi", "js.supporto_chiudi_frase", "js.supporto_copia_aria"]
     for chiave in chiavi:
         assert chiave in lingue.TESTI, f"chiave mancante: {chiave}"
         for lang in ("it", "en", "fr", "de", "es"):

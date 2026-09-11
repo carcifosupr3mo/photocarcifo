@@ -195,6 +195,10 @@ body.selecting .photo{cursor:pointer;}
   .share-box{width:44px;height:44px;bottom:6px;right:6px;}
   .share-box::before{width:18px;height:18px;}
   .cuore{width:44px;height:44px;}
+  /* TWINT/IBAN nel popup di supporto: il testo e' corto (poche lettere),
+     l'area toccabile cresce con un margine negativo che non sposta la
+     posizione visiva, stesso principio del resto di questo blocco. */
+  .supporto-valore-clic{padding:.4rem .2rem;margin:-.4rem -.2rem;}
 }
 
 .share-panel .btn-ghost{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.6);}
@@ -1012,11 +1016,40 @@ body.selecting .cuore{display:none;}
   .cookie-azioni .btn{flex:1;justify-content:center;}
 }
 @media (prefers-reduced-motion:reduce){.cookie-avviso{transition:none;}}
-.supporto-contatti{display:flex;flex-direction:column;gap:.4rem;margin-top:.5rem;}
-.supporto-contatto{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;font-size:.85rem;}
-.supporto-contatto strong{color:var(--ink);}
-.supporto-contatto .btn{min-width:5.5rem;}
-.btn.ok{background:var(--accent);color:#fff;}
+/* Popup di supporto: stesso pannello di .share-panel/.share-panel-card
+   (colore scuro, card centrata, bottom-sheet su mobile), solo il
+   contenuto interno e' diverso. */
+.supporto-corpo{color:rgba(255,255,255,.85);}
+.supporto-testo{font-size:.9rem;line-height:1.6;margin:0 0 1rem;}
+.supporto-righe{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem;}
+.supporto-riga{display:flex;align-items:center;justify-content:space-between;gap:.8rem;
+  padding:.6rem .8rem;background:rgba(255,255,255,.06);border-radius:var(--radius);
+  position:relative;}
+.supporto-etichetta{font-size:.72rem;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:rgba(255,255,255,.55);flex-shrink:0;}
+.supporto-valore{font-size:.95rem;font-weight:600;color:#fff;text-align:right;
+  word-break:break-word;}
+/* Sottolineatura leggera + cursore a mano: si vede che si puo' toccare,
+   senza sembrare un grosso pulsante. */
+.supporto-valore-clic{background:none;border:none;padding:0;cursor:pointer;
+  text-decoration:underline;text-decoration-color:rgba(255,255,255,.35);
+  text-underline-offset:.2em;font:inherit;transition:color .15s;}
+.supporto-valore-clic:hover,.supporto-valore-clic:focus-visible{color:var(--accent);
+  text-decoration-color:var(--accent);}
+.supporto-grazie{font-size:.85rem;color:rgba(255,255,255,.65);margin:0;text-align:center;}
+/* Nuvoletta IBAN copiato: non sposta il layout (assoluta rispetto alla
+   riga), appare/scompare con una dissolvenza breve, non un alert(). */
+.supporto-nuvoletta{position:absolute;bottom:calc(100% + .4rem);right:.8rem;
+  background:var(--accent);color:var(--bg-dark);font-size:.72rem;font-weight:700;
+  padding:.3rem .6rem;border-radius:var(--radius);white-space:nowrap;
+  opacity:0;transform:translateY(4px);transition:opacity .2s,transform .2s;
+  pointer-events:none;}
+.supporto-nuvoletta.visibile{opacity:1;transform:translateY(0);}
+@media (max-width:760px){
+  .supporto-riga{flex-wrap:wrap;}
+  .supporto-valore{text-align:left;}
+}
+@media (prefers-reduced-motion:reduce){.supporto-nuvoletta{transition:none;}}
 
 /* --- Pagina delle condizioni --- */
 .testo-legale{max-width:70ch;margin:0 auto;}

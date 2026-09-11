@@ -1,14 +1,12 @@
-/* Banner di supporto volontario: si mostra una volta per sessione del
-   browser (sessionStorage, non cookie), a differenza dell'avviso cookie
-   che resta accettato per un anno. Stessa struttura di cookie-avviso.js. */
+/* Popup di supporto volontario: modal centrale (non un bottom-bar come il
+   banner cookie), mostrato una volta per sessione del browser
+   (sessionStorage, non cookie: deve poter tornare a ogni nuova sessione,
+   niente "non mostrare piu'"). Riusa lo stesso linguaggio visivo del
+   pannello di condivisione (.share-panel/.share-panel-card in style.css),
+   non uno stile nuovo. */
 (function () {
   "use strict";
   var CHIAVE = "pc_supporto_visto";
-
-  function esc(s) {
-    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-  }
 
   function gia_visto() {
     try { return sessionStorage.getItem(CHIAVE) === "1"; }
@@ -19,92 +17,180 @@
     try { sessionStorage.setItem(CHIAVE, "1"); } catch (e) {}
   }
 
-  // Stessa posizione fissa in basso del banner cookie (.cookie-avviso):
-  // se quello non e' ancora stato accettato, i due si sovrapporrebbero
-  // nello stesso punto dello schermo. Si aspetta semplicemente il
-  // prossimo caricamento pagina, quando il banner cookie non c'e' piu'
-  // (accettato) o e' gia' stato deciso in precedenza - nessuno stacking
-  // verticale complesso, un solo banner alla volta in quella posizione.
-  function cookie_non_deciso() {
-    return document.cookie.indexOf("pc_cookie_ok=1") === -1;
+  function cookie_accettato() {
+    return document.cookie.indexOf("pc_cookie_ok=1") !== -1;
   }
 
-  function copia(testo, bottone) {
-    function mostraCopiato() {
-      var originale = bottone.textContent;
-      bottone.textContent = T("supporto_copiato");
-      bottone.classList.add("ok");
-      setTimeout(function () {
-        bottone.textContent = originale;
-        bottone.classList.remove("ok");
-      }, 1500);
-    }
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(testo).then(mostraCopiato, function () {
-        window.prompt(T("supporto_copia_manuale"), testo);
-      });
-    } else {
-      window.prompt(T("supporto_copia_manuale"), testo);
-    }
-  }
-
-  document.addEventListener("DOMContentLoaded", function () {
-    if (gia_visto() || cookie_non_deciso()) return;
+  function mostraPopup() {
+    if (gia_visto()) return;
 
     var datiEl = document.getElementById("pcSupporto");
     var dati = {};
     try { dati = JSON.parse(datiEl.textContent); } catch (e) {}
-    if (!dati.twint && !dati.iban) return;  // niente configurato, niente banner
+    if (!dati.twint && !dati.iban) return;  // niente configurato, niente popup
 
-    var d = document.createElement("div");
-    d.className = "cookie-avviso supporto-avviso";
-    d.setAttribute("role", "region");
-    d.setAttribute("aria-label", T("supporto_aria"));
+    var attivoPrima = document.activeElement;
 
-    var righeContatto = "";
-    if (dati.twint) {
-      righeContatto += "<div class='supporto-contatto'><span>" + T("supporto_twint_label") +
-        ": <strong>" + esc(dati.twint) + "</strong></span>" +
-        "<button class='btn btn-ghost btn-sm' type='button' data-copia='twint'>" +
-        esc(T("supporto_copia")) + "</button></div>";
+    var fondo = document.createElement("div");
+    fondo.className = "share-panel";
+
+    var scatola = document.createElement("div");
+    scatola.className = "share-panel-card";
+    scatola.setAttribute("role", "dialog");
+    scatola.setAttribute("aria-modal", "true");
+    scatola.setAttribute("aria-labelledby", "supportoTitolo");
+
+    var testa = document.createElement("div");
+    testa.className = "share-panel-head";
+    var titolo = document.createElement("strong");
+    titolo.id = "supportoTitolo";
+    titolo.textContent = T("supporto_titolo");
+    var chiudiBtn = document.createElement("button");
+    chiudiBtn.type = "button";
+    chiudiBtn.className = "share-panel-close";
+    chiudiBtn.innerHTML = "&times;";
+    chiudiBtn.setAttribute("aria-label", T("supporto_chiudi"));
+    testa.appendChild(titolo);
+    testa.appendChild(chiudiBtn);
+
+    var corpo = document.createElement("div");
+    corpo.className = "supporto-corpo";
+
+    var testo = document.createElement("p");
+    testo.className = "supporto-testo";
+    testo.textContent = T("supporto_testo");
+
+    var righe = document.createElement("div");
+    righe.className = "supporto-righe";
+
+    function riga(etichetta, valore, cliccabile, dataCopia) {
+      var r = document.createElement("div");
+      r.className = "supporto-riga";
+      var lab = document.createElement("span");
+      lab.className = "supporto-etichetta";
+      lab.textContent = etichetta;
+      var val = document.createElement(cliccabile ? "button" : "span");
+      val.className = cliccabile ? "supporto-valore supporto-valore-clic" : "supporto-valore";
+      if (cliccabile) {
+        val.type = "button";
+        val.setAttribute("data-copia", dataCopia);
+        val.setAttribute("aria-label", etichetta + ", " + T("supporto_copia_aria"));
+      }
+      val.textContent = valore;
+      r.appendChild(lab);
+      r.appendChild(val);
+      righe.appendChild(r);
+      return val;
     }
-    if (dati.iban) {
-      righeContatto += "<div class='supporto-contatto'><span>" + T("supporto_iban_label") +
-        ": <strong>" + esc(dati.iban) + "</strong></span>" +
-        "<button class='btn btn-ghost btn-sm' type='button' data-copia='iban'>" +
-        esc(T("supporto_copia")) + "</button></div>";
-    }
+
+    if (dati.twint) riga(T("supporto_twint_label"), dati.twint, true, "twint");
+    if (dati.iban) riga(T("supporto_iban_label"), dati.iban, true, "iban");
     if (dati.twint || dati.iban) {
-      righeContatto += "<div class='supporto-contatto'><span>" + T("supporto_causale_label") +
-        ": <strong>" + esc(T("supporto_causale_valore")) + "</strong></span>" +
-        "<button class='btn btn-ghost btn-sm' type='button' data-copia='causale'>" +
-        esc(T("supporto_copia")) + "</button></div>";
+      riga(T("supporto_causale_label"), T("supporto_causale_valore"), false, null);
     }
 
-    d.innerHTML =
-      "<div class='cookie-testo'>" +
-      "<strong>" + esc(T("supporto_titolo")) + "</strong> " +
-      esc(T("supporto_testo")) +
-      "<div class='supporto-contatti'>" + righeContatto + "</div>" +
-      "</div>" +
-      "<div class='cookie-azioni'>" +
-      "<button class='btn btn-accent' type='button' data-chiudi>" + esc(T("supporto_chiudi")) + "</button>" +
-      "</div>";
-    document.body.appendChild(d);
-    requestAnimationFrame(function () { d.classList.add("visibile"); });
+    var grazie = document.createElement("p");
+    grazie.className = "supporto-grazie";
+    grazie.textContent = T("supporto_chiudi_frase");
 
-    d.querySelectorAll("[data-copia]").forEach(function (b) {
+    corpo.appendChild(testo);
+    corpo.appendChild(righe);
+    corpo.appendChild(grazie);
+    scatola.appendChild(testa);
+    scatola.appendChild(corpo);
+    fondo.appendChild(scatola);
+
+    function chiudi() {
+      if (!fondo.parentNode) return;
+      ricorda();
+      document.removeEventListener("keydown", tasto);
+      fondo.parentNode.removeChild(fondo);
+      if (attivoPrima && attivoPrima.focus) attivoPrima.focus();
+    }
+    function tasto(e) {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      chiudi();
+    }
+    fondo.addEventListener("click", function (e) {
+      if (e.target === fondo) chiudi();
+    });
+    chiudiBtn.addEventListener("click", chiudi);
+    document.addEventListener("keydown", tasto);
+
+    // Nuvoletta discreta "IBAN copiato" / "Numero copiato": non alert(),
+    // non sposta il layout (position:absolute rispetto alla riga), sparisce
+    // da sola dopo un paio di secondi.
+    function mostraNuvoletta(elemento, messaggio) {
+      var precedente = elemento.parentNode.querySelector(".supporto-nuvoletta");
+      if (precedente) precedente.remove();
+      var nuv = document.createElement("span");
+      nuv.className = "supporto-nuvoletta";
+      nuv.textContent = messaggio;
+      nuv.setAttribute("role", "status");
+      elemento.parentNode.appendChild(nuv);
+      requestAnimationFrame(function () { nuv.classList.add("visibile"); });
+      setTimeout(function () {
+        nuv.classList.remove("visibile");
+        setTimeout(function () { nuv.remove(); }, 200);
+      }, 1600);
+    }
+
+    function copia(testoDaCopiare, elemento, messaggio) {
+      function fatto() { mostraNuvoletta(elemento, messaggio); }
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(testoDaCopiare).then(fatto, fatto);
+      } else {
+        // Fallback minimo senza prompt/alert: un campo temporaneo,
+        // selezionato e copiato con l'API storica execCommand.
+        var campo = document.createElement("textarea");
+        campo.value = testoDaCopiare;
+        campo.style.position = "fixed";
+        campo.style.opacity = "0";
+        document.body.appendChild(campo);
+        campo.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(campo);
+        fatto();
+      }
+    }
+
+    scatola.querySelectorAll("[data-copia]").forEach(function (b) {
       b.addEventListener("click", function () {
         var chiave = b.getAttribute("data-copia");
-        var valore = chiave === "twint" ? dati.twint :
-          chiave === "iban" ? dati.iban : T("supporto_causale_valore");
-        copia(valore, b);
+        var valore = chiave === "twint" ? dati.twint : dati.iban;
+        var messaggio = chiave === "twint" ? T("supporto_twint_copiato") : T("supporto_iban_copiato");
+        copia(valore, b, messaggio);
       });
     });
-    d.querySelector("[data-chiudi]").addEventListener("click", function () {
-      ricorda();
-      d.classList.remove("visibile");
-      setTimeout(function () { d.remove(); }, 300);
+
+    document.body.appendChild(fondo);
+    requestAnimationFrame(function () {
+      fondo.classList.add("open");
+      chiudiBtn.focus();
     });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    if (gia_visto()) return;
+
+    if (cookie_accettato()) {
+      mostraPopup();
+      return;
+    }
+
+    // Il banner cookie non e' ancora stato accettato: si aspetta il suo
+    // click reale (nessun timeout indovinato). cookie-avviso.js genera un
+    // unico bottone dentro .cookie-avviso .cookie-azioni; qui si intercetta
+    // quel click in fase di cattura, PRIMA che il suo stesso handler lo
+    // rimuova dal DOM, cosi' il popup di supporto arriva un istante dopo,
+    // mai insieme.
+    document.addEventListener("click", function attendiCookie(e) {
+      var bottoneCookie = e.target.closest &&
+        e.target.closest(".cookie-avviso .cookie-azioni button");
+      if (!bottoneCookie) return;
+      document.removeEventListener("click", attendiCookie, true);
+      setTimeout(mostraPopup, 350);  // dopo la transizione di chiusura del banner cookie (320ms)
+    }, true);
   });
 })();
