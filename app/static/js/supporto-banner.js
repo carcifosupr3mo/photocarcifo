@@ -1,9 +1,11 @@
 /* Popup di supporto volontario: modal centrale (non un bottom-bar come il
    banner cookie), mostrato una volta per sessione del browser
    (sessionStorage, non cookie: deve poter tornare a ogni nuova sessione,
-   niente "non mostrare piu'"). Riusa lo stesso linguaggio visivo del
-   pannello di condivisione (.share-panel/.share-panel-card in style.css),
-   non uno stile nuovo. */
+   niente "non mostrare piu'"). Riusa la struttura/posizionamento di
+   .share-panel/.share-panel-card (overlay, centratura, bottom-sheet
+   mobile), ma con colori CHIARI (.supporto-card in style.css): il resto
+   del sito e' un tema chiaro, il pannello di condivisione e' scuro solo
+   per quel contesto specifico, non e' il linguaggio visivo generale. */
 (function () {
   "use strict";
   var CHIAVE = "pc_supporto_visto";
@@ -35,7 +37,7 @@
     fondo.className = "share-panel";
 
     var scatola = document.createElement("div");
-    scatola.className = "share-panel-card";
+    scatola.className = "share-panel-card supporto-card";
     scatola.setAttribute("role", "dialog");
     scatola.setAttribute("aria-modal", "true");
     scatola.setAttribute("aria-labelledby", "supportoTitolo");
@@ -66,21 +68,21 @@
     function riga(etichetta, valore, cliccabile, dataCopia) {
       var r = document.createElement("div");
       r.className = "supporto-riga";
-      var lab = document.createElement("span");
-      lab.className = "supporto-etichetta";
-      lab.textContent = etichetta;
-      var val = document.createElement(cliccabile ? "button" : "span");
-      val.className = cliccabile ? "supporto-valore supporto-valore-clic" : "supporto-valore";
+      var lab = document.createElement(cliccabile ? "button" : "span");
+      lab.className = cliccabile ? "supporto-etichetta supporto-etichetta-clic" : "supporto-etichetta";
       if (cliccabile) {
-        val.type = "button";
-        val.setAttribute("data-copia", dataCopia);
-        val.setAttribute("aria-label", etichetta + ", " + T("supporto_copia_aria"));
+        lab.type = "button";
+        lab.setAttribute("data-copia", dataCopia);
+        lab.setAttribute("aria-label", etichetta + ", " + T("supporto_copia_aria"));
       }
+      lab.textContent = etichetta;
+      var val = document.createElement("span");
+      val.className = "supporto-valore";
       val.textContent = valore;
       r.appendChild(lab);
       r.appendChild(val);
       righe.appendChild(r);
-      return val;
+      return lab;
     }
 
     if (dati.twint) riga(T("supporto_twint_label"), dati.twint, true, "twint");

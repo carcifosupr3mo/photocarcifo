@@ -198,7 +198,7 @@ body.selecting .photo{cursor:pointer;}
   /* TWINT/IBAN nel popup di supporto: il testo e' corto (poche lettere),
      l'area toccabile cresce con un margine negativo che non sposta la
      posizione visiva, stesso principio del resto di questo blocco. */
-  .supporto-valore-clic{padding:.4rem .2rem;margin:-.4rem -.2rem;}
+  .supporto-etichetta-clic{padding:.4rem .2rem;margin:-.4rem -.2rem;}
 }
 
 .share-panel .btn-ghost{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.6);}
@@ -1016,38 +1016,50 @@ body.selecting .cuore{display:none;}
   .cookie-azioni .btn{flex:1;justify-content:center;}
 }
 @media (prefers-reduced-motion:reduce){.cookie-avviso{transition:none;}}
-/* Popup di supporto: stesso pannello di .share-panel/.share-panel-card
-   (colore scuro, card centrata, bottom-sheet su mobile), solo il
-   contenuto interno e' diverso. */
-.supporto-corpo{color:rgba(255,255,255,.85);}
-.supporto-testo{font-size:.9rem;line-height:1.6;margin:0 0 1rem;}
+/* Popup di supporto: card CHIARA, stesso linguaggio visivo delle card
+   del sito (.acard/.menu-pop: sfondo bianco, bordo sottile var(--line),
+   ombra morbida, var(--radius)) - non il pannello scuro di
+   .share-panel-card, che qui si usa SOLO per posizionamento/overlay
+   (position:fixed, centratura, bottom-sheet mobile), i colori sono
+   tutti sovrascritti da .supporto-card qui sotto. */
+.supporto-card{background:var(--bg);color:var(--ink);
+  border:1px solid var(--line);box-shadow:0 16px 40px rgba(10,12,20,.16);}
+.supporto-card .share-panel-close{background:var(--bg-soft);color:var(--ink);}
+.supporto-card .share-panel-close:hover{background:var(--accent);color:#fff;}
+.supporto-corpo{color:var(--ink-soft);}
+.supporto-testo{font-size:.9rem;line-height:1.6;margin:0 0 1rem;color:var(--ink-soft);}
 .supporto-righe{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem;}
-.supporto-riga{display:flex;align-items:center;justify-content:space-between;gap:.8rem;
-  padding:.6rem .8rem;background:rgba(255,255,255,.06);border-radius:var(--radius);
+.supporto-riga{display:flex;flex-direction:column;gap:.15rem;
+  padding:.7rem .9rem;background:var(--bg-soft);border-radius:var(--radius);
   position:relative;}
 .supporto-etichetta{font-size:.72rem;font-weight:700;letter-spacing:.08em;
-  text-transform:uppercase;color:rgba(255,255,255,.55);flex-shrink:0;}
-.supporto-valore{font-size:.95rem;font-weight:600;color:#fff;text-align:right;
+  text-transform:uppercase;color:var(--ink-soft);}
+/* Solo TWINT e IBAN (l'etichetta, non il numero sotto) sono cliccabili:
+   peso e colore la rendono riconoscibile come interattiva, MAI una
+   sottolineatura - il numero sotto e' testo normale, non deve
+   sembrare un link. */
+/* Colore accent gia' a riposo, non solo su hover: su mobile (dove TWINT
+   e IBAN si usano davvero) l'hover non esiste mai, quindi senza questo
+   l'unica differenza da "Causale" sarebbe il cursore, invisibile al
+   dito. Nessuna sottolineatura: i numeri sotto non devono sembrare
+   link, ma l'etichetta stessa puo' e deve distinguersi. */
+.supporto-etichetta-clic{background:none;border:none;padding:0;cursor:pointer;
+  font:inherit;font-weight:700;color:var(--accent);transition:opacity .15s;
+  text-align:left;}
+.supporto-etichetta-clic:hover,.supporto-etichetta-clic:focus-visible{opacity:.75;}
+.supporto-valore{font-size:1rem;font-weight:600;color:var(--ink);
   word-break:break-word;}
-/* Sottolineatura leggera + cursore a mano: si vede che si puo' toccare,
-   senza sembrare un grosso pulsante. */
-.supporto-valore-clic{background:none;border:none;padding:0;cursor:pointer;
-  text-decoration:underline;text-decoration-color:rgba(255,255,255,.35);
-  text-underline-offset:.2em;font:inherit;transition:color .15s;}
-.supporto-valore-clic:hover,.supporto-valore-clic:focus-visible{color:var(--accent);
-  text-decoration-color:var(--accent);}
-.supporto-grazie{font-size:.85rem;color:rgba(255,255,255,.65);margin:0;text-align:center;}
+.supporto-grazie{font-size:.85rem;color:var(--ink-soft);margin:0;text-align:center;}
 /* Nuvoletta IBAN copiato: non sposta il layout (assoluta rispetto alla
    riga), appare/scompare con una dissolvenza breve, non un alert(). */
-.supporto-nuvoletta{position:absolute;bottom:calc(100% + .4rem);right:.8rem;
-  background:var(--accent);color:var(--bg-dark);font-size:.72rem;font-weight:700;
+.supporto-nuvoletta{position:absolute;bottom:calc(100% + .4rem);left:.9rem;
+  background:var(--ink);color:#fff;font-size:.72rem;font-weight:700;
   padding:.3rem .6rem;border-radius:var(--radius);white-space:nowrap;
   opacity:0;transform:translateY(4px);transition:opacity .2s,transform .2s;
   pointer-events:none;}
 .supporto-nuvoletta.visibile{opacity:1;transform:translateY(0);}
 @media (max-width:760px){
-  .supporto-riga{flex-wrap:wrap;}
-  .supporto-valore{text-align:left;}
+  .supporto-valore{word-break:break-all;}
 }
 @media (prefers-reduced-motion:reduce){.supporto-nuvoletta{transition:none;}}
 
