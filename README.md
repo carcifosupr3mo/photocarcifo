@@ -35,10 +35,6 @@ configura il mount NFS, i servizi systemd e Nginx.
    sudo systemctl start photocarcifo-scan.service
    ```
 
-## Accesso
-- Sito pubblico: http://192.168.1.206
-- Dashboard admin: http://192.168.1.206/admin
-
 ## Struttura del progetto
 
 ```
