@@ -38,12 +38,19 @@ Portfolio fotografico self-hosted per fotografia sportiva (motorsport, BMX, cicl
 ## Struttura del progetto
 
 photocarcifo/
+
 ├── app/        # applicazione FastAPI: routing, sicurezza, scansione NAS, miniature, template
+
 ├── config/     # configurazione di servizio (es. Nginx)
+
 ├── deploy/     # script di installazione, unità systemd, configurazione di deploy
+
 ├── docs/       # documentazione tecnica approfondita
+
 ├── script/     # script operativi (manutenzione, diagnosi, automazioni)
+
 └── tests/      # suite di test automatici
+
 
 ## Installazione
 
