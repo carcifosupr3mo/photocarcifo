@@ -79,6 +79,5 @@ Attivo e in sviluppo continuo.
 
 ## Documentazione
 
-- `PHOTOCARCIFO.MD` — documentazione unificata completa
 - `docs/PHOTOCARCIFO.md` — visione e operatività
 - `docs/DISASTER_RECOVERY.md` — ripristino completo
