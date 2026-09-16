@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ t('nov.titolo') }} — {{ site_name() }}{% endblock %}
+{% block description %}{{ t('nov.descrizione') }}{% endblock %}
+
+{% block content %}
+<section class="hero"><div class="container">
+  <nav class="breadcrumb" aria-label="{{ t('com.percorso') }}">
+    <a href="/">{{ t('com.home') }}</a><span>/</span><span class="current">{{ t('nov.titolo') }}</span>
+  </nav>
+  <h1>{{ t('nov.titolo') }}</h1>
+  <p class="rec-sotto">{{ t('nov.sotto') }}
+    <a class="nov-feed" href="/novita.xml">{{ t('nov.feed') }}</a>
+  </p>
+</div></section>
+
+<section class="section"><div class="container">
+{% if gallerie %}
+<ol class="nov-lista">
+  {% for g in gallerie %}
+  <li>
+    <a href="/n/{{ g.slug }}">
+      <span class="nov-foto">
+        {% if g.cover %}
+        <img src="/thumb/{{ g.cover }}" alt="{{ g.title }}" loading="lazy" decoding="async"
+             width="400" height="300">
+        {% endif %}
+      </span>
+      <span class="nov-testo">
+        {% if g.quando %}<time datetime="{{ g.quando.strftime('%Y-%m-%d') }}"
+          class="nov-data">{{ g.quando.strftime('%d.%m.%Y') }}</time>{% endif %}
+        <strong>{{ g.title }}</strong>
+        {% if g.dove %}<span class="nov-dove">{{ g.dove }}</span>{% endif %}
+        <span class="nov-quante">{{ t('nov.foto').format(n=g.total_media) }}</span>
+      </span>
+    </a>
+  </li>
+  {% endfor %}
+</ol>
+{% else %}
+<div class="empty"><p>{{ t('home.vuoto') }}</p></div>
+{% endif %}
+</div></section>
+{% endblock %}

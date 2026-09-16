@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ t('priv.pagina') }} — {{ site_name() }}{% endblock %}
+{% block description %}{{ t('priv.descrizione') }}{% endblock %}
+{% block content %}
+<section class="hero"><div class="container">
+  <nav class="breadcrumb" aria-label="{{ t('com.percorso') }}">
+    <a href="/">{{ t('com.home') }}</a><span>/</span><span class="current">{{ t('priv.breadcrumb') }}</span>
+  </nav>
+  <h1>{{ t('priv.titolo') }}</h1>
+</div></section>
+
+<section class="section"><div class="container">
+<div class="testo-legale">
+{#
+  Il documento intero arriva da app/lingue_legale.py, una versione per
+  lingua. E' testo scritto da noi, non contenuto inviato dai visitatori,
+  quindi puo' contenere il proprio formato senza rischi.
+#}
+{{ testo_legale()|safe }}
+
+<p class="agg">{{ t('priv.aggiornamento') }}</p>
+</div>
+</div></section>
+{% endblock %}

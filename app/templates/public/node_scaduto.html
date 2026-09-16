@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ t('sca.titolo') }} — {{ site_name() }}{% endblock %}
+{% block head_extra %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block content %}
+<section class="section"><div class="container">
+  <div class="empty" style="max-width:52ch;margin:clamp(3rem,10vw,6rem) auto;text-align:center;">
+    <h1 style="font-size:clamp(1.6rem,4vw,2.4rem);margin-bottom:1rem;">{{ t('sca.titolo') }}</h1>
+    <p style="color:var(--ink-soft);line-height:1.7;">
+      {{ t('sca.testo') }}</p>
+    <p style="margin-top:2rem;"><a class="btn" href="/">{{ t('com.torna') }}</a></p>
+  </div>
+</div></section>
+{% endblock %}

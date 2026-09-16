@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Verifica — {{ site_name() }}</title>
+    <link rel="icon" href="/static/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/icon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-180.png">
+  <link rel="manifest" href="/static/site.webmanifest">
+  <meta name="theme-color" content="#0a0c14">
+  <link rel="stylesheet" href="{{ asset('/static/css/style.css') }}">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-card">
+    <p class="eyebrow">{{ site_name() }}</p>
+    <h1 style="font-size:1.8rem;margin:.5rem 0 1rem;">Verifica</h1>
+    <p style="color:var(--ink-soft);font-size:.9rem;margin-bottom:1.5rem;">
+      Apri l'app di autenticazione e inserisci il codice a 6 cifre.</p>
+    <form class="form" method="post" action="/admin/login/2fa">
+      {% if error %}<div class="error">{{ error }}</div>{% endif %}
+      <div class="field">
+        <label for="code">Codice</label>
+        <input type="text" id="code" name="code" inputmode="numeric" pattern="[0-9]*"
+               maxlength="6" autocomplete="one-time-code" required autofocus
+               style="font-size:1.4rem;letter-spacing:.3em;text-align:center;">
+      </div>
+      <button class="btn btn-accent" type="submit" style="width:100%;justify-content:center;">Verifica</button>
+    </form>
+    <p style="margin-top:1.2rem;font-size:.85rem;"><a href="/admin/login" style="color:var(--ink-soft);">Torna al login</a></p>
+  </div>
+</div>
+</body>
+</html>

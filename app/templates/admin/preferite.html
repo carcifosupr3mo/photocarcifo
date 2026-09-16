@@ -1,0 +1,61 @@
+{% extends "admin/base.html" %}
+{% set active = 'preferite' %}
+{% block title %}Preferite dai clienti — {{ site_name() }}{% endblock %}
+{% block content %}
+<h1>Preferite dai clienti</h1>
+
+{% if album %}
+<p style="color:var(--ink-soft);margin:.4rem 0 1.6rem;">
+  {{ totale }} fotografie scelte da {{ clienti }}
+  {{ 'cliente' if clienti == 1 else 'clienti' }} in {{ album|length }}
+  {{ 'album' if album|length == 1 else 'album' }}.</p>
+
+<div class="mgr-grid">
+  {% for a in album %}
+  <div class="acard pref-card">
+    {% if a.anteprime %}
+    <div class="pref-strip">
+      {% for mid in a.anteprime %}
+      <img src="/thumb/{{ mid }}" alt="Fotografia scelta" loading="lazy" decoding="async">
+      {% endfor %}
+      {% if a.quante > 6 %}<span class="pref-piu">+{{ a.quante - 6 }}</span>{% endif %}
+    </div>
+    {% endif %}
+    <div class="acard-body">
+      <div class="acard-txt">
+        <h3>{{ a.title }}{% if a.is_private %} <span class="badge-private">Privato</span>{% endif %}</h3>
+        <p style="font-size:.76rem;color:var(--ink-soft);">{{ a.percorso }}</p>
+        <p style="margin-top:.5rem;">
+          <strong>{{ a.quante }}</strong> foto scelte da
+          <strong>{{ a.persone }}</strong>
+          {{ 'cliente' if a.persone == 1 else 'clienti' }}
+          <span style="color:var(--ink-soft);">— ultima il {{ a.ultima_data }}</span>
+        </p>
+      </div>
+      <div class="det-row">
+        <button class="btn" type="button" data-pref="{{ a.id }}"
+                data-titolo="{{ a.title }}">Vedi le scelte</button>
+        {% if a.is_private and a.access_token %}
+        {% if a.access_token %}<a class="btn btn-ghost" href="/p/{{ a.access_token }}" target="_blank">Apri galleria</a>{% endif %}
+        {% else %}
+        <a class="btn btn-ghost" href="/n/{{ a.slug }}" target="_blank">Apri galleria</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">
+  <p>Nessun cliente ha ancora segnato fotografie.</p>
+  <p style="font-size:.85rem;color:var(--ink-soft);margin-top:.6rem;">
+    Quando invii un link, chi lo apre può mettere un cuore sulle foto che
+    preferisce: qui vedrai le sue scelte, divise per album.</p>
+</div>
+{% endif %}
+
+<div class="mgr-sheet" id="sheet" hidden><div class="sheet-inner" id="sheetInner"></div></div>
+<input type="hidden" id="csrf" value="{{ user.csrf }}">
+
+<script src="{{ asset('/static/js/admin-preferite.js') }}" defer></script>
+{% endblock %}

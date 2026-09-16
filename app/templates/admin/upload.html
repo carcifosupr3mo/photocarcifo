@@ -1,0 +1,59 @@
+{% extends "admin/base.html" %}
+{% set active = 'upload' %}
+{% block title %}Carica foto — {{ site_name() }}{% endblock %}
+{% block content %}
+<h1>Carica foto</h1>
+
+{% if not rw_ready %}
+<div class="nas-banner nas-err">
+  Archivio non scrivibile. Il caricamento resta disattivato finché il percorso
+  <code>{{ rw_path }}</code> non è montato in scrittura.
+</div>
+{% endif %}
+
+<div class="up-wrap">
+  <div class="up-panel">
+    <div class="det-block">
+      <label for="destSel">Album di destinazione</label>
+      <input list="destList" id="destSel" placeholder="Scrivi per cercare…" autocomplete="off">
+      <datalist id="destList">
+        {% for d in destinazioni %}<option value="{{ d.label }}" data-id="{{ d.id }}">{% endfor %}
+      </datalist>
+      <input type="hidden" id="destId">
+      <p class="up-hint" id="destEcho">Nessun album selezionato.</p>
+    </div>
+
+    <div class="det-block">
+      <label for="subfolder">Nuova sottocartella (facoltativa)</label>
+      <input type="text" id="subfolder" placeholder="Es. Gara 12.09.2026">
+      <p class="up-hint">Se compilata, le foto finiscono in una cartella nuova dentro l'album scelto.</p>
+    </div>
+
+    <div class="up-drop" id="drop" tabindex="0" role="button"
+         aria-label="Scegli i file da caricare">
+      <strong>Trascina qui le foto</strong>
+      <span>oppure clicca per sceglierle</span>
+      <input type="file" id="picker" multiple accept="image/*,video/*" hidden>
+    </div>
+
+    <div class="up-actions">
+      <button class="btn btn-accent" id="btnStart" type="button" disabled>Carica</button>
+      <button class="btn btn-ghost" id="btnClear" type="button">Svuota elenco</button>
+    </div>
+  </div>
+
+  <div class="up-status">
+    <div class="up-summary" id="summary">Nessun file in coda.</div>
+    <div class="up-bar"><div class="up-bar-fill" id="barAll"></div></div>
+    <ul class="up-list" id="list"></ul>
+    <div id="doneBox" class="up-done" hidden>
+      <p>Caricamento completato. Aggiorna l'archivio per pubblicare le foto sul sito.</p>
+      <button class="btn" id="btnScan" type="button">Aggiorna archivio</button>
+      <span class="up-hint" id="scanEcho"></span>
+    </div>
+  </div>
+</div>
+
+<input type="hidden" id="csrf" value="{{ user.csrf }}">
+<script src="{{ asset('/static/js/admin-upload.js') }}" defer></script>
+{% endblock %}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Photocarcifo - esporta configurazione non versionata sul NAS
+# Dopo il backup del database (03:00): l'export porta con se' anche
+# l'ultima copia del database appena fatta.
+After=photocarcifo-db-backup.service network-online.target
+Wants=network-online.target
+RequiresMountsFor=/mnt/magazzino-rw
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/photocarcifo-export-config.sh

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{% if trovata %}{{ t('fcond.titolo') }}{% else %}{{ t('fcond.non_trovata') }}{% endif %} — {{ site_name() }}{% endblock %}
+{% block head_extra %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block og_image %}{% if trovata %}<meta property="og:image" content="{{ site_url() }}/f/{{ token }}/social">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/jpeg">{% else %}{{ super() }}{% endif %}{% endblock %}
+{% block content %}
+<section class="section"><div class="container">
+  {% if not trovata %}
+  <div class="empty" style="max-width:52ch;margin:clamp(3rem,10vw,6rem) auto;text-align:center;">
+    <h1 style="font-size:clamp(1.6rem,4vw,2.4rem);margin-bottom:1rem;">{{ t('fcond.non_trovata') }}</h1>
+    <p style="color:var(--ink-soft);line-height:1.7;">{{ t('fcond.non_trovata_testo') }}</p>
+    <p style="margin-top:2rem;"><a class="btn" href="/">{{ t('com.torna') }}</a></p>
+  </div>
+  {% else %}
+  <div class="foto-condivisa" style="max-width:900px;margin:0 auto;text-align:center;">
+    <h1 style="margin-bottom:1.5rem;">{{ t('fcond.titolo') }}</h1>
+    <p>
+      {% if media.kind == 'video' %}
+      <video controls playsinline style="max-width:100%;border-radius:.5rem;" src="/f/{{ token }}/video"></video>
+      {% else %}
+      <img decoding="async" src="/f/{{ token }}/anteprima" srcset="/f/{{ token }}/miniatura 1280w" sizes="(max-width:900px) 100vw, 900px" alt="{{ t('fcond.titolo') }} — Photocarcifo" style="max-width:100%;border-radius:.5rem;">
+      {% endif %}
+    </p>
+    {% if downloads_enabled %}
+    <p style="margin-top:1.5rem;"><a class="btn btn-accent" rel="nofollow" href="/f/{{ token }}/download">{{ t('fcond.scarica') }}</a></p>
+    {% endif %}
+  </div>
+  {% endif %}
+</div></section>
+{% endblock %}

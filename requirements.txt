@@ -1,0 +1,42 @@
+# Librerie del sito. Le versioni sono fissate di proposito: un
+# aggiornamento va fatto guardando che il sito risponda, non di notte
+# mentre nessuno controlla (vedi photocarcifo-notte.sh).
+#
+# Per installare da zero:
+#     python3 -m venv venv && venv/bin/pip install -r requirements.txt
+#
+# La lettura dei numeri di gara sta a parte, in requirements-ocr.txt: pesa
+# alcune centinaia di megabyte e su una macchina di prova non serve.
+
+# --- Il server e le pagine ---
+fastapi==0.115.6
+starlette==0.41.3
+uvicorn[standard]==0.34.0
+jinja2==3.1.6
+# Serve a FastAPI per leggere i moduli inviati dalle pagine (caricamento
+# fotografie compreso). Non si importa mai per nome, ma senza di lei ogni
+# invio di modulo fallisce.
+python-multipart==0.0.32
+pydantic==2.10.4
+pydantic-settings==2.7.1
+
+# --- Sicurezza ---
+argon2-cffi==25.1.0
+itsdangerous==2.2.0
+# Verifica in due passaggi del pannello: codice a tempo e disegno del
+# codice QR da inquadrare.
+pyotp==2.10.0
+qrcode==8.2
+
+# --- Fotografie ---
+Pillow==12.3.0
+# Costruisce l'archivio ZIP mentre lo spedisce, senza prepararlo tutto in
+# memoria: un album da due gigabyte non entrerebbe.
+zipstream-new==1.1.8
+
+# --- Prove ---
+# Non servono al sito in funzione, ma senza di loro non si possono lanciare
+# i controlli prima di mettere in servizio una modifica.
+pytest==9.1.1
+httpx==0.28.1
+pyflakes==3.4.0
