@@ -1,4 +1,4 @@
-# PHOTOCARCIFO.MD — Documentazione unificata del progetto
+# PHOTOCARCIFO - README
 
 > Creato: 16/09/2026
 
