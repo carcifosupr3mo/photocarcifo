@@ -8,7 +8,6 @@
 
 > GitHub: https://github.com/carcifosupr3mo/photocarcifo
 
----
 
 # PARTE I — Visione, infrastruttura e operatività (da docs/PHOTOCARCIFO.md)
 
@@ -170,16 +169,6 @@ moduli lo leggono dall'ambiente con un valore predefinito.
 
 L'applicazione è caduta, Nginx è in piedi. Guarda il registro sopra: di
 solito è un errore di sintassi o un import sbagliato dopo una modifica.
-
-### Chiuso fuori dal pannello
-
-```bash
-sqlite3 /opt/photocarcifo/data/photocarcifo.db \
-  "UPDATE users SET totp_enabled=0, totp_secret=NULL;"
-```
-
-Disattiva la verifica in due passaggi. Entri con la sola password e la
-riattivi.
 
 ### Le foto private non caricano
 
