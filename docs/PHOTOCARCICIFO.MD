@@ -8,6 +8,7 @@
 
 > GitHub: https://github.com/carcifosupr3mo/photocarcifo
 
+---
 
 # PARTE I — Visione, infrastruttura e operatività (da docs/PHOTOCARCIFO.md)
 
