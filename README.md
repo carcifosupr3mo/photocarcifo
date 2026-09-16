@@ -1,4 +1,12 @@
-# PhotoCarcifo
+# PHOTOCARCIFO.MD — Documentazione unificata del progetto
+
+> Creato: 16/09/2026
+
+> Autore: Nathan Pollini
+
+> Progetto: PHOTOCARCIFO
+
+> GitHub: https://github.com/carcifosupr3mo/photocarcifo
 
 Portfolio fotografico self-hosted per fotografia sportiva (motorsport, BMX, ciclismo, atletica). Serve le fotografie direttamente da un NAS tramite un'applicazione Python, senza copiarle mai altrove.
 
